@@ -1,34 +1,41 @@
+// src/components/Announcements.jsx
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import axios from "axios";
+import { db } from "../firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import jsPDF from "jspdf";
-import Footer from "../page/Footer"; 
+import Footer from "../page/Footer";
 
 const Announcement = () => {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("All");
-  
-  // Track which notice IDs have their extra details expanded
+
   const [expandedNotices, setExpandedNotices] = useState({});
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:5000/api/announcements");
-        
-        if (response.data && Array.isArray(response.data)) {
-          setNotices(response.data);
-        } else if (response.data && Array.isArray(response.data.data)) {
-          setNotices(response.data.data);
-        } else {
-          setNotices([]);
-        }
+        const q = query(
+          collection(db, "announcements"),
+          orderBy("date", "desc"),
+        );
+        const querySnapshot = await getDocs(q);
+
+        const announcements = [];
+        querySnapshot.forEach((doc) => {
+          announcements.push({ id: doc.id, ...doc.data() });
+        });
+
+        setNotices(announcements);
         setError(null);
       } catch (err) {
-        console.error("Error pulling announcements from cluster:", err.message);
+        console.error(
+          "Error pulling announcements from Firebase:",
+          err.message,
+        );
         setError("Failed to stream announcements. Please try again later.");
       } finally {
         setLoading(false);
@@ -45,9 +52,13 @@ const Announcement = () => {
     }));
   };
 
-  const filteredNotices = filter === "All" 
-    ? notices 
-    : notices.filter(n => n.category && n.category.toLowerCase() === filter.toLowerCase());
+  const filteredNotices =
+    filter === "All"
+      ? notices
+      : notices.filter(
+          (n) =>
+            n.category && n.category.toLowerCase() === filter.toLowerCase(),
+        );
 
   const getCategoryColor = (cat) => {
     const colors = {
@@ -55,7 +66,7 @@ const Announcement = () => {
       admission: "#198754",
       events: "#0dcaf0",
       holidays: "#fd7e14",
-      general: "#6c757d"
+      general: "#6c757d",
     };
     return colors[cat?.toLowerCase()] || "#0d6efd";
   };
@@ -64,9 +75,9 @@ const Announcement = () => {
     if (!dateStr) return { day: "??", month: "UNK", year: "????" };
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return { day: "??", month: "UNK", year: "????" };
-    
+
     const day = d.getDate();
-    const month = d.toLocaleString('default', { month: 'short' }).toUpperCase();
+    const month = d.toLocaleString("default", { month: "short" }).toUpperCase();
     const year = d.getFullYear();
     return { day, month, year };
   };
@@ -74,60 +85,82 @@ const Announcement = () => {
   const generateIndividualPDF = (notice) => {
     const doc = new jsPDF();
     doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
+    doc.rect(0, 0, 210, 40, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.text("GDC GULABAD", 105, 20, { align: "center" });
     doc.setFontSize(10);
     doc.text("OFFICIAL NOTICE BOARD", 105, 30, { align: "center" });
-    
+
     doc.setTextColor(40);
     doc.setFontSize(12);
-    const displayId = notice._id ? notice._id.substring(notice._id.length - 6).toUpperCase() : "DOC";
-    const displayDate = notice.date ? new Date(notice.date).toLocaleDateString() : "N/A";
+    const displayId = notice.id
+      ? notice.id.substring(notice.id.length - 6).toUpperCase()
+      : "DOC";
+    const displayDate = notice.date
+      ? new Date(notice.date).toLocaleDateString()
+      : "N/A";
 
     doc.text(`Notification Ref: #GDC-${displayId}`, 20, 55);
     doc.text(`Issued Date: ${displayDate}`, 190, 55, { align: "right" });
     doc.line(20, 60, 190, 60);
-    
+
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text(notice.title || "No Title Provided", 20, 75, { maxWidth: 170 });
-    
+
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    
-    // Combine details and extra info for complete offline PDF backups
+
     const mainBody = notice.details || "";
-    const extraBody = notice.extraDetails ? `\n\nAdditional Instructions:\n${notice.extraDetails}` : "";
+    const extraBody = notice.extraDetails
+      ? `\n\nAdditional Instructions:\n${notice.extraDetails}`
+      : "";
     doc.text(mainBody + extraBody, 20, 95, { maxWidth: 170 });
-    
+
     doc.save(`Notice_${displayId}.pdf`);
   };
 
-  const categories = ["All", "General", "Exams", "Events", "Holidays", "Admission"];
+  const categories = [
+    "All",
+    "General",
+    "Exams",
+    "Events",
+    "Holidays",
+    "Admission",
+  ];
 
   return (
     <div className="announcement-wrapper bg-light min-vh-100">
-      {/* --- HERO HEADER --- */}
       <div className="notice-hero">
         <div className="container text-center">
           <nav aria-label="breadcrumb">
             <ol className="breadcrumb justify-content-center text-uppercase mb-3">
-              <li className="breadcrumb-item"><a href="/" className="text-info text-decoration-none small">Home</a></li>
-              <li className="breadcrumb-item active text-white opacity-50 small" aria-current="page">Notice Board</li>
+              <li className="breadcrumb-item">
+                <a href="/" className="text-info text-decoration-none small">
+                  Home
+                </a>
+              </li>
+              <li
+                className="breadcrumb-item active text-white opacity-50 small"
+                aria-current="page"
+              >
+                Notice Board
+              </li>
             </ol>
           </nav>
-          <h1 className="display-4 fw-bold text-white mb-2">Updates & <span className="text-info">Announcements</span></h1>
-          <p className="lead text-white-50">Stay informed with the latest official notifications from GDC Gulabad.</p>
+          <h1 className="display-4 fw-bold text-white mb-2">
+            Updates & <span className="text-info">Announcements</span>
+          </h1>
+          <p className="lead text-white-50">
+            Stay informed with the latest official notifications from GDC
+            Gulabad.
+          </p>
         </div>
       </div>
 
-      {/* --- MAIN CONTENT --- */}
       <div className="container pb-5" style={{ marginTop: "-50px" }}>
         <div className="row g-4">
-          
-          {/* SIDEBAR */}
           <div className="col-lg-3">
             <div className="filter-sidebar shadow-lg">
               <h6 className="section-title">Categories</h6>
@@ -144,21 +177,29 @@ const Announcement = () => {
                 ))}
               </div>
             </div>
-            
+
             <div className="contact-box mt-4 p-4 rounded-4 shadow-sm bg-dark text-white">
               <h6 className="fw-bold mb-3">Need Help?</h6>
-              <p className="small text-white-50">Contact the Registrar office for admission related queries.</p>
-              <a href="mailto:info@gdcgulabad.edu.pk" className="btn btn-outline-info btn-sm w-100">Contact Us</a>
+              <p className="small text-white-50">
+                Contact the Registrar office for admission related queries.
+              </p>
+              <a
+                href="mailto:info@gdcgulabad.edu.pk"
+                className="btn btn-outline-info btn-sm w-100"
+              >
+                Contact Us
+              </a>
             </div>
           </div>
 
-          {/* NOTICES LIST */}
           <div className="col-lg-9">
             <div className="d-flex flex-column gap-4">
-              
               {loading ? (
                 <div className="empty-state shadow-sm text-center py-5">
-                  <div className="spinner-border text-primary mb-3" role="status">
+                  <div
+                    className="spinner-border text-primary mb-3"
+                    role="status"
+                  >
                     <span className="visually-hidden">Loading...</span>
                   </div>
                   <h5>Streaming Announcements...</h5>
@@ -171,22 +212,29 @@ const Announcement = () => {
               ) : filteredNotices.length > 0 ? (
                 filteredNotices.map((notice) => {
                   const { day, month, year } = formatDate(notice.date);
-                  const isExpanded = !!expandedNotices[notice._id];
-                  
+                  const isExpanded = !!expandedNotices[notice.id];
+
                   return (
-                    <div key={notice._id} className="notice-card shadow-sm d-flex flex-column align-items-stretch">
-                      
-                      {/* Main notice card top section layout */}
+                    <div
+                      key={notice.id}
+                      className="notice-card shadow-sm d-flex flex-column align-items-stretch"
+                    >
                       <div className="d-flex gap-4 mobile-card-stack">
                         <div className="notice-date-box">
                           <span className="day">{day}</span>
                           <span className="month">{month}</span>
                           <span className="year">{year}</span>
                         </div>
-                        
+
                         <div className="notice-body flex-grow-1">
                           <div className="d-flex align-items-center gap-2 mb-2">
-                            <span className="category-tag" style={{ color: getCategoryColor(notice.category), backgroundColor: `${getCategoryColor(notice.category)}15` }}>
+                            <span
+                              className="category-tag"
+                              style={{
+                                color: getCategoryColor(notice.category),
+                                backgroundColor: `${getCategoryColor(notice.category)}15`,
+                              }}
+                            >
                               {notice.category || "General"}
                             </span>
                           </div>
@@ -194,55 +242,77 @@ const Announcement = () => {
                           <p className="notice-desc">{notice.details}</p>
                         </div>
 
-                        {/* Interactive Actions Grid */}
                         <div className="notice-actions d-flex flex-column gap-2 align-self-start">
-                          <button onClick={() => generateIndividualPDF(notice)} className="pdf-btn btn w-100">
+                          <button
+                            onClick={() => generateIndividualPDF(notice)}
+                            className="pdf-btn btn w-100"
+                          >
                             <i className="bi bi-download me-2"></i> PDF
                           </button>
-                          
-                          {/* Render dynamic document view option if link exists */}
+
                           {notice.fileUrl && (
-                            <a href={notice.fileUrl} target="_blank" rel="noreferrer" className="view-doc-btn btn btn-sm btn-outline-primary w-100 fw-bold">
-                              <i className="bi bi-file-earmark-text me-1"></i> Official Doc
+                            <a
+                              href={notice.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="view-doc-btn btn btn-sm btn-outline-primary w-100 fw-bold"
+                            >
+                              <i className="bi bi-file-earmark-text me-1"></i>{" "}
+                              Official Doc
                             </a>
                           )}
                         </div>
                       </div>
 
-                      {/* Dropdown triggers for additional structured instructions */}
                       {notice.extraDetails && (
                         <div className="mt-3 pt-2 border-top border-light">
-                          <button 
+                          <button
                             className="btn btn-link btn-sm p-0 text-decoration-none d-flex align-items-center gap-1 fw-bold text-secondary"
-                            onClick={() => toggleExpand(notice._id)}
+                            onClick={() => toggleExpand(notice.id)}
                           >
-                            <span>{isExpanded ? "Hide Detailed Notices" : "View Full Instructions / Details"}</span>
-                            <i className={`bi bi-chevron-${isExpanded ? "up" : "down"} small`}></i>
+                            <span>
+                              {isExpanded
+                                ? "Hide Detailed Notices"
+                                : "View Full Instructions / Details"}
+                            </span>
+                            <i
+                              className={`bi bi-chevron-${isExpanded ? "up" : "down"} small`}
+                            ></i>
                           </button>
-                          
+
                           {isExpanded && (
                             <div className="extra-details-panel mt-3 p-3 bg-light rounded-3 border-start border-primary border-3">
-                              <h6 className="fw-bold text-dark small mb-2"><i className="bi bi-info-circle me-1"></i> Supplementary Details:</h6>
-                              <p className="small text-muted mb-0 whitespace-prewrap">{notice.extraDetails}</p>
-                              
-                              {/* Display attached image preview if configured */}
+                              <h6 className="fw-bold text-dark small mb-2">
+                                <i className="bi bi-info-circle me-1"></i>{" "}
+                                Supplementary Details:
+                              </h6>
+                              <p className="small text-muted mb-0 whitespace-prewrap">
+                                {notice.extraDetails}
+                              </p>
+
                               {notice.imageUrl && (
                                 <div className="notice-image-preview mt-3">
-                                  <a href={notice.imageUrl} target="_blank" rel="noreferrer">
-                                    <img 
-                                      src={notice.imageUrl} 
-                                      alt="Notice scan attachment" 
+                                  <a
+                                    href={notice.imageUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <img
+                                      src={notice.imageUrl}
+                                      alt="Notice scan attachment"
                                       className="img-fluid rounded border border-secondary border-opacity-25 shadow-sm max-h-300"
                                     />
                                   </a>
-                                  <div className="text-muted small mt-1 italic"><i className="bi bi-zoom-in"></i> Click image to open high resolution scan</div>
+                                  <div className="text-muted small mt-1 italic">
+                                    <i className="bi bi-zoom-in"></i> Click
+                                    image to open high resolution scan
+                                  </div>
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
                       )}
-
                     </div>
                   );
                 })
@@ -254,7 +324,6 @@ const Announcement = () => {
               )}
             </div>
           </div>
-
         </div>
       </div>
 

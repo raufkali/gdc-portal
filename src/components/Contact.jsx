@@ -1,13 +1,14 @@
+// src/components/Contact.jsx
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Footer from "../page/Footer"; 
+import Footer from "../page/Footer";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     subject: "General Inquiry",
-    message: ""
+    message: "",
   });
 
   // Always scroll to top when visiting this page
@@ -21,12 +22,13 @@ const Contact = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     alert(`Thank you ${formData.name}. Your message has been sent!`);
+    // Note: For actual email sending, you'd use a Firebase Cloud Function
+    // or a third-party service like EmailJS
   };
 
   return (
     <>
       <div className="bg-light-smooth min-vh-100">
-        
         {/* --- HERO SECTION --- */}
         <div className="contact-hero d-flex align-items-center text-center">
           <div className="container text-white">
@@ -34,22 +36,27 @@ const Contact = () => {
               Available for Support
             </span>
             <h1 className="display-4 fw-bold mb-3 animate-slide-down">
-              Let’s <span className="text-info-gradient">Connect</span>
+              Let's <span className="text-info-gradient">Connect</span>
             </h1>
-            <p className="lead mx-auto opacity-75 mb-0" style={{ maxWidth: "700px" }}>
-              Have questions about admissions or campus life? Our team is dedicated to providing you with the assistance you need.
+            <p
+              className="lead mx-auto opacity-75 mb-0"
+              style={{ maxWidth: "700px" }}
+            >
+              Have questions about admissions or campus life? Our team is
+              dedicated to providing you with the assistance you need.
             </p>
           </div>
         </div>
 
         {/* --- MAIN CONTENT SECTION --- */}
-        <div className="container pb-5 mt-5 position-relative" style={{ zIndex: 5 }}>
+        <div
+          className="container pb-5 mt-5 position-relative"
+          style={{ zIndex: 5 }}
+        >
           <div className="row g-4">
-            
             {/* 1. CONTACT INFO CARDS (Sidebar) */}
             <div className="col-lg-4">
               <div className="d-flex flex-column gap-4">
-                
                 {/* Information Card Component */}
                 {[
                   {
@@ -58,34 +65,48 @@ const Contact = () => {
                     text: "Gulabad, Tehsil Adenzai, Dir Lower, KP, Pakistan.",
                     btn: "Get Directions",
                     link: `https://www.google.com/maps?q=${lat},${lng}`,
-                    color: "info"
+                    color: "info",
                   },
                   {
                     icon: "bi-telephone-fill",
                     title: "Direct Contact",
                     text: "+92 945 123456",
                     subtext: "info@gdcgulabad.edu.pk",
-                    color: "primary"
+                    color: "primary",
                   },
                   {
                     icon: "bi-clock-fill",
                     title: "Office Timing",
                     text: "Mon - Sat: 08:30 AM - 02:30 PM",
                     subtext: "Closed on Sundays & Holidays",
-                    color: "warning"
-                  }
+                    color: "warning",
+                  },
                 ].map((item, index) => (
-                  <div className="info-glass-card p-4 rounded-4 shadow-sm border-0" key={index}>
+                  <div
+                    className="info-glass-card p-4 rounded-4 shadow-sm border-0"
+                    key={index}
+                  >
                     <div className="d-flex align-items-center mb-3">
-                      <div className={`icon-box bg-${item.color} shadow-sm me-3`}>
+                      <div
+                        className={`icon-box bg-${item.color} shadow-sm me-3`}
+                      >
                         <i className={`bi ${item.icon} text-white`}></i>
                       </div>
                       <h5 className="fw-bold mb-0 text-navy">{item.title}</h5>
                     </div>
                     <p className="text-secondary small mb-2">{item.text}</p>
-                    {item.subtext && <p className="text-muted extra-small mb-0">{item.subtext}</p>}
+                    {item.subtext && (
+                      <p className="text-muted extra-small mb-0">
+                        {item.subtext}
+                      </p>
+                    )}
                     {item.btn && (
-                      <a href={item.link} target="_blank" rel="noreferrer" className="btn btn-sm btn-link text-info p-0 mt-2 fw-bold text-decoration-none">
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-sm btn-link text-info p-0 mt-2 fw-bold text-decoration-none"
+                      >
                         {item.btn} <i className="bi bi-arrow-right ms-1"></i>
                       </a>
                     )}
@@ -101,22 +122,47 @@ const Contact = () => {
                   <h3 className="fw-bold text-navy">Send a Message</h3>
                   <div className="divider-sm bg-info"></div>
                 </div>
-                
+
                 <form onSubmit={handleSubmit}>
                   <div className="row g-4">
                     <div className="col-md-6">
-                      <label className="form-label fw-bold text-navy small">FULL NAME</label>
-                      <input type="text" className="form-control modern-input" placeholder="e.g. Ahmad Ali" required 
-                             onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                      <label className="form-label fw-bold text-navy small">
+                        FULL NAME
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control modern-input"
+                        placeholder="e.g. Ahmad Ali"
+                        required
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                      />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-bold text-navy small">EMAIL ADDRESS</label>
-                      <input type="email" className="form-control modern-input" placeholder="name@email.com" required 
-                             onChange={(e) => setFormData({...formData, email: e.target.value})} />
+                      <label className="form-label fw-bold text-navy small">
+                        EMAIL ADDRESS
+                      </label>
+                      <input
+                        type="email"
+                        className="form-control modern-input"
+                        placeholder="name@email.com"
+                        required
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                      />
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-bold text-navy small">SUBJECT</label>
-                      <select className="form-select modern-input" onChange={(e) => setFormData({...formData, subject: e.target.value})}>
+                      <label className="form-label fw-bold text-navy small">
+                        SUBJECT
+                      </label>
+                      <select
+                        className="form-select modern-input"
+                        onChange={(e) =>
+                          setFormData({ ...formData, subject: e.target.value })
+                        }
+                      >
                         <option>General Inquiry</option>
                         <option>Admission Help</option>
                         <option>Technical Issue</option>
@@ -124,9 +170,18 @@ const Contact = () => {
                       </select>
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-bold text-navy small">MESSAGE</label>
-                      <textarea className="form-control modern-input" rows="5" placeholder="How can we assist you?" required
-                                onChange={(e) => setFormData({...formData, message: e.target.value})}></textarea>
+                      <label className="form-label fw-bold text-navy small">
+                        MESSAGE
+                      </label>
+                      <textarea
+                        className="form-control modern-input"
+                        rows="5"
+                        placeholder="How can we assist you?"
+                        required
+                        onChange={(e) =>
+                          setFormData({ ...formData, message: e.target.value })
+                        }
+                      ></textarea>
                     </div>
                     <div className="col-12 mt-4">
                       <button type="submit" className="btn-attractive-contact">
@@ -142,13 +197,13 @@ const Contact = () => {
 
           {/* 3. GOOGLE MAP SECTION */}
           <div className="mt-5 rounded-4 overflow-hidden border-0 shadow-xl map-container">
-            <iframe 
+            <iframe
               title="College Map"
-              src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`} 
-              width="100%" 
-              height="450" 
-              style={{ border: 0 }} 
-              allowFullScreen="" 
+              src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+              width="100%"
+              height="450"
+              style={{ border: 0 }}
+              allowFullScreen=""
               loading="lazy"
             ></iframe>
           </div>

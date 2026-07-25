@@ -1,9 +1,9 @@
+// src/components/Media.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { db } from "../firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Footer from "../page/Footer"; 
-
-const API_BASE_URL = "http://192.168.43.56:5000/api";
+import Footer from "../page/Footer";
 
 const Media = () => {
   const [filter, setFilter] = useState("all");
@@ -13,14 +13,19 @@ const Media = () => {
   const [mediaItems, setMediaItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- FETCH PRODUCTION DATABASE MEDIA ---
+  // --- FETCH FROM FIREBASE ---
   useEffect(() => {
     const fetchMedia = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/media`);
-        setMediaItems(res.data);
+        const q = query(collection(db, "media"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const items = [];
+        querySnapshot.forEach((doc) => {
+          items.push({ id: doc.id, ...doc.data() });
+        });
+        setMediaItems(items);
       } catch (err) {
-        console.error("Error connecting to database archive:", err);
+        console.error("Error connecting to Firebase:", err);
       } finally {
         setIsLoading(false);
       }
@@ -36,7 +41,7 @@ const Media = () => {
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${title.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+      link.download = `${title.replace(/\s+/g, "-").toLowerCase()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -48,40 +53,47 @@ const Media = () => {
     }
   };
 
-  const filteredMedia = mediaItems.filter(item => {
+  const filteredMedia = mediaItems.filter((item) => {
     const matchesFilter = filter === "all" || item.category === filter;
-    const matchesSearch = item.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = item.title
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   return (
     <>
       <div className="bg-white min-vh-100">
-        
         {/* --- HERO SECTION --- */}
-        <div 
-          className="position-relative py-5 d-flex align-items-center text-center" 
-          style={{ 
-            background: "linear-gradient(rgba(10, 25, 47, 0.92), rgba(10, 25, 47, 0.92)), url('https://images.unsplash.com/photo-1523050335392-93851179ae22?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat",
-            minHeight: "380px"
+        <div
+          className="position-relative py-5 d-flex align-items-center text-center"
+          style={{
+            background:
+              "linear-gradient(rgba(10, 25, 47, 0.92), rgba(10, 25, 47, 0.92)), url('https://images.unsplash.com/photo-1523050335392-93851179ae22?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat",
+            minHeight: "380px",
           }}
         >
           <div className="container text-white mt-4">
-            <h6 className="text-info text-uppercase fw-bold mb-2" style={{ letterSpacing: "3px", fontSize: "0.8rem" }}>
+            <h6
+              className="text-info text-uppercase fw-bold mb-2"
+              style={{ letterSpacing: "3px", fontSize: "0.8rem" }}
+            >
               Digital Archive
             </h6>
-            <h1 className="display-5 fw-bold mb-3">Media <span className="text-info">Hub</span></h1>
-            
+            <h1 className="display-5 fw-bold mb-3">
+              Media <span className="text-info">Hub</span>
+            </h1>
+
             {/* Search Input */}
             <div className="mx-auto" style={{ maxWidth: "450px" }}>
               <div className="input-group bg-white rounded-pill overflow-hidden p-1 shadow-lg">
                 <span className="input-group-text bg-white border-0 ps-4">
                   <i className="bi bi-search text-muted"></i>
                 </span>
-                <input 
-                  type="text" 
-                  className="form-control border-0 py-2 ps-2 shadow-none small" 
-                  placeholder="Search gallery..." 
+                <input
+                  type="text"
+                  className="form-control border-0 py-2 ps-2 shadow-none small"
+                  placeholder="Search gallery..."
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
@@ -91,7 +103,6 @@ const Media = () => {
 
         {/* --- GALLERY SECTION --- */}
         <div className="container py-5">
-          
           {/* Filter Bar */}
           <div className="d-flex flex-wrap justify-content-center gap-2 mb-5">
             {["all", "campus", "events", "sports"].map((cat) => (
@@ -99,7 +110,9 @@ const Media = () => {
                 key={cat}
                 onClick={() => setFilter(cat)}
                 className={`btn rounded-pill px-4 py-1 fw-bold text-uppercase transition-all ${
-                  filter === cat ? "btn-info text-white shadow-sm" : "btn-light text-secondary"
+                  filter === cat
+                    ? "btn-info text-white shadow-sm"
+                    : "btn-light text-secondary"
                 }`}
                 style={{ fontSize: "0.75rem", letterSpacing: "1px" }}
               >
@@ -119,24 +132,52 @@ const Media = () => {
             <div className="row g-4 mb-5">
               {filteredMedia.length > 0 ? (
                 filteredMedia.map((item) => (
-                  <div key={item._id || item.id} className="col-md-6 col-lg-4" onClick={() => setSelectedItem(item)}>
+                  <div
+                    key={item.id}
+                    className="col-md-6 col-lg-4"
+                    onClick={() => setSelectedItem(item)}
+                  >
                     <div className="card border-0 rounded-4 overflow-hidden shadow-sm hover-lift bg-white h-100">
-                      <div className="position-relative overflow-hidden" style={{ height: "240px" }}>
-                        {item.type === 'video' && !item.url.includes("youtube.com") && !item.url.includes("youtu.be") && !item.url.includes("embed") ? (
-                          <video src={item.url} className="h-100 w-100 object-fit-cover" muted playsInline />
+                      <div
+                        className="position-relative overflow-hidden"
+                        style={{ height: "240px" }}
+                      >
+                        {item.type === "video" &&
+                        !item.url.includes("youtube.com") &&
+                        !item.url.includes("youtu.be") &&
+                        !item.url.includes("embed") ? (
+                          <video
+                            src={item.url}
+                            className="h-100 w-100 object-fit-cover"
+                            muted
+                            playsInline
+                          />
                         ) : (
-                          <img 
-                            src={item.type === 'video' ? 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80' : item.url} 
-                            className="card-img-top h-100 w-100 object-fit-cover transition-img" 
-                            alt={item.title} 
+                          <img
+                            src={
+                              item.type === "video"
+                                ? "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+                                : item.url
+                            }
+                            className="card-img-top h-100 w-100 object-fit-cover transition-img"
+                            alt={item.title}
                           />
                         )}
                         <div className="media-type-tag">
-                          {item.type === 'video' ? <i className="bi bi-play-circle-fill text-info"></i> : <i className="bi bi-camera-fill"></i>}
+                          {item.type === "video" ? (
+                            <i className="bi bi-play-circle-fill text-info"></i>
+                          ) : (
+                            <i className="bi bi-camera-fill"></i>
+                          )}
                         </div>
                       </div>
                       <div className="card-body p-4 text-center">
-                        <span className="text-info small fw-bold text-uppercase mb-1 d-block" style={{fontSize: '0.7rem'}}>{item.category}</span>
+                        <span
+                          className="text-info small fw-bold text-uppercase mb-1 d-block"
+                          style={{ fontSize: "0.7rem" }}
+                        >
+                          {item.category}
+                        </span>
                         <h6 className="fw-bold text-dark mb-0">{item.title}</h6>
                       </div>
                     </div>
@@ -144,7 +185,9 @@ const Media = () => {
                 ))
               ) : (
                 <div className="col-12 text-center py-5">
-                  <p className="text-muted">No operational media items found inside this tier.</p>
+                  <p className="text-muted">
+                    No operational media items found inside this tier.
+                  </p>
                 </div>
               )}
             </div>
@@ -152,51 +195,108 @@ const Media = () => {
 
           {/* --- MODAL MEDIA VIEWER DISPLAY --- */}
           {selectedItem && (
-            <div className="modal-overlay animate-fade-in" onClick={() => setSelectedItem(null)}>
-              <div className="modal-card animate-slide-up shadow-lg" onClick={(e) => e.stopPropagation()}>
-                <button className="modal-close" onClick={() => setSelectedItem(null)}>&times;</button>
+            <div
+              className="modal-overlay animate-fade-in"
+              onClick={() => setSelectedItem(null)}
+            >
+              <div
+                className="modal-card animate-slide-up shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="modal-close"
+                  onClick={() => setSelectedItem(null)}
+                >
+                  &times;
+                </button>
                 <div className="row g-0">
                   <div className="col-lg-7 bg-black d-flex align-items-center justify-content-center">
                     {selectedItem.type === "image" ? (
-                      <img src={selectedItem.url} className="img-fluid w-100 h-100 object-fit-contain" alt="Full view" />
+                      <img
+                        src={selectedItem.url}
+                        className="img-fluid w-100 h-100 object-fit-contain"
+                        alt="Full view"
+                      />
+                    ) : /* Intelligent Video Router */
+                    selectedItem.url.includes("youtube.com") ||
+                      selectedItem.url.includes("youtu.be") ||
+                      selectedItem.url.includes("embed") ? (
+                      <iframe
+                        className="w-100 h-100"
+                        style={{ minHeight: "400px" }}
+                        src={selectedItem.url}
+                        allowFullScreen
+                        title="video"
+                      ></iframe>
                     ) : (
-                      /* Intelligent Video Router */
-                      selectedItem.url.includes("youtube.com") || selectedItem.url.includes("youtu.be") || selectedItem.url.includes("embed") ? (
-                        <iframe className="w-100 h-100" style={{ minHeight: "400px" }} src={selectedItem.url} allowFullScreen title="video"></iframe>
-                      ) : (
-                        <video src={selectedItem.url} controls className="w-100" style={{ maxHeight: "500px" }} />
-                      )
+                      <video
+                        src={selectedItem.url}
+                        controls
+                        className="w-100"
+                        style={{ maxHeight: "500px" }}
+                      />
                     )}
                   </div>
                   <div className="col-lg-5 p-4 p-lg-5 bg-white d-flex flex-column justify-content-center">
                     <div className="mb-4">
-                      <span className="badge bg-info mb-2 px-3 py-2 rounded-pill text-uppercase" style={{fontSize: '0.65rem'}}>{selectedItem.category}</span>
-                      <h3 className="fw-bold text-dark mb-1">{selectedItem.title}</h3>
-                      <p className="text-muted small mb-0"><i className="bi bi-calendar3 me-2"></i>{selectedItem.date || "Recent"}</p>
+                      <span
+                        className="badge bg-info mb-2 px-3 py-2 rounded-pill text-uppercase"
+                        style={{ fontSize: "0.65rem" }}
+                      >
+                        {selectedItem.category}
+                      </span>
+                      <h3 className="fw-bold text-dark mb-1">
+                        {selectedItem.title}
+                      </h3>
+                      <p className="text-muted small mb-0">
+                        <i className="bi bi-calendar3 me-2"></i>
+                        {selectedItem.date || "Recent"}
+                      </p>
                     </div>
-                    
-                    <p className="text-secondary small mb-5" style={{ lineHeight: "1.7" }}>{selectedItem.description}</p>
-                    
+
+                    <p
+                      className="text-secondary small mb-5"
+                      style={{ lineHeight: "1.7" }}
+                    >
+                      {selectedItem.description}
+                    </p>
+
                     <div className="mt-auto">
                       {selectedItem.type === "image" ? (
-                        <button 
+                        <button
                           className="btn btn-info w-100 py-3 rounded-pill text-white fw-bold shadow-sm"
                           disabled={isDownloading}
-                          onClick={() => downloadMedia(selectedItem.url, selectedItem.title)}
+                          onClick={() =>
+                            downloadMedia(selectedItem.url, selectedItem.title)
+                          }
                         >
-                          <i className={`bi ${isDownloading ? 'bi-hourglass-split' : 'bi-download'} me-2`}></i> 
-                          {isDownloading ? "Downloading Asset..." : "Download Original"}
+                          <i
+                            className={`bi ${isDownloading ? "bi-hourglass-split" : "bi-download"} me-2`}
+                          ></i>
+                          {isDownloading
+                            ? "Downloading Asset..."
+                            : "Download Original"}
                         </button>
+                      ) : selectedItem.url.includes("youtube.com") ||
+                        selectedItem.url.includes("youtu.be") ? (
+                        <a
+                          href={selectedItem.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-outline-info w-100 py-3 rounded-pill fw-bold"
+                        >
+                          <i className="bi bi-youtube me-2"></i> Open Stream
+                          Platform
+                        </a>
                       ) : (
-                        selectedItem.url.includes("youtube.com") || selectedItem.url.includes("youtu.be") ? (
-                          <a href={selectedItem.url} target="_blank" rel="noreferrer" className="btn btn-outline-info w-100 py-3 rounded-pill fw-bold">
-                            <i className="bi bi-youtube me-2"></i> Open Stream Platform
-                          </a>
-                        ) : (
-                          <a href={selectedItem.url} download={`${selectedItem.title.replace(/\s+/g, '-').toLowerCase()}.mp4`} className="btn btn-info w-100 py-3 rounded-pill text-white fw-bold">
-                            <i className="bi bi-download me-2"></i> Save Video to Device
-                          </a>
-                        )
+                        <a
+                          href={selectedItem.url}
+                          download={`${selectedItem.title.replace(/\s+/g, "-").toLowerCase()}.mp4`}
+                          className="btn btn-info w-100 py-3 rounded-pill text-white fw-bold"
+                        >
+                          <i className="bi bi-download me-2"></i> Save Video to
+                          Device
+                        </a>
                       )}
                     </div>
                   </div>
