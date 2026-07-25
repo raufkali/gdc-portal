@@ -11,7 +11,6 @@ const Announcement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("All");
-
   const [expandedNotices, setExpandedNotices] = useState({});
 
   useEffect(() => {

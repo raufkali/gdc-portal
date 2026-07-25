@@ -1,7 +1,5 @@
 // src/components/Contact.jsx
 import React, { useState, useEffect } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import Footer from "../page/Footer";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -11,304 +9,178 @@ const Contact = () => {
     message: "",
   });
 
-  // Always scroll to top when visiting this page
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const lat = 34.71;
-  const lng = 72.03;
-
   const handleSubmit = (e) => {
     e.preventDefault();
     alert(`Thank you ${formData.name}. Your message has been sent!`);
-    // Note: For actual email sending, you'd use a Firebase Cloud Function
-    // or a third-party service like EmailJS
   };
 
   return (
     <>
-      <div className="bg-light-smooth min-vh-100">
-        {/* --- HERO SECTION --- */}
-        <div className="contact-hero d-flex align-items-center text-center">
-          <div className="container text-white">
-            <span className="badge bg-info-subtle text-info px-3 py-1 rounded-pill mb-3 mt-4 fw-bold text-uppercase tracking-wider">
-              Available for Support
-            </span>
-            <h1 className="display-4 fw-bold mb-3 animate-slide-down">
-              Let's <span className="text-info-gradient">Connect</span>
+      {/* Hero */}
+      <section className="contact-hero">
+        <div className="container-custom">
+          <div className="contact-hero-content">
+            <span className="hero-badge">Get in Touch</span>
+            <h1>
+              Let's <span className="highlight">Connect</span>
             </h1>
-            <p
-              className="lead mx-auto opacity-75 mb-0"
-              style={{ maxWidth: "700px" }}
-            >
-              Have questions about admissions or campus life? Our team is
-              dedicated to providing you with the assistance you need.
+            <p>
+              Have questions about admissions or campus life? Our team is here
+              to help.
             </p>
           </div>
         </div>
+      </section>
 
-        {/* --- MAIN CONTENT SECTION --- */}
-        <div
-          className="container pb-5 mt-5 position-relative"
-          style={{ zIndex: 5 }}
-        >
-          <div className="row g-4">
-            {/* 1. CONTACT INFO CARDS (Sidebar) */}
-            <div className="col-lg-4">
-              <div className="d-flex flex-column gap-4">
-                {/* Information Card Component */}
-                {[
-                  {
-                    icon: "bi-geo-alt-fill",
-                    title: "Our Location",
-                    text: "Gulabad, Tehsil Adenzai, Dir Lower, KP, Pakistan.",
-                    btn: "Get Directions",
-                    link: `https://www.google.com/maps?q=${lat},${lng}`,
-                    color: "info",
-                  },
-                  {
-                    icon: "bi-telephone-fill",
-                    title: "Direct Contact",
-                    text: "+92 945 123456",
-                    subtext: "info@gdcgulabad.edu.pk",
-                    color: "primary",
-                  },
-                  {
-                    icon: "bi-clock-fill",
-                    title: "Office Timing",
-                    text: "Mon - Sat: 08:30 AM - 02:30 PM",
-                    subtext: "Closed on Sundays & Holidays",
-                    color: "warning",
-                  },
-                ].map((item, index) => (
-                  <div
-                    className="info-glass-card p-4 rounded-4 shadow-sm border-0"
-                    key={index}
-                  >
-                    <div className="d-flex align-items-center mb-3">
-                      <div
-                        className={`icon-box bg-${item.color} shadow-sm me-3`}
-                      >
-                        <i className={`bi ${item.icon} text-white`}></i>
-                      </div>
-                      <h5 className="fw-bold mb-0 text-navy">{item.title}</h5>
-                    </div>
-                    <p className="text-secondary small mb-2">{item.text}</p>
-                    {item.subtext && (
-                      <p className="text-muted extra-small mb-0">
-                        {item.subtext}
-                      </p>
-                    )}
-                    {item.btn && (
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-sm btn-link text-info p-0 mt-2 fw-bold text-decoration-none"
-                      >
-                        {item.btn} <i className="bi bi-arrow-right ms-1"></i>
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. CONTACT FORM */}
-            <div className="col-lg-8">
-              <div className="form-glass-card p-4 p-md-5 rounded-4 shadow-lg border-0 bg-white">
-                <div className="mb-4">
-                  <h3 className="fw-bold text-navy">Send a Message</h3>
-                  <div className="divider-sm bg-info"></div>
+      {/* Main */}
+      <section className="contact-main">
+        <div className="container-custom">
+          <div className="contact-grid">
+            {/* Info Cards */}
+            <div className="contact-info">
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <i className="bi bi-geo-alt"></i>
                 </div>
-
-                <form onSubmit={handleSubmit}>
-                  <div className="row g-4">
-                    <div className="col-md-6">
-                      <label className="form-label fw-bold text-navy small">
-                        FULL NAME
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control modern-input"
-                        placeholder="e.g. Ahmad Ali"
-                        required
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-bold text-navy small">
-                        EMAIL ADDRESS
-                      </label>
-                      <input
-                        type="email"
-                        className="form-control modern-input"
-                        placeholder="name@email.com"
-                        required
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label fw-bold text-navy small">
-                        SUBJECT
-                      </label>
-                      <select
-                        className="form-select modern-input"
-                        onChange={(e) =>
-                          setFormData({ ...formData, subject: e.target.value })
-                        }
-                      >
-                        <option>General Inquiry</option>
-                        <option>Admission Help</option>
-                        <option>Technical Issue</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label fw-bold text-navy small">
-                        MESSAGE
-                      </label>
-                      <textarea
-                        className="form-control modern-input"
-                        rows="5"
-                        placeholder="How can we assist you?"
-                        required
-                        onChange={(e) =>
-                          setFormData({ ...formData, message: e.target.value })
-                        }
-                      ></textarea>
-                    </div>
-                    <div className="col-12 mt-4">
-                      <button type="submit" className="btn-attractive-contact">
-                        <span>Send Message</span>
-                        <i className="bi bi-send-fill"></i>
-                      </button>
-                    </div>
-                  </div>
-                </form>
+                <h5>Our Location</h5>
+                <p>Gulabad, Tehsil Adenzai, Dir Lower, KP, Pakistan</p>
+                <a
+                  href="https://maps.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Get Directions →
+                </a>
+              </div>
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <i className="bi bi-telephone"></i>
+                </div>
+                <h5>Call Us</h5>
+                <p>+92 945 123456</p>
+                <p style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                  info@gdcgulabad.edu.pk
+                </p>
+              </div>
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <i className="bi bi-clock"></i>
+                </div>
+                <h5>Office Hours</h5>
+                <p>Mon - Sat: 08:30 AM - 02:30 PM</p>
+                <p style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                  Closed on Sundays & Holidays
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* 3. GOOGLE MAP SECTION */}
-          <div className="mt-5 rounded-4 overflow-hidden border-0 shadow-xl map-container">
-            <iframe
-              title="College Map"
-              src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
-              width="100%"
-              height="450"
-              style={{ border: 0 }}
-              allowFullScreen=""
-              loading="lazy"
-            ></iframe>
+            {/* Form */}
+            <div className="contact-form-wrapper">
+              <h3>Send a Message</h3>
+              <form onSubmit={handleSubmit}>
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email Address"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <select
+                  value={formData.subject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subject: e.target.value })
+                  }
+                >
+                  <option>General Inquiry</option>
+                  <option>Admission Help</option>
+                  <option>Technical Issue</option>
+                  <option>Other</option>
+                </select>
+                <textarea
+                  rows="5"
+                  placeholder="Your message..."
+                  value={formData.message}
+                  onChange={(e) =>
+                    setFormData({ ...formData, message: e.target.value })
+                  }
+                  required
+                />
+                <button type="submit" className="btn-gdc btn-gdc-primary">
+                  Send Message <i className="bi bi-send"></i>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
+      </section>
 
-        <Footer />
-      </div>
+      {/* Map */}
+      <section className="contact-map">
+        <div className="container-custom">
+          <iframe
+            title="College Map"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3306.0!2d72.03!3d34.71!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzTCsDQyJzM2LjAiTiA3MsKwMDEnNDguMCJF!5e0!3m2!1sen!2s!4v1700000000000"
+            width="100%"
+            height="400"
+            style={{ border: 0, borderRadius: "16px" }}
+            allowFullScreen=""
+            loading="lazy"
+          />
+        </div>
+      </section>
 
       <style>{`
-        .bg-light-smooth { background-color: #f8fafc; }
-        .text-navy { color: #0f172a; }
-        .text-info-gradient {
-          background: linear-gradient(90deg, #0dcaf0, #0ea5e9);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
         .contact-hero {
-          background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), 
-                      url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80') center/cover;
-          minHeight: 450px;
-          padding-top: 80px;
-          padding-bottom: 120px;
+          padding: 140px 0 80px;
+          background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 100%);
+          color: #fff;
         }
-
-        .mt-n5 { margin-top: -100px !important; }
-
-        .info-glass-card {
-          background: white;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-          border: 1px solid rgba(0,0,0,0.05);
+        .contact-hero-content { max-width: 600px; }
+        .contact-hero-content h1 { font-size: 3rem; color: #fff; margin: 16px 0; }
+        .contact-hero-content h1 .highlight { color: #b8860b; }
+        .contact-hero-content p { font-size: 1.1rem; color: rgba(255,255,255,0.7); }
+        .contact-main { padding: 80px 0; background: #f8f9fa; }
+        .contact-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; }
+        .contact-info { display: flex; flex-direction: column; gap: 16px; }
+        .contact-card { background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .contact-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(184,134,11,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #b8860b; margin-bottom: 12px; }
+        .contact-card h5 { margin: 0 0 4px; }
+        .contact-card p { color: #6c757d; margin: 0; font-size: 0.9rem; }
+        .contact-card a { color: #b8860b; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
+        .contact-form-wrapper { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .contact-form-wrapper h3 { font-size: 1.5rem; margin-bottom: 24px; }
+        .contact-form-wrapper .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .contact-form-wrapper input, .contact-form-wrapper select, .contact-form-wrapper textarea {
+          width: 100%; padding: 12px 16px; border: 1px solid #e9ecef; border-radius: 8px; font-size: 0.95rem; transition: all 0.2s;
         }
-        .info-glass-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+        .contact-form-wrapper input:focus, .contact-form-wrapper select:focus, .contact-form-wrapper textarea:focus {
+          outline: none; border-color: #b8860b; box-shadow: 0 0 0 3px rgba(184,134,11,0.1);
         }
-
-        .icon-box {
-          width: 45px;
-          height: 45px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-        }
-
-        .modern-input {
-          padding: 12px 18px;
-          border-radius: 10px;
-          border: 1.5px solid #e2e8f0;
-          background: #f8fafc;
-          transition: all 0.3s ease;
-        }
-        .modern-input:focus {
-          border-color: #0dcaf0;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(13, 202, 240, 0.1);
-        }
-
-        .divider-sm {
-          width: 50px;
-          height: 4px;
-          border-radius: 2px;
-          margin-top: 8px;
-        }
-
-        .btn-attractive-contact {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-          color: white;
-          border: none;
-          padding: 15px 40px;
-          border-radius: 50px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          transition: all 0.4s ease;
-          width: fit-content;
-        }
-        .btn-attractive-contact:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.3);
-          background: #0dcaf0;
-        }
-
-        .map-container {
-          filter: grayscale(0.2) contrast(1.1);
-          transition: filter 0.5s ease;
-        }
-        .map-container:hover {
-          filter: grayscale(0);
-        }
-
-        .animate-slide-down {
-          animation: slideDown 0.8s ease-out;
-        }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 991px) {
-          .mt-n5 { margin-top: -50px !important; }
-          .btn-attractive-contact { width: 100%; justify-content: center; }
+        .contact-form-wrapper textarea { resize: vertical; font-family: inherit; }
+        .contact-form-wrapper button { margin-top: 12px; }
+        .contact-map { padding: 80px 0; background: #fff; }
+        @media (max-width: 768px) {
+          .contact-grid { grid-template-columns: 1fr; }
+          .contact-hero { padding: 100px 0 40px; }
+          .contact-hero-content h1 { font-size: 2.2rem; }
+          .contact-form-wrapper .form-row { grid-template-columns: 1fr; }
         }
       `}</style>
     </>

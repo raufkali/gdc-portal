@@ -1,17 +1,9 @@
 // src/cloudflare.js
-const R2_ENDPOINT = import.meta.env.VITE_R2_ENDPOINT;
+const R2_WORKER_URL = import.meta.env.VITE_R2_WORKER_URL;
+const R2_UPLOAD_TOKEN = import.meta.env.VITE_R2_UPLOAD_TOKEN;
 const R2_BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;
-const R2_ACCESS_KEY_ID = import.meta.env.VITE_R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
 const R2_PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL;
 
-/**
- * Upload a file to Cloudflare R2 with progress tracking
- * @param {File} file - The file to upload
- * @param {string} folder - Folder path (e.g., 'media/', 'results/')
- * @param {Function} onProgress - Progress callback (receives percentage)
- * @returns {Promise<{url: string, key: string, name: string}>}
- */
 export const uploadToR2WithProgress = (
   file,
   folder = "",
@@ -22,20 +14,20 @@ export const uploadToR2WithProgress = (
     const uniqueName = `${timestamp}_${file.name.replace(/\s+/g, "_")}`;
     const key = folder ? `${folder}${uniqueName}` : uniqueName;
 
-    const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+    const url = `${R2_WORKER_URL}/${R2_BUCKET_NAME}/${key}`;
 
     const xhr = new XMLHttpRequest();
+    xhr.timeout = 600000;
 
-    if (onProgress) {
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onProgress(progress);
-        }
-      });
-    }
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        if (onProgress) onProgress(progress);
+      }
+    });
 
     xhr.open("PUT", url);
+    xhr.setRequestHeader("Authorization", `Bearer ${R2_UPLOAD_TOKEN}`);
     xhr.setRequestHeader(
       "Content-Type",
       file.type || "application/octet-stream",
@@ -43,62 +35,46 @@ export const uploadToR2WithProgress = (
 
     xhr.onload = () => {
       if (xhr.status === 200) {
-        const publicUrl = `${R2_PUBLIC_URL}/${key}`;
-        resolve({
-          url: publicUrl,
-          key: key,
-          name: uniqueName,
-        });
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve({
+            url: data.url || `${R2_PUBLIC_URL}/${key}`,
+            key: data.key || key,
+            name: uniqueName,
+          });
+        } catch (e) {
+          resolve({
+            url: `${R2_PUBLIC_URL}/${key}`,
+            key: key,
+            name: uniqueName,
+          });
+        }
       } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
+        let errorMsg = `Upload failed with status ${xhr.status}`;
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.error) errorMsg = data.error;
+        } catch (e) {}
+        reject(new Error(errorMsg));
       }
     };
 
-    xhr.onerror = () => {
-      reject(new Error("Network error during upload"));
-    };
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.ontimeout = () =>
+      reject(new Error("Upload timed out after 10 minutes"));
 
     xhr.send(file);
   });
 };
 
-/**
- * Simple upload without progress tracking
- */
-export const uploadToR2 = async (file, folder = "") => {
-  const timestamp = Date.now();
-  const uniqueName = `${timestamp}_${file.name.replace(/\s+/g, "_")}`;
-  const key = folder ? `${folder}${uniqueName}` : uniqueName;
-
-  const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
-
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    body: file,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.status}`);
-  }
-
-  return {
-    url: `${R2_PUBLIC_URL}/${key}`,
-    key: key,
-    name: uniqueName,
-  };
-};
-
-/**
- * Delete a file from Cloudflare R2
- */
 export const deleteFromR2 = async (key) => {
-  const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+  const url = `${R2_WORKER_URL}/${R2_BUCKET_NAME}/${key}`;
 
   const response = await fetch(url, {
     method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${R2_UPLOAD_TOKEN}`,
+    },
   });
 
   if (!response.ok) {
@@ -108,16 +84,10 @@ export const deleteFromR2 = async (key) => {
   return true;
 };
 
-/**
- * Get a public URL for a file
- */
 export const getR2FileUrl = (key) => {
   return `${R2_PUBLIC_URL}/${key}`;
 };
 
-/**
- * Extract key from public URL
- */
 export const getKeyFromUrl = (url) => {
   return url.replace(`${R2_PUBLIC_URL}/`, "");
 };

@@ -6,6 +6,7 @@ import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 function Principal() {
   const [showFullMessage, setShowFullMessage] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [principal, setPrincipal] = useState({
     name: "Dr. M. Aslam Khan",
     qualification: "PhD in Education Management",

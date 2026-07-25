@@ -1,3 +1,4 @@
+// src/page/CollegeFaq.jsx
 import React from "react";
 
 const CollegeFaq = () => {
@@ -6,146 +7,130 @@ const CollegeFaq = () => {
       icon: "bi-mortarboard-fill",
       title: "Academic Excellence",
       questions: [
-        { 
-          q: "What are the graduation requirements?", 
-          a: "Students must complete 130-140 credit hours with a minimum CGPA of 2.0 and a Final Year Project (FYP) as per HED regulations." 
+        {
+          q: "What are the graduation requirements?",
+          a: "Students must complete 130-140 credit hours with a minimum CGPA of 2.0 and a Final Year Project (FYP) as per HED regulations.",
         },
-        { 
-          q: "What is the mandatory attendance policy?", 
-          a: "A minimum of 75% attendance in each subject is mandatory to be eligible for appearing in the final examinations." 
+        {
+          q: "What is the mandatory attendance policy?",
+          a: "A minimum of 75% attendance in each subject is mandatory to be eligible for appearing in the final examinations.",
         },
-        { 
-          q: "How are internal assessment marks calculated?", 
-          a: "20% of the total marks are reserved for internal assessment, including mid-term exams, assignments, and class participation." 
-        }
-      ]
+        {
+          q: "How are internal assessment marks calculated?",
+          a: "20% of the total marks are reserved for internal assessment, including mid-term exams, assignments, and class participation.",
+        },
+      ],
     },
     {
       icon: "bi-shield-lock-fill",
       title: "Administrative Protocols",
       questions: [
-        { 
-          q: "Procedure for Degree Verification?", 
-          a: "Submit a formal request to the Controller of Examinations with original transcripts and the required fee receipt from the college bank." 
+        {
+          q: "Procedure for Degree Verification?",
+          a: "Submit a formal request to the Controller of Examinations with original transcripts and the required fee receipt.",
         },
-        { 
-          q: "How to apply for a College Leaving Certificate (CLC)?", 
-          a: "Submit a 'No Dues' certificate signed by the Librarian, Lab In-charge, and the Cashier to the Principal's office." 
+        {
+          q: "How to apply for a College Leaving Certificate (CLC)?",
+          a: "Submit a 'No Dues' certificate signed by the Librarian, Lab In-charge, and the Cashier to the Principal's office.",
         },
-        { 
-          q: "Can I change my subjects after admission?", 
-          a: "Subject changes are allowed within 15 days of admission, subject to the approval of the Admission Committee and vacancy in the desired group." 
-        }
-      ]
+        {
+          q: "Can I change my subjects after admission?",
+          a: "Subject changes are allowed within 15 days of admission, subject to the approval of the Admission Committee.",
+        },
+      ],
     },
     {
       icon: "bi-wallet2",
       title: "Financial Aid & Grants",
       questions: [
-        { 
-          q: "How does 'Need-Based' scholarship work?", 
-          a: "The ISAC committee evaluates applications based on household income, utility bills, and academic merit to provide fee concessions." 
+        {
+          q: "How does 'Need-Based' scholarship work?",
+          a: "The ISAC committee evaluates applications based on household income, utility bills, and academic merit to provide fee concessions.",
         },
-        { 
-          q: "What is the 'Mora' Scholarship?", 
-          a: "It is a Zakat-based financial assistance program for deserving Muslim students. Forms are available at the beginning of the academic year." 
+        {
+          q: "What is the 'Mora' Scholarship?",
+          a: "It is a Zakat-based financial assistance program for deserving Muslim students. Forms are available at the beginning of the academic year.",
         },
-        { 
-          q: "Are there rewards for position holders?", 
-          a: "Yes, students securing top positions in university exams are eligible for merit-based cash prizes and special laptops through government schemes." 
-        }
-      ]
-    }
+        {
+          q: "Are there rewards for position holders?",
+          a: "Yes, students securing top positions in university exams are eligible for merit-based cash prizes and special laptops.",
+        },
+      ],
+    },
   ];
 
   return (
-    <div className="py-5" style={{ backgroundColor: "#f8f9fa" }}>
-      <div className="container py-5">
-        
-        {/* --- HEADER --- */}
-        <div className="text-center mb-5">
-          <h6 className="text-info fw-bold text-uppercase mb-2" style={{ letterSpacing: "3px" }}>Help Center</h6>
-          <h2 className="display-4 fw-bold text-dark">Institutional <span className="text-info">Guidelines</span></h2>
-          <div className="mx-auto bg-info rounded-pill mt-3" style={{ height: '4px', width: '80px' }}></div>
+    <>
+      {/* Hero */}
+      <section className="faq-hero">
+        <div className="container-custom">
+          <div className="faq-hero-content">
+            <span className="hero-badge">Help Center</span>
+            <h1>
+              Institutional <span className="highlight">Guidelines</span>
+            </h1>
+            <p>Find answers to frequently asked questions</p>
+          </div>
         </div>
+      </section>
 
-        {/* --- FAQ GRID --- */}
-        <div className="row g-4 justify-content-center">
-          {faqCategories.map((cat, catIdx) => (
-            <div key={catIdx} className="col-lg-4 col-md-6">
-              {/* --- CATEGORY CARD --- */}
-              <div className="p-4 rounded-4 bg-white shadow-sm h-100 faq-card border-top border-info border-5">
-                <div className="d-flex align-items-center mb-4">
-                  <div className="icon-circle me-3">
-                    <i className={`bi ${cat.icon} fs-4 text-white`}></i>
+      {/* FAQ Grid */}
+      <section className="faq-content">
+        <div className="container-custom">
+          <div className="faq-grid">
+            {faqCategories.map((cat, catIdx) => (
+              <div key={catIdx} className="faq-category">
+                <div className="faq-category-header">
+                  <div className="faq-category-icon">
+                    <i className={`bi ${cat.icon}`}></i>
                   </div>
-                  <h5 className="fw-bold m-0 text-dark">{cat.title}</h5>
+                  <h4>{cat.title}</h4>
                 </div>
-
-                {/* --- ACCORDION --- */}
-                <div className="accordion accordion-flush" id={`acc-${catIdx}`}>
+                <div className="faq-list">
                   {cat.questions.map((item, qIdx) => (
-                    <div className="accordion-item border-0 mb-2" key={qIdx}>
-                      <h2 className="accordion-header">
-                        <button 
-                          className="accordion-button collapsed px-0 py-3 fw-semibold bg-transparent shadow-none" 
-                          type="button" 
-                          data-bs-toggle="collapse" 
-                          data-bs-target={`#q-${catIdx}-${qIdx}`}
-                        >
-                          {item.q}
-                        </button>
-                      </h2>
-                      <div id={`q-${catIdx}-${qIdx}`} className="accordion-collapse collapse" data-bs-parent={`#acc-${catIdx}`}>
-                        <div className="accordion-body px-0 text-secondary border-0 pt-0 small lh-lg">
-                          {item.a}
-                        </div>
-                      </div>
-                    </div>
+                    <details key={qIdx} className="faq-item">
+                      <summary>{item.q}</summary>
+                      <p>{item.a}</p>
+                    </details>
                   ))}
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
       <style>{`
-        .icon-circle {
-          width: 50px;
-          height: 50px;
-          background: #00a2ff;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.3s ease;
+        .faq-hero {
+          padding: 140px 0 80px;
+          background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 100%);
+          color: #fff;
         }
-
-        .faq-card {
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .faq-card:hover {
-          transform: translateY(-10px);
-          box-shadow: 0 20px 40px rgba(0, 162, 255, 0.1) !important;
-        }
-
-        .faq-card:hover .icon-circle {
-          transform: rotate(15deg) scale(1.1);
-        }
-
-        .accordion-button:not(.collapsed) {
-          color: #00a2ff !important;
-        }
-
-        .accordion-button::after {
-          width: 1rem;
-          height: 1rem;
-          background-size: 1rem;
+        .faq-hero-content { max-width: 600px; }
+        .faq-hero-content h1 { font-size: 3rem; color: #fff; margin: 16px 0; }
+        .faq-hero-content h1 .highlight { color: #b8860b; }
+        .faq-hero-content p { font-size: 1.1rem; color: rgba(255,255,255,0.7); }
+        .faq-content { padding: 60px 0; background: #f8f9fa; }
+        .faq-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .faq-category { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border-top: 4px solid #b8860b; }
+        .faq-category-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .faq-category-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(184,134,11,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #b8860b; }
+        .faq-category-header h4 { margin: 0; font-size: 1rem; }
+        .faq-list { display: flex; flex-direction: column; gap: 8px; }
+        .faq-item { border-bottom: 1px solid #f8f9fa; padding: 8px 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-item summary { cursor: pointer; font-weight: 600; color: #0a1628; padding: 4px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::after { content: "+"; font-size: 1.2rem; color: #b8860b; transition: transform 0.2s; }
+        .faq-item[open] summary::after { content: "−"; }
+        .faq-item p { margin: 8px 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.6; padding-right: 8px; }
+        @media (max-width: 768px) {
+          .faq-hero { padding: 100px 0 40px; }
+          .faq-hero-content h1 { font-size: 2.2rem; }
+          .faq-grid { grid-template-columns: 1fr; }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

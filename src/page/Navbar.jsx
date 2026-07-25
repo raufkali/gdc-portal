@@ -1,25 +1,23 @@
-// src/components/Navbar.jsx (Updated)
+// src/page/Navbar.jsx
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 function Navbar() {
-  const [visible, setVisible] = useState(true);
-  const [prevScrollPos, setPrevScrollPos] = useState(window.pageYOffset);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
-  // ✅ Fetch departments from Firestore
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
         const q = query(collection(db, "departments"), orderBy("name"));
-        const querySnapshot = await getDocs(q);
+        const snapshot = await getDocs(q);
         const depts = [];
-        querySnapshot.forEach((doc) => {
-          depts.push({ id: doc.id, ...doc.data() });
-        });
+        snapshot.forEach((doc) => depts.push({ id: doc.id, ...doc.data() }));
         setDepartments(depts);
         setLoading(false);
       } catch (error) {
@@ -32,204 +30,177 @@ function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollPos = window.pageYOffset;
-      const isVisible =
-        prevScrollPos > currentScrollPos || currentScrollPos < 50;
-      setVisible(isVisible);
-      setPrevScrollPos(currentScrollPos);
+      setScrolled(window.scrollY > 50);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [prevScrollPos]);
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
 
   return (
-    <nav
-      className={`navbar navbar-expand-lg fixed-top transition-all ${visible ? "nav-down" : "nav-up"}`}
-      style={{
-        background: "#0f172a",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        padding: "0.75rem 0",
-      }}
-    >
-      <div className="container">
-        <Link
-          className="navbar-brand d-flex align-items-center"
-          to="/"
-          style={{ textDecoration: "none" }}
-        >
-          <img
-            src="newlogo.jpg"
-            alt="GDC Logo"
-            width="45"
-            height="45"
-            className="me-3 rounded-circle border border-secondary"
-          />
-          <div className="d-flex flex-column">
-            <span className="brand-title text-white">GDC GULABAD</span>
-            <span className="brand-subtitle">GOVT. DEGREE COLLEGE</span>
+    <nav className={`navbar-harvard ${scrolled ? "scrolled" : ""}`}>
+      <div className="navbar-container">
+        <Link to="/" className="brand">
+          <div className="brand-icon">G</div>
+          <div className="brand-text">
+            <span className="name">GDC Gulabad</span>
+            <span className="tagline">Government Degree College</span>
           </div>
         </Link>
 
         <button
-          className="navbar-toggler border-0 shadow-none"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#mainNavbar"
+          className="mobile-toggle"
+          onClick={() => setMobileOpen(!mobileOpen)}
         >
-          <span
-            className="navbar-toggler-icon"
-            style={{ filter: "invert(1)" }}
-          ></span>
+          <i className={`bi ${mobileOpen ? "bi-x-lg" : "bi-list"}`}></i>
         </button>
 
-        <div className="collapse navbar-collapse" id="mainNavbar">
-          <ul className="navbar-nav ms-auto align-items-center">
-            <li className="nav-item">
-              <Link className="nav-link nav-link-sync" to="/">
-                Home
-              </Link>
-            </li>
+        <ul className={`nav-links ${mobileOpen ? "open" : ""}`}>
+          <li>
+            <Link to="/" className={location.pathname === "/" ? "active" : ""}>
+              Home
+            </Link>
+          </li>
 
-            {/* ✅ DYNAMIC ACADEMICS DROPDOWN */}
-            <li className="nav-item dropdown">
-              <a
-                className="nav-link dropdown-toggle nav-link-sync"
-                href="#"
-                data-bs-toggle="dropdown"
-              >
-                Academics
-              </a>
-              <ul className="dropdown-menu shadow-xl border-0 p-2 animate-dropdown">
-                {loading ? (
-                  <li>
-                    <span className="dropdown-item text-muted">Loading...</span>
-                  </li>
-                ) : departments.length === 0 ? (
-                  <li>
-                    <span className="dropdown-item text-muted">
-                      No departments yet
-                    </span>
-                  </li>
-                ) : (
-                  departments.map((dept) => (
-                    <li key={dept.id}>
-                      <Link
-                        className="dropdown-item sync-dropdown-item"
-                        to={`/department/${dept.id}`}
-                      >
-                        {dept.name}
-                      </Link>
-                    </li>
-                  ))
-                )}
-                <li>
-                  <hr className="dropdown-divider mx-2" />
-                </li>
-                <li>
-                  <Link
-                    className="dropdown-item sync-dropdown-item text-primary"
-                    to="/departments"
-                  >
-                    View All
+          <li className="dropdown">
+            <a href="#" className="dropdown-toggle">
+              Academics
+            </a>
+            <div className="dropdown-menu">
+              {loading ? (
+                <a className="text-muted">Loading...</a>
+              ) : departments.length === 0 ? (
+                <a className="text-muted">No departments</a>
+              ) : (
+                departments.map((dept) => (
+                  <Link key={dept.id} to={`/department/${dept.id}`}>
+                    {dept.name}
                   </Link>
-                </li>
-              </ul>
-            </li>
+                ))
+              )}
+              <hr
+                style={{
+                  margin: "4px 16px",
+                  borderColor: "rgba(255,255,255,0.05)",
+                }}
+              />
+              <Link to="/departments">View All Departments</Link>
+            </div>
+          </li>
 
-            <li className="nav-item dropdown">
-              <a
-                className="nav-link dropdown-toggle nav-link-sync"
-                href="#"
-                data-bs-toggle="dropdown"
-              >
-                Admissions
-              </a>
-              <ul className="dropdown-menu shadow-xl border-0 p-2 animate-dropdown">
-                <li>
-                  <Link
-                    className="dropdown-item sync-dropdown-item"
-                    to="/offered-program"
-                  >
-                    Offered Programs
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    className="dropdown-item sync-dropdown-item"
-                    to="/eligibility-criteria"
-                  >
-                    Eligibility
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    className="dropdown-item sync-dropdown-item"
-                    to="/fee-structure"
-                  >
-                    Fee Structure
-                  </Link>
-                </li>
-                <li>
-                  <hr className="dropdown-divider mx-2" />
-                </li>
-                <li>
-                  <Link
-                    className="dropdown-item sync-dropdown-item fw-bold text-primary"
-                    to="/online-admission"
-                  >
-                    Apply Online
-                  </Link>
-                </li>
-              </ul>
-            </li>
-
-            <li className="nav-item">
-              <Link className="nav-link nav-link-sync" to="/announcements">
-                Announcements
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link className="nav-link nav-link-sync" to="/media">
-                Media
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link className="nav-link nav-link-sync" to="/contact">
-                Contact
-              </Link>
-            </li>
-
-            <li className="nav-item ms-lg-3">
-              <Link to="/gdc-admin-portal" className="btn btn-admin-login">
-                <i className="bi bi-shield-lock-fill me-2"></i>
-                ADMIN
-              </Link>
-            </li>
-          </ul>
-        </div>
+          <li>
+            <Link
+              to="/announcements"
+              className={location.pathname === "/announcements" ? "active" : ""}
+            >
+              Announcements
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/media"
+              className={location.pathname === "/media" ? "active" : ""}
+            >
+              Media
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/about-college"
+              className={location.pathname === "/about-college" ? "active" : ""}
+            >
+              About
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/contact"
+              className={location.pathname === "/contact" ? "active" : ""}
+            >
+              Contact
+            </Link>
+          </li>
+          <li>
+            <Link to="/login" className="btn-admin">
+              Admin
+            </Link>
+          </li>
+        </ul>
       </div>
 
       <style>{`
-        .transition-all { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .nav-down { transform: translateY(0); }
-        .nav-up { transform: translateY(-100%); }
-        .brand-title { font-weight: 800; font-size: 1.2rem; letter-spacing: 0.02em; }
-        .brand-subtitle { color: #94a3b8; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; }
-        .nav-link-sync { color: #f8fafc !important; opacity: 0.85; font-weight: 500; font-size: 0.9rem; padding: 0.5rem 1rem !important; }
-        .nav-link-sync:hover { opacity: 1; color: #3b82f6 !important; }
-        .dropdown-menu { background: #1e293b; border-radius: 8px; margin-top: 10px !important; }
-        .sync-dropdown-item { color: #cbd5e1 !important; font-size: 0.85rem; padding: 0.6rem 1rem; }
-        .sync-dropdown-item:hover { background-color: #334155; color: white !important; transform: translateX(4px); }
-        .btn-admin-login { background: linear-gradient(135deg, #B98B33, #8a6a22); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 4px; border: none; transition: all 0.3s; cursor: pointer; display: flex; align-items: center; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(185, 139, 51, 0.3); text-decoration: none; }
-        .btn-admin-login:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(185, 139, 51, 0.5); background: linear-gradient(135deg, #d4a345, #a67a2e); color: white; }
-        @keyframes navFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-dropdown { animation: navFade 0.2s ease-out; }
-        @media (max-width: 991px) {
-          .navbar-collapse { background: #0f172a; padding: 1.5rem; margin-top: 10px; border-radius: 10px; }
-          .btn-admin-login { width: 100%; justify-content: center; margin-top: 8px; }
+        .navbar-harvard {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 1050;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          background: transparent; padding: 0;
+        }
+        .navbar-harvard.scrolled {
+          background: rgba(10, 22, 40, 0.97);
+          backdrop-filter: blur(12px);
+          box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+        }
+        .navbar-harvard .navbar-container {
+          max-width: 1200px; margin: 0 auto; padding: 0 24px;
+          display: flex; align-items: center; justify-content: space-between;
+          height: 70px;
+        }
+        .navbar-harvard .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .navbar-harvard .brand-icon {
+          width: 40px; height: 40px; border-radius: 50%;
+          background: radial-gradient(circle at 30% 30%, var(--gdc-gold-light), var(--gdc-gold-dark));
+          display: flex; align-items: center; justify-content: center;
+          font-family: var(--font-serif); font-weight: 700; font-size: 16px; color: #fff;
+        }
+        .navbar-harvard .brand-text { color: #fff; line-height: 1.2; }
+        .navbar-harvard .brand-text .name { font-family: var(--font-serif); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px; }
+        .navbar-harvard .brand-text .tagline { font-size: 0.55rem; font-weight: 400; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 2px; display: block; }
+
+        .navbar-harvard .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; margin: 0; padding: 0; }
+        .navbar-harvard .nav-links a {
+          color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+          padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; position: relative;
+        }
+        .navbar-harvard .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .navbar-harvard .nav-links a.active { color: var(--gdc-gold-light); }
+
+        .navbar-harvard .nav-links .dropdown { position: relative; }
+        .navbar-harvard .nav-links .dropdown-menu {
+          position: absolute; top: 100%; left: 0; min-width: 200px;
+          background: rgba(26, 42, 74, 0.98); backdrop-filter: blur(12px);
+          border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+          padding: 8px 0; opacity: 0; visibility: hidden; transform: translateY(10px);
+          transition: all 0.2s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .navbar-harvard .nav-links .dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+        .navbar-harvard .nav-links .dropdown-menu a { display: block; padding: 10px 20px; color: rgba(255,255,255,0.7); font-size: 0.85rem; }
+        .navbar-harvard .nav-links .dropdown-menu a:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+        .navbar-harvard .btn-admin {
+          background: linear-gradient(135deg, var(--gdc-gold), var(--gdc-gold-dark));
+          color: #fff; padding: 8px 20px; border-radius: 50px; font-size: 0.75rem;
+          font-weight: 600; text-decoration: none; transition: all 0.3s ease; border: none; cursor: pointer;
+        }
+        .navbar-harvard .btn-admin:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(184,134,11,0.3); }
+
+        .navbar-harvard .mobile-toggle { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; padding: 4px; }
+
+        @media (max-width: 992px) {
+          .navbar-harvard .mobile-toggle { display: block; }
+          .navbar-harvard .nav-links {
+            display: none; flex-direction: column; position: absolute; top: 70px; left: 0; right: 0;
+            background: rgba(10, 22, 40, 0.98); backdrop-filter: blur(12px);
+            padding: 20px 24px; gap: 4px; border-top: 1px solid rgba(255,255,255,0.05);
+          }
+          .navbar-harvard .nav-links.open { display: flex; }
+          .navbar-harvard .nav-links a { padding: 12px 16px; width: 100%; }
+          .navbar-harvard .nav-links .dropdown-menu {
+            position: static; opacity: 1; visibility: visible; transform: none;
+            background: rgba(255,255,255,0.03); box-shadow: none; padding-left: 20px;
+          }
+          .navbar-harvard .nav-links .dropdown-menu a { padding: 8px 16px; }
         }
       `}</style>
     </nav>

@@ -1,307 +1,399 @@
 // src/page/Homepage.jsx
 import React, { useState, useEffect } from "react";
-import Principal from "./Principal";
-import Departments from "./Departments";
-import Footer from "./Footer";
-import AboutCollege from "./AboutCollege";
-import CollegeFaq from "./CollegeFaq";
 import { Link } from "react-router-dom";
-
-// --- Typing Effect Component ---
-function TypingEffect({ text, speed = 60 }) {
-  const [displayedText, setDisplayedText] = useState("");
-
-  useEffect(() => {
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index <= text.length) {
-        setDisplayedText(text.slice(0, index));
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, speed]);
-
-  return (
-    <h1
-      className="hero-title fw-bold text-white mb-3"
-      style={{ lineHeight: "1.1" }}
-    >
-      {displayedText}
-      <span className="text-primary animate-pulse">|</span>
-    </h1>
-  );
-}
+import { db } from "../firebase";
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import Principal from "./Principal";
+import Footer from "./Footer";
 
 function Homepage() {
-  const images = [
-    "collegemain.jpg",
-    "newclg.jpg",
-    "collegemain.jpg",
+  const [departments, setDepartments] = useState([]);
+  const [notices, setNotices] = useState([]);
+  const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch departments
+        const deptQuery = query(collection(db, "departments"), orderBy("name"));
+        const deptSnap = await getDocs(deptQuery);
+        const depts = [];
+        deptSnap.forEach((doc) => depts.push({ id: doc.id, ...doc.data() }));
+        setDepartments(depts);
+
+        // Fetch latest notices
+        const noticeQuery = query(
+          collection(db, "announcements"),
+          orderBy("date", "desc"),
+          limit(5),
+        );
+        const noticeSnap = await getDocs(noticeQuery);
+        const noticesList = [];
+        noticeSnap.forEach((doc) =>
+          noticesList.push({ id: doc.id, ...doc.data() }),
+        );
+        setNotices(noticesList);
+
+        // Fetch latest media
+        const mediaQuery = query(
+          collection(db, "media"),
+          orderBy("createdAt", "desc"),
+          limit(6),
+        );
+        const mediaSnap = await getDocs(mediaQuery);
+        const mediaList = [];
+        mediaSnap.forEach((doc) =>
+          mediaList.push({ id: doc.id, ...doc.data() }),
+        );
+        setMedia(mediaList);
+      } catch (error) {
+        console.error("Error fetching homepage data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const heroImages = [
     "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1920&q=80",
+    "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80",
+    "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80",
   ];
 
-  const resourceLinks = [
-    {
-      label: "Admissions",
-      icon: "bi-mortarboard",
-      url: "https://admission.hed.gkp.pk/",
-      isExternal: true,
-    },
-    { label: "E-Library", icon: "bi-book", url: "#", isExternal: false },
-    {
-      label: "Exam Results",
-      icon: "bi-award",
-      url: "/exam-result",
-      isExternal: false,
-    },
-    {
-      label: "Departments",
-      icon: "bi-building",
-      url: "/departments",
-      isExternal: false,
-    },
-  ];
-
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentImage, setCurrentImage] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    }, 5000);
+      setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    }, 6000);
     return () => clearInterval(timer);
-  }, [images.length]);
+  }, []);
 
-  return (
-    <div
-      className="homepage-wrapper overflow-x-hidden"
-      style={{ width: "100vw" }}
-    >
-      {/* 1. HERO SECTION */}
-      <section
-        className="hero-section position-relative w-100 overflow-hidden"
+  const stats = [
+    { number: "1200+", label: "Students" },
+    { number: "45+", label: "Faculty" },
+    { number: "12", label: "Programs" },
+    { number: "25+", label: "Years" },
+  ];
+
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
         style={{ minHeight: "100vh" }}
       >
-        {images.map((img, idx) => (
+        <div className="spinner-border text-gold" role="status" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* HERO SECTION */}
+      <section className="hero-harvard">
+        {heroImages.map((img, idx) => (
           <div
             key={idx}
-            className="position-absolute top-0 start-0 w-100 h-100"
+            className="hero-bg"
             style={{
-              backgroundImage: `linear-gradient(to right, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.4)), url(${img})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: currentIndex === idx ? 1 : 0,
-              zIndex: currentIndex === idx ? 1 : 0,
-              transform: currentIndex === idx ? "scale(1.08)" : "scale(1)",
-              transition: "opacity 1.5s ease-in-out, transform 8s linear",
+              backgroundImage: `url(${img})`,
+              opacity: currentImage === idx ? 0.5 : 0,
+              transition: "opacity 1.5s ease",
             }}
           />
         ))}
+        <div className="hero-overlay" />
 
-        <div
-          className="container h-100 position-relative"
-          style={{ zIndex: 10, paddingTop: "120px", paddingBottom: "80px" }}
-        >
-          <div className="row h-100 align-items-center">
-            <div className="col-lg-8 text-white animate-fade-in">
-              <div className="d-flex align-items-center gap-2 mb-3">
-                <div
-                  style={{
-                    width: "50px",
-                    height: "3px",
-                    background: "#0D6EFD",
-                  }}
-                ></div>
-                <span
-                  className="text-uppercase tracking-widest fw-bold small"
-                  style={{ letterSpacing: "4px" }}
-                >
-                  Established 1995
-                </span>
-              </div>
+        <div className="hero-content">
+          <span className="hero-badge">Since 1995</span>
+          <h1>
+            Shape Your <span className="highlight">Future</span>
+            <br />
+            at GDC Gulabad
+          </h1>
+          <p className="hero-desc">
+            Join a community dedicated to academic rigor and character building
+            under the Higher Education Department of KPK.
+          </p>
 
-              <TypingEffect text="Shape Your Future at GDC Gulabad" />
-
-              <p className="lead opacity-75 mb-4 d-none d-md-block hero-desc">
-                Join a community dedicated to academic rigor and character
-                building under the Higher Education Department of KPK.
-              </p>
-
-              <div className="d-flex flex-wrap gap-3 mb-5 mb-lg-0">
-                <a
-                  href="https://admission.hed.gkp.pk/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-primary btn-lg rounded-1 px-5 py-3 fw-bold shadow-lg border-0 btn-glow"
-                >
-                  Apply Now
-                </a>
-              </div>
-
-              {/* --- MOBILE QUICK LINKS GRID --- */}
-              <div className="d-lg-none mt-5">
-                <div className="mb-3 d-flex align-items-center gap-2">
-                  <div
-                    style={{
-                      width: "30px",
-                      height: "2px",
-                      background: "#0D6EFD",
-                    }}
-                  ></div>
-                  <span className="text-white small fw-bold text-uppercase tracking-wider">
-                    Quick Access
-                  </span>
-                </div>
-                <div className="row g-2">
-                  {resourceLinks.map((item, i) => (
-                    <div key={i} className="col-6">
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-decoration-none"
-                      >
-                        <div className="mobile-resource-card">
-                          <i className={`${item.icon} mb-1`}></i>
-                          <span>{item.label}</span>
-                        </div>
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* --- DESKTOP RESOURCE PANEL --- */}
-            <div className="col-lg-4 d-none d-lg-block">
-              <div className="glass-panel p-4 rounded-4 border border-white-50 shadow-lg">
-                <h5 className="text-white fw-bold mb-4 border-bottom border-white-50 pb-3">
-                  Student Resources
-                </h5>
-                <div className="row g-3">
-                  {resourceLinks.map((item, i) => (
-                    <div key={i} className="col-6">
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-decoration-none"
-                      >
-                        <div className="quick-link-item p-3 text-center rounded-3 border border-white-50 transition-all">
-                          <i
-                            className={`${item.icon} fs-2 text-white mb-2 d-block`}
-                          ></i>
-                          <span
-                            className="text-white small fw-bold uppercase"
-                            style={{ fontSize: "0.75rem" }}
-                          >
-                            {item.label}
-                          </span>
-                        </div>
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="d-flex flex-wrap gap-3 mb-5">
+            <a
+              href="https://admission.hed.gkp.pk/"
+              target="_blank"
+              rel="noreferrer"
+              className="btn-gdc btn-gdc-primary"
+            >
+              Apply Now <i className="bi bi-arrow-right"></i>
+            </a>
+            <Link to="/about-college" className="btn-gdc btn-gdc-outline">
+              Learn More
+            </Link>
           </div>
-        </div>
 
-        {/* Progress Bar Indicators */}
-        <div
-          className="position-absolute bottom-0 start-0 w-100 d-flex px-0"
-          style={{ zIndex: 20 }}
-        >
-          {images.map((_, i) => (
-            <div
-              key={i}
-              className="flex-grow-1"
-              style={{
-                height: "5px",
-                background:
-                  currentIndex === i ? "#0D6EFD" : "rgba(255,255,255,0.1)",
-                transition: "background 0.5s ease",
-                boxShadow: currentIndex === i ? "0 0 15px #0D6EFD" : "none",
-              }}
-            />
-          ))}
+          <div className="hero-stats">
+            {stats.map((stat, i) => (
+              <div key={i} className="stat-item">
+                <div className="number">{stat.number}</div>
+                <div className="label">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* 2. BODY CONTENT */}
-      <div
-        className="main-content-area bg-white position-relative"
-        style={{ zIndex: 30 }}
-      >
-        <Principal />
-        <CollegeFaq />
-        <AboutCollege />
-        <Departments />
-        <Footer />
-      </div>
+      {/* PRINCIPAL SECTION */}
+      <Principal />
+
+      {/* DEPARTMENTS SECTION */}
+      <section className="home-departments">
+        <div className="container-custom">
+          <div className="section-title">
+            <h2>Academic Departments</h2>
+            <p className="subtitle">
+              Explore our diverse range of academic programs
+            </p>
+            <div className="divider" />
+          </div>
+
+          {departments.length === 0 ? (
+            <div className="text-center py-5">
+              <p className="text-muted">No departments added yet.</p>
+            </div>
+          ) : (
+            <div className="row g-4">
+              {departments.slice(0, 8).map((dept) => (
+                <div key={dept.id} className="col-lg-3 col-md-4 col-sm-6">
+                  <Link
+                    to={`/department/${dept.id}`}
+                    className="text-decoration-none"
+                  >
+                    <div className="home-dept-card">
+                      <div className="home-dept-icon">
+                        <i className="bi bi-building"></i>
+                      </div>
+                      <h6>{dept.name}</h6>
+                      <small>{dept.hod || "TBA"}</small>
+                    </div>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="text-center mt-4">
+            <Link to="/departments" className="btn-gdc btn-gdc-primary">
+              View All Departments <i className="bi bi-arrow-right"></i>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ANNOUNCEMENTS SECTION */}
+      <section className="home-announcements">
+        <div className="container-custom">
+          <div className="section-title">
+            <h2>Latest Announcements</h2>
+            <div className="divider" />
+          </div>
+
+          {notices.length === 0 ? (
+            <div className="text-center py-5">
+              <p className="text-muted">No announcements yet.</p>
+            </div>
+          ) : (
+            <div className="home-notice-list">
+              {notices.map((notice) => {
+                const date = notice.date ? new Date(notice.date) : new Date();
+                return (
+                  <div key={notice.id} className="home-notice-item">
+                    <div className="home-notice-date">
+                      <span className="day">{date.getDate()}</span>
+                      <span className="month">
+                        {date.toLocaleString("default", { month: "short" })}
+                      </span>
+                    </div>
+                    <div className="home-notice-content">
+                      <span className="category">
+                        {notice.category || "General"}
+                      </span>
+                      <h6>{notice.title}</h6>
+                      <p>{notice.details}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="text-center mt-4">
+            <Link to="/announcements" className="btn-gdc btn-gdc-navy">
+              View All Announcements <i className="bi bi-arrow-right"></i>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* MEDIA SECTION */}
+      {media.length > 0 && (
+        <section className="home-media">
+          <div className="container-custom">
+            <div className="section-title">
+              <h2>Media Gallery</h2>
+              <div className="divider" />
+            </div>
+
+            <div className="row g-3">
+              {media.slice(0, 6).map((item) => (
+                <div key={item.id} className="col-lg-4 col-md-6">
+                  <div className="home-media-card">
+                    {item.type === "video" ? (
+                      <video src={item.url} muted playsInline />
+                    ) : (
+                      <img src={item.url} alt={item.title} />
+                    )}
+                    <div className="home-media-overlay">
+                      <span>{item.title}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-4">
+              <Link to="/media" className="btn-gdc btn-gdc-primary">
+                View All Media <i className="bi bi-arrow-right"></i>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <Footer />
 
       <style>{`
-        body, html { margin: 0; padding: 0; overflow-x: hidden; }
-        .hero-title { font-size: calc(1.8rem + 2vw); }
-        .hero-desc { max-width: 600px; font-size: 1.1rem; }
-
-        /* Desktop Glass Panel */
-        .glass-panel {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+        .home-departments { padding: 60px 0; background: #f8f9fa; }
+        .home-dept-card {
+          background: #fff;
+          padding: 24px 16px;
+          border-radius: 12px;
+          text-align: center;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(0,0,0,0.04);
+          height: 100%;
         }
-        .border-bottom-white-50 { border-bottom: 1px solid rgba(255,255,255,0.1); }
-
-        .quick-link-item {
-          cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
-          transition: all 0.4s ease;
+        .home-dept-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+          border-color: var(--gdc-gold);
         }
-        .quick-link-item:hover {
-          background: #0D6EFD;
-          transform: translateY(-8px);
-          border-color: #0D6EFD !important;
-        }
-
-        /* Mobile Resource Cards */
-        .mobile-resource-card {
+        .home-dept-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(184,134,11,0.08);
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          color: white;
-          padding: 20px 10px;
+          margin: 0 auto 12px;
+          font-size: 1.3rem;
+          color: var(--gdc-gold);
+        }
+        .home-dept-card h6 { margin: 0; font-weight: 600; color: #0f172a; }
+        .home-dept-card small { color: #94a3b8; font-size: 0.8rem; }
+
+        .home-announcements { padding: 60px 0; background: #fff; }
+        .home-notice-list { max-width: 800px; margin: 0 auto; }
+        .home-notice-item {
+          display: flex;
+          gap: 20px;
+          padding: 16px 0;
+          border-bottom: 1px solid #f1f5f9;
+          transition: all 0.2s ease;
+        }
+        .home-notice-item:hover { background: #fafbfc; padding-left: 12px; border-radius: 8px; }
+        .home-notice-item:last-child { border-bottom: none; }
+        .home-notice-date {
+          min-width: 60px;
+          text-align: center;
+          padding-top: 4px;
+        }
+        .home-notice-date .day {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #0f172a;
+          font-family: var(--font-serif);
+          line-height: 1;
+        }
+        .home-notice-date .month {
+          font-size: 0.7rem;
+          color: #94a3b8;
+          text-transform: uppercase;
+        }
+        .home-notice-content { flex: 1; }
+        .home-notice-content .category {
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-weight: 600;
+          color: var(--gdc-gold);
+        }
+        .home-notice-content h6 {
+          font-size: 1rem;
+          margin: 2px 0;
+          font-weight: 600;
+          color: #0f172a;
+        }
+        .home-notice-content p {
+          font-size: 0.9rem;
+          color: #64748b;
+          margin: 0;
+        }
+
+        .home-media { padding: 60px 0; background: #f8f9fa; }
+        .home-media-card {
+          position: relative;
           border-radius: 12px;
-          transition: all 0.3s ease;
+          overflow: hidden;
+          aspect-ratio: 4/3;
+          background: #e2e8f0;
+          cursor: pointer;
         }
-        .mobile-resource-card i { font-size: 1.6rem; color: #0D6EFD; }
-        .mobile-resource-card span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
-        .mobile-resource-card:active { background: #0D6EFD; transform: scale(0.95); }
-        .mobile-resource-card:active i { color: white; }
-
-        /* Animations */
-        .btn-glow:hover { box-shadow: 0 0 20px rgba(13, 110, 253, 0.6) !important; }
-        .animate-pulse { animation: pulse 1.2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        .animate-fade-in { animation: fadeInUp 1s ease-out; }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
+        .home-media-card img,
+        .home-media-card video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.5s ease;
         }
+        .home-media-card:hover img,
+        .home-media-card:hover video {
+          transform: scale(1.05);
+        }
+        .home-media-overlay {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 30px 16px 12px;
+          background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+          color: #fff;
+        }
+        .home-media-overlay span {
+          font-size: 0.85rem;
+          font-weight: 600;
+        }
+        .text-gold { color: var(--gdc-gold); }
+        .text-muted { color: #94a3b8; }
 
-        @media (max-width: 991px) {
-          .hero-section { height: auto !important; min-height: 100vh; }
-          .hero-title { font-size: 2.2rem; }
+        @media (max-width: 768px) {
+          .home-notice-item { flex-direction: column; gap: 8px; }
+          .home-notice-date { display: flex; gap: 8px; align-items: center; }
+          .home-notice-date .day { font-size: 1.2rem; }
         }
       `}</style>
-    </div>
+    </>
   );
 }
 

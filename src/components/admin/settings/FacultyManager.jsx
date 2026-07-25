@@ -11,12 +11,15 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
+import { uploadToR2WithProgress } from "../../cloudflare";
 
 const FacultyManager = () => {
   const [faculty, setFaculty] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     dept: "",
@@ -42,6 +45,42 @@ const FacultyManager = () => {
       console.error("Error loading faculty:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Photo must be under 5MB");
+      e.target.value = "";
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const result = await uploadToR2WithProgress(
+        file,
+        "faculty/",
+        (progress) => setUploadProgress(Math.round(progress)),
+      );
+      setForm({ ...form, url: result.url });
+      alert("✅ Photo uploaded successfully!");
+    } catch (error) {
+      alert("❌ Upload failed: " + error.message);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      e.target.value = "";
     }
   };
 
@@ -149,13 +188,32 @@ const FacultyManager = () => {
                 className="form-control"
                 required
               />
-              <input
-                name="url"
-                placeholder="Photo URL"
-                value={form.url}
-                onChange={handleChange}
-                className="form-control"
-              />
+
+              {/* ✅ PHOTO UPLOAD */}
+              <div className="file-upload-wrapper">
+                <label className="file-upload-label">
+                  <i className="bi bi-camera"></i>
+                  {form.url ? "Change Photo" : "Upload Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="file-input"
+                    disabled={uploading}
+                  />
+                </label>
+                {uploading && (
+                  <div className="upload-progress">
+                    <div className="progress-bar">
+                      <div style={{ width: uploadProgress + "%" }}></div>
+                    </div>
+                    <span className="progress-text">{uploadProgress}%</span>
+                  </div>
+                )}
+                {form.url && !uploading && (
+                  <span className="upload-success">✅ Photo uploaded</span>
+                )}
+              </div>
             </div>
             <div className="form-row">
               <input
@@ -234,6 +292,18 @@ const FacultyManager = () => {
         .btn-delete:hover { color: #ef4444; }
         .loading { text-align: center; padding: 40px; color: #94a3b8; }
         .empty-state { text-align: center; padding: 40px; background: #fff; border-radius: 12px; color: #94a3b8; }
+        
+        /* File Upload Styles */
+        .file-upload-wrapper { display: flex; flex-direction: column; gap: 6px; }
+        .file-upload-label { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #f1f5f9; border-radius: 8px; cursor: pointer; font-size: 0.85rem; color: #475569; border: 1px solid #e2e8f0; }
+        .file-upload-label:hover { background: #e2e8f0; }
+        .file-input { display: none; }
+        .upload-progress { display: flex; align-items: center; gap: 12px; }
+        .progress-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-bar div { height: 100%; background: linear-gradient(90deg, #B98B33, #d4a345); transition: width 0.3s; }
+        .progress-text { font-size: 0.75rem; color: #94a3b8; min-width: 40px; }
+        .upload-success { font-size: 0.8rem; color: #059669; }
+        
         @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
       `}</style>
     </div>
