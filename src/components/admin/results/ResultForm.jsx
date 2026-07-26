@@ -1,7 +1,6 @@
 // src/components/admin/results/ResultForm.jsx
 import React, { useState } from "react";
-import { uploadToCloudinary } from "../../../cloudinary";
-
+import { uploadToR2WithProgress } from "../../../cloudflare";
 const ResultForm = ({
   onSubmit,
   onCancel,

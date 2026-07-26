@@ -12,7 +12,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../cloudflare";
-
 const FacultyManager = () => {
   const [faculty, setFaculty] = useState([]);
   const [loading, setLoading] = useState(true);
