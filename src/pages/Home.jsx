@@ -12,28 +12,65 @@ const Home = () => {
   return (
     <>
       <HeroCarousel />
-      <div data-aos="fade-up">
+
+      {/* Sections with fast AOS (no delay) */}
+      <div data-aos="fade-up" data-aos-duration="600" data-aos-once="true">
         <PrincipalSection />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="100"
+      >
         <ProgramsSection />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="200"
+      >
         <DepartmentsSection />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="100"
+      >
         <ActivitiesSection />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="150"
+      >
         <VisionMissionAims />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="100"
+      >
         <GalleryPreview />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="100"
+      >
         <TestimonialsSection />
       </div>
-      <div data-aos="fade-up">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        data-aos-once="true"
+        data-aos-delay="50"
+      >
         <FaqSection />
       </div>
     </>
