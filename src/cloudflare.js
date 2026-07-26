@@ -1,4 +1,3 @@
-// src/cloudflare.js
 const R2_WORKER_URL = import.meta.env.VITE_R2_WORKER_URL;
 const R2_UPLOAD_TOKEN = import.meta.env.VITE_R2_UPLOAD_TOKEN;
 const R2_BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;

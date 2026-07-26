@@ -1,10 +1,35 @@
 /* ==========================================
    GLOBAL RESET & BASE
    ========================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* 📁 src/index.css */
+
+/* --- 1. Typography --- */
+
+:root {
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Harvard uses a clean, classic sans-serif for a modern feel[reference:21] */
+}
+
+/* --- 2. Color Palette --- */
+:root {
+  --color-crimson: #A51C30;
+  /* Harvard Crimson[reference:22] */
+  --color-black: #1E1E1E;
+  /* Harvard Black[reference:23] */
+  --color-white: #FFFFFF;
+  --color-gray-50: #F8F9FA;
+  --color-gray-100: #F1F3F5;
+  --color-gray-200: #E9ECEF;
+  --color-gray-600: #6C757D;
+  --color-gray-900: #212529;
 }
 
 body {
