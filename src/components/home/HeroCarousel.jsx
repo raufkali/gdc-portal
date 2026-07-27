@@ -106,7 +106,7 @@ const HeroCarousel = () => {
   return (
     <div
       id="heroCarousel"
-      className="carousel slide"
+      className="carousel slide mt-5"
       data-bs-ride="carousel"
       style={{
         height: "85vh",
@@ -117,7 +117,10 @@ const HeroCarousel = () => {
         overflow: "hidden",
       }}
     >
-      <div className="carousel-inner" style={{ height: "100%", width: "100%" }}>
+      <div
+        className="carousel-inner mt-3"
+        style={{ height: "100%", width: "100%" }}
+      >
         {banners.map((banner, index) => {
           const isFallback = banner.bgGradient !== undefined;
           const hasImageError = imageErrors[banner.id];
