@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Link } from "react-router-dom";
@@ -37,15 +37,15 @@ const HeroCarousel = () => {
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
+  const [activeIndex, setActiveIndex] = useState(0);
+  const carouselRef = useRef(null);
 
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        // Fetch only active banners WITHOUT orderBy (no index needed)
         const q = query(collection(db, "banners"), where("active", "==", true));
         const snap = await getDocs(q);
 
-        // Map and sort manually in JavaScript
         const data = snap.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -68,6 +68,36 @@ const HeroCarousel = () => {
     fetchBanners();
   }, []);
 
+  // Listen to carousel slide events to update active index
+  useEffect(() => {
+    const carouselElement = document.getElementById("heroCarousel");
+    if (carouselElement) {
+      const handleSlide = (event) => {
+        const newIndex = event.to;
+        setActiveIndex(newIndex);
+
+        // Update indicators manually
+        const indicators = carouselElement.querySelectorAll(
+          ".carousel-indicators button",
+        );
+        indicators.forEach((indicator, index) => {
+          if (index === newIndex) {
+            indicator.classList.add("active");
+            indicator.style.background = "#A51C30";
+          } else {
+            indicator.classList.remove("active");
+            indicator.style.background = "transparent";
+          }
+        });
+      };
+
+      carouselElement.addEventListener("slide.bs.carousel", handleSlide);
+      return () => {
+        carouselElement.removeEventListener("slide.bs.carousel", handleSlide);
+      };
+    }
+  }, [banners.length]);
+
   const handleImageError = (bannerId) => {
     setImageErrors((prev) => ({ ...prev, [bannerId]: true }));
   };
@@ -79,7 +109,7 @@ const HeroCarousel = () => {
         style={{ height: "80vh", background: "#1A1A1A" }}
       >
         <div
-          className="spinner-border text-primary"
+          className="spinner-border"
           role="status"
           style={{ color: "#A51C30" }}
         >
@@ -94,12 +124,13 @@ const HeroCarousel = () => {
       id="heroCarousel"
       className="carousel slide"
       data-bs-ride="carousel"
+      data-bs-interval="5000"
+      ref={carouselRef}
       style={{
         height: "85vh",
         minHeight: "500px",
         maxHeight: "800px",
         position: "relative",
-        marginTop: "0",
         overflow: "hidden",
       }}
     >
@@ -123,11 +154,9 @@ const HeroCarousel = () => {
               {!isFallback && banner.imageUrl && !hasImageError && (
                 <img
                   src={banner.imageUrl}
-                  className="d-block"
+                  className="d-block w-100 h-100"
                   alt={banner.title || "Banner"}
                   style={{
-                    width: "100%",
-                    height: "100%",
                     objectFit: "cover",
                     position: "absolute",
                     top: 0,
@@ -170,7 +199,7 @@ const HeroCarousel = () => {
                   <h1
                     style={{
                       fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
+                      fontSize: "clamp(2rem, 5vw, 4rem)",
                       fontWeight: "700",
                       color: "#ffffff",
                       textShadow: "0 2px 20px rgba(0,0,0,0.5)",
@@ -184,7 +213,7 @@ const HeroCarousel = () => {
                   </h1>
                   <p
                     style={{
-                      fontSize: "clamp(1rem, 2vw, 1.5rem)",
+                      fontSize: "clamp(0.95rem, 1.5vw, 1.3rem)",
                       fontWeight: "300",
                       color: "rgba(255,255,255,0.95)",
                       textShadow: "0 2px 10px rgba(0,0,0,0.5)",
@@ -201,8 +230,8 @@ const HeroCarousel = () => {
                     to="#programs"
                     className="btn btn-primary"
                     style={{
-                      padding: "0.8rem 2.5rem",
-                      fontSize: "clamp(0.9rem, 1.1vw, 1.1rem)",
+                      padding: "0.7rem 2.2rem",
+                      fontSize: "clamp(0.85rem, 1vw, 1rem)",
                       fontWeight: "600",
                       borderRadius: "50px",
                       backgroundColor: "#A51C30",
@@ -216,7 +245,7 @@ const HeroCarousel = () => {
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.backgroundColor = "#7A1523";
-                      e.target.style.transform = "translateY(-3px)";
+                      e.target.style.transform = "translateY(-2px)";
                       e.target.style.boxShadow =
                         "0 8px 30px rgba(165, 28, 48, 0.5)";
                     }}
@@ -236,7 +265,7 @@ const HeroCarousel = () => {
         })}
       </div>
 
-      {/* Controls - Only show if more than 1 banner */}
+      {/* Controls */}
       {banners.length > 1 && (
         <>
           <button
@@ -247,11 +276,11 @@ const HeroCarousel = () => {
             style={{
               zIndex: 10,
               width: "5%",
-              opacity: 0.7,
+              opacity: 0.6,
               transition: "opacity 0.3s ease",
             }}
             onMouseEnter={(e) => (e.target.style.opacity = 1)}
-            onMouseLeave={(e) => (e.target.style.opacity = 0.7)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0.6)}
           >
             <span
               className="carousel-control-prev-icon"
@@ -267,11 +296,11 @@ const HeroCarousel = () => {
             style={{
               zIndex: 10,
               width: "5%",
-              opacity: 0.7,
+              opacity: 0.6,
               transition: "opacity 0.3s ease",
             }}
             onMouseEnter={(e) => (e.target.style.opacity = 1)}
-            onMouseLeave={(e) => (e.target.style.opacity = 0.7)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0.6)}
           >
             <span
               className="carousel-control-next-icon"
@@ -282,7 +311,7 @@ const HeroCarousel = () => {
         </>
       )}
 
-      {/* Indicators - Only show if more than 1 banner */}
+      {/* Indicators - Fixed with proper active state */}
       {banners.length > 1 && (
         <div
           className="carousel-indicators"
@@ -294,18 +323,29 @@ const HeroCarousel = () => {
               type="button"
               data-bs-target="#heroCarousel"
               data-bs-slide-to={index}
-              className={index === 0 ? "active" : ""}
-              aria-current={index === 0 ? "true" : "false"}
+              className={index === activeIndex ? "active" : ""}
+              aria-current={index === activeIndex ? "true" : "false"}
               aria-label={`Slide ${index + 1}`}
               style={{
                 width: "12px",
                 height: "12px",
                 borderRadius: "50%",
                 border: "2px solid rgba(255,255,255,0.8)",
-                background: index === 0 ? "#A51C30" : "transparent",
+                background: index === activeIndex ? "#A51C30" : "transparent",
                 margin: "0 6px",
                 padding: 0,
                 transition: "all 0.3s ease",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (index !== activeIndex) {
+                  e.target.style.background = "rgba(255,255,255,0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (index !== activeIndex) {
+                  e.target.style.background = "transparent";
+                }
               }}
             />
           ))}
@@ -317,22 +357,22 @@ const HeroCarousel = () => {
         <div
           style={{
             position: "absolute",
-            bottom: "100px",
+            bottom: "90px",
             right: "20px",
             zIndex: 10,
             background: "rgba(0,0,0,0.8)",
             color: "#fff",
-            padding: "8px 20px",
+            padding: "6px 16px",
             borderRadius: "50px",
-            fontSize: "clamp(11px, 0.8vw, 13px)",
-            border: "1px solid rgba(255,255,255,0.2)",
+            fontSize: "clamp(10px, 0.7vw, 12px)",
+            border: "1px solid rgba(255,255,255,0.15)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
-            letterSpacing: "0.5px",
+            letterSpacing: "0.3px",
           }}
         >
-          <span style={{ marginRight: "6px" }}>⚡</span>
-          Preview Mode – Add banners in admin panel
+          <span style={{ marginRight: "4px" }}>⚡</span>
+          Preview Mode
         </div>
       )}
     </div>

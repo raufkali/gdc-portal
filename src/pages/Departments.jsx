@@ -44,7 +44,11 @@ const Departments = () => {
             className="d-flex justify-content-center align-items-center"
             style={{ height: "300px" }}
           >
-            <div className="spinner-border text-primary" role="status">
+            <div
+              className="spinner-border"
+              role="status"
+              style={{ color: "#A51C30" }}
+            >
               <span className="visually-hidden">Loading departments...</span>
             </div>
           </div>
@@ -120,7 +124,7 @@ const Departments = () => {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`btn btn-sm rounded-pill px-4 transition-all ${activeCategory === cat ? "btn-active-cat" : "btn-light border-0 text-muted"}`}
+                  className={`btn btn-sm rounded-pill px-4 transition-all`}
                   style={{
                     transition: "all 0.3s ease",
                     backgroundColor:
@@ -156,7 +160,7 @@ const Departments = () => {
                 style={{ display: "block", height: "100%" }}
               >
                 <div
-                  className="dept-card-premium overflow-hidden h-100 bg-white shadow-sm border"
+                  className="dept-card-premium overflow-hidden h-100"
                   style={{
                     borderRadius: "12px",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -164,6 +168,7 @@ const Departments = () => {
                     border: "1px solid #e5e5e5 !important",
                     cursor: "pointer",
                     height: "100%",
+                    backgroundColor: "var(--card-bg)",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-8px)";
@@ -295,7 +300,7 @@ const Departments = () => {
                       {dept.description?.substring(0, 50)}...
                     </p>
 
-                    {/* Enrollment Progress */}
+                    {/* Faculty Progress */}
                     <div className="mb-4">
                       <div className="d-flex justify-content-between mb-1">
                         <span className="x-small fw-bold text-muted text-uppercase">
@@ -363,36 +368,6 @@ const Departments = () => {
               </Link>
             </div>
           ))}
-        </div>
-
-        {/* View All Button */}
-        <div className="text-center mt-5">
-          <Link
-            to="/departments"
-            className="btn"
-            style={{
-              background: "linear-gradient(145deg, #A51C30, #7A1523)",
-              color: "#fff",
-              padding: "0.7rem 2.5rem",
-              borderRadius: "50px",
-              fontWeight: "600",
-              textDecoration: "none",
-              transition: "all 0.3s ease",
-              boxShadow: "0 4px 15px rgba(165, 28, 48, 0.3)",
-              display: "inline-block",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = "translateY(-3px)";
-              e.target.style.boxShadow = "0 8px 30px rgba(165, 28, 48, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = "translateY(0)";
-              e.target.style.boxShadow = "0 4px 15px rgba(165, 28, 48, 0.3)";
-            }}
-          >
-            <i className="bi bi-arrow-right me-2"></i>
-            View All Departments
-          </Link>
         </div>
       </div>
 

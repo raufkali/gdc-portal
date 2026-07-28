@@ -108,7 +108,7 @@ const Contact = () => {
 
         <div className="row g-4">
           {/* Contact Info */}
-          <div className="col-lg-4" data-aos="fade-right" data-aos-delay="100">
+          <div className="col-lg-4" data-aos="fade-up" data-aos-delay="100">
             <div
               className="card border-0 shadow-sm h-100"
               style={{
