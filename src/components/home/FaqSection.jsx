@@ -33,7 +33,7 @@ const FaqSection = () => {
 
   return (
     <section
-      className="py-5 mt-5"
+      className="py-5"
       style={{
         backgroundColor: "var(--color-bg-alt)",
         position: "relative",
