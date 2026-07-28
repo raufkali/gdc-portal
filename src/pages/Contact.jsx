@@ -562,6 +562,27 @@ const Contact = () => {
           </div>
         </div>
 
+        {/* Google Maps Embed */}
+        {settings?.mapEmbedUrl && (
+          <div className="mt-5" data-aos="fade-up" data-aos-delay="250">
+            <div
+              className="card border-0 shadow-sm overflow-hidden"
+              style={{ borderRadius: "16px" }}
+            >
+              <div className="ratio ratio-21x9">
+                <iframe
+                  src={settings.mapEmbedUrl}
+                  title="College Location"
+                  allowFullScreen
+                  loading="lazy"
+                  style={{ border: 0 }}
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Links */}
         <div className="mt-5 pt-3" data-aos="fade-up" data-aos-delay="300">
           <div

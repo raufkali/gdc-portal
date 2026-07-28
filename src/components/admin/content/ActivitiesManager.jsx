@@ -10,7 +10,6 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
-import ImageUpload from "./Shared/ImageUpload";
 
 const ActivitiesManager = () => {
   const [items, setItems] = useState([]);
@@ -21,6 +20,8 @@ const ActivitiesManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -39,11 +40,29 @@ const ActivitiesManager = () => {
   }, []);
 
   const handleFileUpload = async (file) => {
+    if (!file) return null;
+
     setUploading(true);
+    setUploadProgress(0);
+
     try {
-      const result = await uploadToR2WithProgress(file, "activities/");
-      return result.url;
+      const result = await uploadToR2WithProgress(
+        file,
+        "activities/",
+        (progress) => {
+          setUploadProgress(progress);
+        },
+      );
+
+      if (result && result.url) {
+        setPreviewImage(result.url);
+        setUploadProgress(100);
+        setTimeout(() => setUploadProgress(0), 1000);
+        return result.url;
+      }
+      return null;
     } catch (error) {
+      console.error("Upload error:", error);
       alert("Upload failed: " + error.message);
       return null;
     } finally {
@@ -51,16 +70,52 @@ const ActivitiesManager = () => {
     }
   };
 
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large. Please upload a file smaller than 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
+      e.target.value = "";
+      return;
+    }
+
+    const url = await handleFileUpload(file);
+    if (url) {
+      setFormData({ ...formData, imageUrl: url });
+    }
+    e.target.value = "";
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, imageUrl: "" });
+    setPreviewImage(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editing) {
         await updateDoc(doc(db, "activities", editing.id), formData);
+        alert("✅ Activity updated successfully!");
       } else {
         await addDoc(collection(db, "activities"), formData);
+        alert("✅ Activity added successfully!");
       }
+
       setShowModal(false);
-      fetchItems();
+      setFormData({});
+      setPreviewImage(null);
+      setEditing(null);
+
+      await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
     }
@@ -69,17 +124,38 @@ const ActivitiesManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "activities", deletingId));
+      alert("✅ Activity deleted successfully!");
       setShowDeleteModal(false);
-      fetchItems();
+      setDeletingId(null);
+
+      await fetchItems();
     } catch (error) {
       alert("Error deleting: " + error.message);
     }
   };
 
   const fields = [
-    { key: "title", label: "Activity Title", type: "text", required: true },
-    { key: "content", label: "Content", type: "textarea", required: true },
-    { key: "author", label: "Author", type: "text", required: false },
+    {
+      key: "title",
+      label: "Activity Title",
+      type: "text",
+      required: true,
+      placeholder: "Enter activity title",
+    },
+    {
+      key: "content",
+      label: "Content",
+      type: "textarea",
+      required: true,
+      placeholder: "Write activity content...",
+    },
+    {
+      key: "author",
+      label: "Author",
+      type: "text",
+      required: false,
+      placeholder: "e.g., Admin Office",
+    },
     { key: "date", label: "Date", type: "date", required: false },
   ];
 
@@ -95,6 +171,8 @@ const ActivitiesManager = () => {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={field.required}
+          placeholder={field.placeholder}
+          style={{ borderRadius: "10px", resize: "vertical" }}
         />
       );
     }
@@ -106,6 +184,7 @@ const ActivitiesManager = () => {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={field.required}
+          style={{ borderRadius: "10px" }}
         />
       );
     }
@@ -116,19 +195,33 @@ const ActivitiesManager = () => {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
+        placeholder={field.placeholder}
+        style={{ borderRadius: "10px" }}
       />
     );
   };
 
+  // Get image URL for display
+  const getImageUrl = (item) => {
+    if (!item.imageUrl) return null;
+    try {
+      new URL(item.imageUrl);
+      return item.imageUrl;
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <div>
-      {/* Header - Only Add Activity button, no title */}
+      {/* Header */}
       <div className="d-flex justify-content-end mb-3">
         <button
           className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
+            setPreviewImage(null);
             setShowModal(true);
           }}
           style={{
@@ -170,120 +263,149 @@ const ActivitiesManager = () => {
         </div>
       ) : (
         <div className="row g-3">
-          {items.map((item) => (
-            <div key={item.id} className="col-md-6">
-              <div
-                className="card h-100 shadow-sm border-0"
-                style={{
-                  borderRadius: "10px",
-                  backgroundColor: "var(--card-bg)",
-                }}
-              >
-                {item.imageUrl && (
-                  <img
-                    src={item.imageUrl}
-                    className="card-img-top"
-                    alt={item.title}
-                    style={{ height: "160px", objectFit: "cover" }}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                )}
-                <div className="card-body">
-                  <h6
-                    className="fw-bold"
-                    style={{ color: "var(--color-text)" }}
-                  >
-                    {item.title}
-                  </h6>
-                  <p
-                    className="small"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    {item.content?.substring(0, 100)}...
-                  </p>
-                  <div className="d-flex flex-wrap gap-2">
-                    {item.date && (
-                      <small
-                        className="text-muted"
-                        style={{ fontSize: "0.7rem" }}
-                      >
-                        <i className="bi bi-calendar me-1"></i>
-                        {new Date(item.date).toLocaleDateString()}
-                      </small>
-                    )}
-                    {item.author && (
-                      <small
-                        className="text-muted"
-                        style={{ fontSize: "0.7rem" }}
-                      >
-                        <i className="bi bi-person me-1"></i>
-                        {item.author}
-                      </small>
-                    )}
+          {items.map((item) => {
+            const imageUrl = getImageUrl(item);
+            return (
+              <div key={item.id} className="col-md-6">
+                <div
+                  className="card h-100 shadow-sm border-0"
+                  style={{
+                    borderRadius: "10px",
+                    backgroundColor: "var(--card-bg)",
+                  }}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      className="card-img-top"
+                      alt={item.title}
+                      style={{ height: "160px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.parentElement.innerHTML = `
+                          <div style="height:160px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.9rem;">
+                            <div class="text-center">
+                              <i class="bi bi-image fs-2 d-block mb-1"></i>
+                              <span>No Image</span>
+                            </div>
+                          </div>
+                        `;
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        height: "160px",
+                        background: "#f5f5f5",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#999",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      <div className="text-center">
+                        <i className="bi bi-image fs-2 d-block mb-1"></i>
+                        <span>No Image</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="card-body">
+                    <h6
+                      className="fw-bold"
+                      style={{ color: "var(--color-text)" }}
+                    >
+                      {item.title}
+                    </h6>
+                    <p
+                      className="small"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      {item.content?.substring(0, 100)}...
+                    </p>
+                    <div className="d-flex flex-wrap gap-2">
+                      {item.date && (
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.7rem" }}
+                        >
+                          <i className="bi bi-calendar me-1"></i>
+                          {new Date(item.date).toLocaleDateString()}
+                        </small>
+                      )}
+                      {item.author && (
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.7rem" }}
+                        >
+                          <i className="bi bi-person me-1"></i>
+                          {item.author}
+                        </small>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="card-footer bg-transparent border-0 pt-0">
-                  <div className="d-flex gap-2">
-                    <button
-                      className="btn btn-sm flex-grow-1"
-                      style={{
-                        background: "rgba(165, 28, 48, 0.08)",
-                        color: "#A51C30",
-                        borderRadius: "50px",
-                        fontSize: "0.75rem",
-                        fontWeight: "500",
-                        border: "none",
-                        transition: "all 0.2s ease",
-                      }}
-                      onClick={() => {
-                        setEditing(item);
-                        setFormData(item);
-                        setShowModal(true);
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = "#A51C30";
-                        e.target.style.color = "#fff";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = "rgba(165, 28, 48, 0.08)";
-                        e.target.style.color = "#A51C30";
-                      }}
-                    >
-                      <i className="bi bi-pencil me-1"></i> Edit
-                    </button>
-                    <button
-                      className="btn btn-sm"
-                      style={{
-                        background: "rgba(220, 53, 69, 0.08)",
-                        color: "#dc3545",
-                        borderRadius: "50px",
-                        fontSize: "0.75rem",
-                        fontWeight: "500",
-                        border: "none",
-                        transition: "all 0.2s ease",
-                      }}
-                      onClick={() => {
-                        setDeletingId(item.id);
-                        setShowDeleteModal(true);
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = "#dc3545";
-                        e.target.style.color = "#fff";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = "rgba(220, 53, 69, 0.08)";
-                        e.target.style.color = "#dc3545";
-                      }}
-                    >
-                      <i className="bi bi-trash"></i>
-                    </button>
+                  <div className="card-footer bg-transparent border-0 pt-0">
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-sm flex-grow-1"
+                        style={{
+                          background: "rgba(165, 28, 48, 0.08)",
+                          color: "#A51C30",
+                          borderRadius: "50px",
+                          fontSize: "0.75rem",
+                          fontWeight: "500",
+                          border: "none",
+                          transition: "all 0.2s ease",
+                        }}
+                        onClick={() => {
+                          setEditing(item);
+                          setFormData(item);
+                          setPreviewImage(item.imageUrl || null);
+                          setShowModal(true);
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.background = "#A51C30";
+                          e.target.style.color = "#fff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = "rgba(165, 28, 48, 0.08)";
+                          e.target.style.color = "#A51C30";
+                        }}
+                      >
+                        <i className="bi bi-pencil me-1"></i> Edit
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        style={{
+                          background: "rgba(220, 53, 69, 0.08)",
+                          color: "#dc3545",
+                          borderRadius: "50px",
+                          fontSize: "0.75rem",
+                          fontWeight: "500",
+                          border: "none",
+                          transition: "all 0.2s ease",
+                        }}
+                        onClick={() => {
+                          setDeletingId(item.id);
+                          setShowDeleteModal(true);
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.background = "#dc3545";
+                          e.target.style.color = "#fff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = "rgba(220, 53, 69, 0.08)";
+                          e.target.style.color = "#dc3545";
+                        }}
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -314,11 +436,62 @@ const ActivitiesManager = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  <ImageUpload
-                    onUpload={handleFileUpload}
-                    existingImage={formData.imageUrl}
-                    folder="activities"
-                  />
+                  {/* Image Upload */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      Image (optional)
+                    </label>
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      disabled={uploading}
+                      style={{ borderRadius: "10px" }}
+                    />
+                    {uploading && (
+                      <div className="mt-1">
+                        <div className="progress" style={{ height: "4px" }}>
+                          <div
+                            className="progress-bar progress-bar-striped progress-bar-animated"
+                            style={{
+                              width: `${uploadProgress}%`,
+                              backgroundColor: "#A51C30",
+                            }}
+                          ></div>
+                        </div>
+                        <small className="text-muted">
+                          {uploadProgress}% uploaded
+                        </small>
+                      </div>
+                    )}
+                    {(previewImage || formData.imageUrl) && (
+                      <div className="mt-2 d-flex align-items-center gap-2">
+                        <img
+                          src={previewImage || formData.imageUrl}
+                          alt="preview"
+                          style={{
+                            width: "80px",
+                            height: "80px",
+                            objectFit: "cover",
+                            borderRadius: "8px",
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={removeImage}
+                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                        >
+                          <i className="bi bi-x"></i> Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {fields.map((field) => (
                     <div className="mb-3" key={field.key}>
                       <label className="form-label fw-semibold">
@@ -330,6 +503,7 @@ const ActivitiesManager = () => {
                       {renderField(field)}
                     </div>
                   ))}
+
                   <div className="d-flex gap-2 mt-4">
                     <button
                       type="submit"
@@ -363,7 +537,10 @@ const ActivitiesManager = () => {
                     <button
                       type="button"
                       className="btn btn-outline-secondary rounded-pill"
-                      onClick={() => setShowModal(false)}
+                      onClick={() => {
+                        setShowModal(false);
+                        setPreviewImage(null);
+                      }}
                     >
                       Cancel
                     </button>

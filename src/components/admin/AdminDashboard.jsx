@@ -495,15 +495,17 @@ const AdminDashboard = () => {
   // Navigation items - Only main items, no child links
   const navItems = [
     { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
-    { path: "/admin/content", label: "Content", icon: "bi-folder" },
     {
       path: "/admin/announcements",
       label: "Announcements",
       icon: "bi-megaphone",
     },
     { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
-    { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
     { path: "/", label: "Home", icon: "bi-house" },
+
+    { path: "/admin/content", label: "Content", icon: "bi-folder" },
+
+    { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
   ];
 
   const isActive = (path, exact = false) => {

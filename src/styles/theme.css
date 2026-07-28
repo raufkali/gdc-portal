@@ -43,8 +43,7 @@
     --max-width: 1200px;
 }
 
-/* ----- Dark Theme ----- */
-@media (prefers-color-scheme: dark) {
+/* ----- Dark Theme ----- @media (prefers-color-scheme: dark) {
     :root {
         --color-bg: #121212;
         --color-bg-alt: #1E1E1E;
@@ -57,7 +56,7 @@
         --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         --card-shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.5);
     }
-}
+} */
 
 /* ----- 2. Reset & Base ----- */
 *,
