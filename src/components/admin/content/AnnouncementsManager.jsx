@@ -116,7 +116,7 @@ const AnnouncementsManager = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 20 * 1024 * 1024) {
       alert("File is too large. Please upload a file smaller than 10MB.");
       e.target.value = "";
       return;

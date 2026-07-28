@@ -74,7 +74,7 @@ const DepartmentsManager = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 20 * 1024 * 1024) {
       alert("File is too large. Please upload a file smaller than 5MB.");
       e.target.value = "";
       return;
