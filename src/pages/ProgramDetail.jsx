@@ -21,14 +21,14 @@ const ProgramDetail = () => {
   if (loading) return <Loader />;
   if (!program)
     return (
-      <div className="container py-5">
+      <div className="container py-5 mt-5">
         <h2>Program not found</h2>
         <Link to="/programs">Back to Programs</Link>
       </div>
     );
 
   return (
-    <div className="container py-5">
+    <div className="container py-5 mt-5">
       <Link to="/programs" className="btn btn-outline-secondary mb-3">
         &larr; Back to Programs
       </Link>

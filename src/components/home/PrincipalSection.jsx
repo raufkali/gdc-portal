@@ -95,7 +95,7 @@ const PrincipalSection = () => {
 
       <div className="container position-relative">
         {/* Section Title */}
-        <div className="text-center mb-5" data-aos="fade-up">
+        <div className="text-center mb-5">
           <span
             style={{
               fontSize: "0.85rem",
