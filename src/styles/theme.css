@@ -291,6 +291,7 @@ small {
     transition: width var(--transition-speed);
 }
 
+
 .navbar .navbar-nav .nav-link:hover {
     color: #ffffff !important;
     text-decoration: none;

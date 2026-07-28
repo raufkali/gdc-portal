@@ -101,10 +101,8 @@ const GalleryManager = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="mb-0">
-          <i className="bi bi-image me-2 text-secondary"></i>Gallery
-        </h4>
+      {/* Header - Only Upload Images button, no title */}
+      <div className="d-flex justify-content-end mb-3">
         <div>
           <input
             ref={fileInputRef}
@@ -120,9 +118,26 @@ const GalleryManager = () => {
             }}
           />
           <button
-            className="btn btn-secondary rounded-pill px-4"
+            className="btn rounded-pill px-4"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
+            style={{
+              background: "#A51C30",
+              color: "#fff",
+              fontSize: "0.85rem",
+              border: "none",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!uploading) {
+                e.target.style.background = "#7A1523";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!uploading) {
+                e.target.style.background = "#A51C30";
+              }
+            }}
           >
             <i className="bi bi-plus-circle me-1"></i>{" "}
             {uploading ? "Uploading..." : "Upload Images"}
@@ -132,25 +147,40 @@ const GalleryManager = () => {
 
       {uploading && (
         <div className="mb-3">
-          <div className="progress">
+          <div
+            className="progress"
+            style={{ height: "6px", borderRadius: "4px" }}
+          >
             <div
               className="progress-bar progress-bar-striped progress-bar-animated"
-              style={{ width: `${uploadProgress}%` }}
+              style={{
+                width: `${uploadProgress}%`,
+                backgroundColor: "#A51C30",
+                borderRadius: "4px",
+              }}
             >
               {uploadProgress}%
             </div>
           </div>
-          <small className="text-muted">Uploading images...</small>
+          <small className="text-muted" style={{ fontSize: "0.75rem" }}>
+            Uploading {uploadProgress}%...
+          </small>
         </div>
       )}
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-secondary"></div>
+          <div
+            className="spinner-border"
+            role="status"
+            style={{ color: "#A51C30" }}
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-5">
-          <div className="display-1 text-muted mb-3">
+          <div className="display-4 text-muted mb-3">
             <i className="bi bi-image"></i>
           </div>
           <p className="text-muted">
@@ -161,24 +191,55 @@ const GalleryManager = () => {
         <div className="row g-3">
           {items.map((item) => (
             <div key={item.id} className="col-md-4 col-sm-6">
-              <div className="card h-100 shadow-sm border-0">
+              <div
+                className="card h-100 shadow-sm border-0"
+                style={{
+                  borderRadius: "10px",
+                  backgroundColor: "var(--card-bg)",
+                }}
+              >
                 <img
                   src={item.imageUrl}
                   className="card-img-top"
                   alt={item.caption || "Gallery"}
                   style={{ height: "200px", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
                 />
                 <div className="card-body">
                   {item.caption && (
-                    <p className="small text-muted">{item.caption}</p>
+                    <p
+                      className="small text-muted"
+                      style={{ fontSize: "0.8rem" }}
+                    >
+                      {item.caption}
+                    </p>
                   )}
                 </div>
                 <div className="card-footer bg-transparent border-0 pt-0">
                   <button
-                    className="btn btn-danger btn-sm w-100"
+                    className="btn btn-sm w-100"
+                    style={{
+                      background: "rgba(220, 53, 69, 0.08)",
+                      color: "#dc3545",
+                      borderRadius: "50px",
+                      fontSize: "0.75rem",
+                      fontWeight: "500",
+                      border: "none",
+                      transition: "all 0.2s ease",
+                    }}
                     onClick={() => {
                       setDeletingId(item.id);
                       setShowDeleteModal(true);
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = "#dc3545";
+                      e.target.style.color = "#fff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = "rgba(220, 53, 69, 0.08)";
+                      e.target.style.color = "#dc3545";
                     }}
                   >
                     <i className="bi bi-trash me-1"></i> Delete

@@ -2,78 +2,164 @@ import { useState, useEffect } from "react";
 import { Link, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
+import { db } from "../../firebase/config";
+import { collection, getDocs } from "firebase/firestore";
 
 // Import all admin components
 import ContentManager from "./ContentManager";
 import SettingsManager from "./SettingsManager";
+import AnnouncementsManager from "./content/AnnouncementsManager";
+import ResultsManager from "./content/ResultsManager";
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
-  const { user } = useAuth();
   const { settings } = useSettings();
+  const [stats, setStats] = useState([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+  const [recentResults, setRecentResults] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Stats data with real values
-  const stats = [
-    {
-      label: "Total Pages",
-      value: "12",
-      icon: "bi-file-earmark",
-      color: "primary",
-      bg: "bg-primary",
-    },
-    {
-      label: "Banners",
-      value: "4",
-      icon: "bi-images",
-      color: "success",
-      bg: "bg-success",
-    },
-    {
-      label: "Programs",
-      value: "8",
-      icon: "bi-book",
-      color: "info",
-      bg: "bg-info",
-    },
-    {
-      label: "Departments",
-      value: "6",
-      icon: "bi-building",
-      color: "warning",
-      bg: "bg-warning",
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
 
-  // Recent activity items
-  const recentActivities = [
-    { action: "New banner added", time: "2 hours ago", icon: "bi-images" },
-    {
-      action: "Program updated: Computer Science",
-      time: "5 hours ago",
-      icon: "bi-book",
-    },
-    {
-      action: "New department added: Physics",
-      time: "1 day ago",
-      icon: "bi-building",
-    },
-    {
-      action: "Gallery updated with 5 new images",
-      time: "2 days ago",
-      icon: "bi-image",
-    },
-  ];
+        const [
+          bannersSnap,
+          programsSnap,
+          deptsSnap,
+          gallerySnap,
+          testimonialsSnap,
+          announcementsSnap,
+          resultsSnap,
+          activitiesSnap,
+        ] = await Promise.all([
+          getDocs(collection(db, "banners")),
+          getDocs(collection(db, "programs")),
+          getDocs(collection(db, "departments")),
+          getDocs(collection(db, "gallery")),
+          getDocs(collection(db, "testimonials")),
+          getDocs(collection(db, "announcements")),
+          getDocs(collection(db, "examResults")),
+          getDocs(collection(db, "activities")),
+        ]);
+
+        const activeBanners = bannersSnap.docs.filter(
+          (doc) => doc.data().active === true || doc.data().active === "true",
+        ).length;
+
+        setStats([
+          {
+            label: "Banners",
+            value: activeBanners || bannersSnap.size,
+            icon: "bi-images",
+          },
+          { label: "Programs", value: programsSnap.size, icon: "bi-book" },
+          { label: "Departments", value: deptsSnap.size, icon: "bi-building" },
+          { label: "Gallery", value: gallerySnap.size, icon: "bi-image" },
+          {
+            label: "Testimonials",
+            value: testimonialsSnap.size,
+            icon: "bi-chat-quote",
+          },
+          {
+            label: "Announcements",
+            value: announcementsSnap.size,
+            icon: "bi-megaphone",
+          },
+          {
+            label: "Results",
+            value: resultsSnap.size,
+            icon: "bi-file-earmark-pdf",
+          },
+          {
+            label: "Activities",
+            value: activitiesSnap.size,
+            icon: "bi-calendar-event",
+          },
+        ]);
+
+        const announcementsData = announcementsSnap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const dateA = a.date?.toDate?.() || new Date(0);
+            const dateB = b.date?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          })
+          .slice(0, 5);
+
+        setRecentAnnouncements(announcementsData);
+
+        const resultsData = resultsSnap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const dateA = a.createdAt?.toDate?.() || new Date(0);
+            const dateB = b.createdAt?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          })
+          .slice(0, 5);
+
+        setRecentResults(resultsData);
+
+        const activitiesData = activitiesSnap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const dateA = a.date?.toDate?.() || new Date(0);
+            const dateB = b.date?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          })
+          .slice(0, 3);
+
+        setRecentActivities(activitiesData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "";
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch (e) {
+      return "";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ height: "400px" }}
+      >
+        <div
+          className="spinner-border"
+          role="status"
+          style={{ color: "#A51C30", width: "3rem", height: "3rem" }}
+        >
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      {/* Welcome Section */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-          <h4 className="mb-1 fw-bold">
-            Welcome back,{" "}
-            <span className="text-primary">
-              {user?.displayName || user?.email?.split("@")[0] || "Admin"}!
-            </span>
+          <h4 className="mb-1 fw-bold" style={{ color: "var(--color-text)" }}>
+            Welcome back, <span style={{ color: "#A51C30" }}>Admin</span>
           </h4>
           <p className="text-muted small mb-0">
             <i className="bi bi-calendar3 me-1"></i>
@@ -86,39 +172,55 @@ const DashboardOverview = () => {
           </p>
         </div>
         <div>
-          <span className="badge bg-success bg-opacity-10 text-success p-2 px-3">
+          <span
+            className="badge p-2 px-3"
+            style={{ background: "rgba(165, 28, 48, 0.08)", color: "#A51C30" }}
+          >
             <i
               className="bi bi-circle-fill me-1"
-              style={{ fontSize: "8px" }}
+              style={{ fontSize: "8px", color: "#28a745" }}
             ></i>
             Online
           </span>
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="row g-3 mb-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className="col-sm-6 col-lg-3">
-            <div className="card shadow-sm border-0 h-100 hover-lift">
-              <div className="card-body">
+          <div key={idx} className="col-6 col-md-3">
+            <div
+              className="card border-0 shadow-sm h-100"
+              style={{
+                borderRadius: "10px",
+                backgroundColor: "var(--card-bg)",
+              }}
+            >
+              <div className="card-body p-3">
                 <div className="d-flex align-items-center justify-content-between">
                   <div>
-                    <h6 className="text-muted small text-uppercase mb-1 fw-semibold">
+                    <h6
+                      className="text-muted small text-uppercase mb-0 fw-semibold"
+                      style={{ fontSize: "0.6rem", letterSpacing: "0.5px" }}
+                    >
                       {stat.label}
                     </h6>
-                    <h3 className="fw-bold mb-0 display-6">{stat.value}</h3>
+                    <h3
+                      className="fw-bold mb-0"
+                      style={{ fontSize: "1.5rem", color: "var(--color-text)" }}
+                    >
+                      {stat.value}
+                    </h3>
                   </div>
                   <div
-                    className={`rounded-circle p-3 d-flex align-items-center justify-content-center ${stat.bg} bg-opacity-10`}
+                    className="rounded-circle d-flex align-items-center justify-content-center"
                     style={{
-                      width: "56px",
-                      height: "56px",
+                      width: "40px",
+                      height: "40px",
+                      background: "rgba(165, 28, 48, 0.08)",
+                      color: "#A51C30",
                     }}
                   >
-                    <i
-                      className={`bi ${stat.icon} fs-3 text-${stat.color}`}
-                    ></i>
+                    <i className={`bi ${stat.icon} fs-5`}></i>
                   </div>
                 </div>
               </div>
@@ -127,73 +229,250 @@ const DashboardOverview = () => {
         ))}
       </div>
 
-      {/* Quick Actions & Recent Activity */}
-      <div className="row g-3">
-        <div className="col-lg-8">
-          <div className="card shadow-sm border-0">
-            <div className="card-body">
-              <h6 className="fw-bold mb-3">
-                <i className="bi bi-lightning me-2 text-primary"></i>
-                Quick Actions
-              </h6>
-              <div className="d-flex flex-wrap gap-2">
-                <Link
-                  to="/admin/content/banners"
-                  className="btn btn-outline-primary btn-sm"
+      <div className="row g-3 mb-4">
+        <div className="col-md-6">
+          <div
+            className="card border-0 shadow-sm"
+            style={{ borderRadius: "10px", backgroundColor: "var(--card-bg)" }}
+          >
+            <div className="card-body p-3 p-md-4">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <h6
+                  className="fw-bold mb-0"
+                  style={{ color: "var(--color-text)" }}
                 >
-                  <i className="bi bi-plus-circle me-1"></i> Add Banner
-                </Link>
+                  <i
+                    className="bi bi-megaphone me-2"
+                    style={{ color: "#A51C30" }}
+                  ></i>
+                  Recent Announcements
+                </h6>
                 <Link
-                  to="/admin/content/programs"
-                  className="btn btn-outline-success btn-sm"
+                  to="/admin/announcements"
+                  className="btn btn-sm"
+                  style={{
+                    color: "#A51C30",
+                    borderRadius: "50px",
+                    padding: "0.15rem 0.8rem",
+                    fontSize: "0.7rem",
+                    fontWeight: "500",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "rgba(165, 28, 48, 0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "transparent";
+                  }}
                 >
-                  <i className="bi bi-plus-circle me-1"></i> Add Program
-                </Link>
-                <Link
-                  to="/admin/content/departments"
-                  className="btn btn-outline-info btn-sm"
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Add Department
-                </Link>
-                <Link
-                  to="/admin/content/activities"
-                  className="btn btn-outline-warning btn-sm"
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Add Activity
-                </Link>
-                <Link
-                  to="/admin/content/gallery"
-                  className="btn btn-outline-secondary btn-sm"
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Add Gallery
+                  View All
                 </Link>
               </div>
+              {recentAnnouncements.length === 0 ? (
+                <p className="text-muted text-center py-3 small">
+                  No announcements yet
+                </p>
+              ) : (
+                <ul className="list-unstyled mb-0">
+                  {recentAnnouncements.map((item) => (
+                    <li
+                      key={item.id}
+                      className="d-flex align-items-start gap-2 mb-2 pb-2"
+                      style={{ borderBottom: "1px solid var(--color-border)" }}
+                    >
+                      <div
+                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{
+                          width: "6px",
+                          height: "6px",
+                          background: "#A51C30",
+                          marginTop: "6px",
+                        }}
+                      ></div>
+                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <p
+                          className="mb-0 small fw-medium"
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--color-text)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {item.title || "Untitled"}
+                        </p>
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.6rem" }}
+                        >
+                          {formatDate(item.date)}
+                          {item.author && ` • ${item.author}`}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
-        <div className="col-lg-4">
-          <div className="card shadow-sm border-0">
-            <div className="card-body">
-              <h6 className="fw-bold mb-3">
-                <i className="bi bi-clock-history me-2 text-primary"></i>
-                Recent Activity
+
+        <div className="col-md-6">
+          <div
+            className="card border-0 shadow-sm"
+            style={{ borderRadius: "10px", backgroundColor: "var(--card-bg)" }}
+          >
+            <div className="card-body p-3 p-md-4">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <h6
+                  className="fw-bold mb-0"
+                  style={{ color: "var(--color-text)" }}
+                >
+                  <i
+                    className="bi bi-file-earmark-pdf me-2"
+                    style={{ color: "#A51C30" }}
+                  ></i>
+                  Recent Results
+                </h6>
+                <Link
+                  to="/admin/results"
+                  className="btn btn-sm"
+                  style={{
+                    color: "#A51C30",
+                    borderRadius: "50px",
+                    padding: "0.15rem 0.8rem",
+                    fontSize: "0.7rem",
+                    fontWeight: "500",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "rgba(165, 28, 48, 0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "transparent";
+                  }}
+                >
+                  View All
+                </Link>
+              </div>
+              {recentResults.length === 0 ? (
+                <p className="text-muted text-center py-3 small">
+                  No results uploaded yet
+                </p>
+              ) : (
+                <ul className="list-unstyled mb-0">
+                  {recentResults.map((item) => (
+                    <li
+                      key={item.id}
+                      className="d-flex align-items-start gap-2 mb-2 pb-2"
+                      style={{ borderBottom: "1px solid var(--color-border)" }}
+                    >
+                      <div
+                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{
+                          width: "6px",
+                          height: "6px",
+                          background: "#A51C30",
+                          marginTop: "6px",
+                        }}
+                      ></div>
+                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <p
+                          className="mb-0 small fw-medium"
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--color-text)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {item.title || "Untitled"}
+                          {item.department && (
+                            <span
+                              className="text-muted fw-normal"
+                              style={{ fontSize: "0.7rem" }}
+                            >
+                              {" "}
+                              • {item.department}
+                            </span>
+                          )}
+                        </p>
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.6rem" }}
+                        >
+                          {item.year || "No year"}
+                          {item.semester && ` • ${item.semester}`}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-3">
+        <div className="col-12">
+          <div
+            className="card border-0 shadow-sm"
+            style={{ borderRadius: "10px", backgroundColor: "var(--card-bg)" }}
+          >
+            <div className="card-body p-3 p-md-4">
+              <h6
+                className="fw-bold mb-3"
+                style={{ color: "var(--color-text)" }}
+              >
+                <i
+                  className="bi bi-clock-history me-2"
+                  style={{ color: "#A51C30" }}
+                ></i>
+                Recent Activities
               </h6>
-              <ul className="list-unstyled mb-0">
-                {recentActivities.map((activity, idx) => (
-                  <li
-                    key={idx}
-                    className="d-flex align-items-start mb-2 pb-2 border-bottom border-light"
-                  >
-                    <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-2">
-                      <i className={`bi ${activity.icon} text-primary`}></i>
+              {recentActivities.length === 0 ? (
+                <p className="text-muted text-center py-3 small">
+                  No activities yet
+                </p>
+              ) : (
+                <div className="row g-2">
+                  {recentActivities.map((item) => (
+                    <div key={item.id} className="col-md-4">
+                      <div
+                        className="p-3 rounded-3"
+                        style={{
+                          background: "rgba(165, 28, 48, 0.04)",
+                          border: "1px solid rgba(165, 28, 48, 0.06)",
+                        }}
+                      >
+                        <p
+                          className="mb-0 small fw-medium"
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--color-text)",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {item.title || "Activity"}
+                        </p>
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.6rem" }}
+                        >
+                          {formatDate(item.date)}
+                          {item.author && ` • ${item.author}`}
+                        </small>
+                      </div>
                     </div>
-                    <div className="flex-grow-1">
-                      <p className="mb-0 small fw-medium">{activity.action}</p>
-                      <small className="text-muted">{activity.time}</small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -205,49 +484,43 @@ const DashboardOverview = () => {
 // Main AdminDashboard Component
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Navigation items with icons (removed Users & Analytics)
+  // Navigation items - Only main items, no child links
   const navItems = [
+    { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+    { path: "/admin/content", label: "Content", icon: "bi-folder" },
     {
-      path: "/admin",
-      label: "Dashboard",
-      icon: "bi-grid",
-      exact: true,
+      path: "/admin/announcements",
+      label: "Announcements",
+      icon: "bi-megaphone",
     },
-    {
-      path: "/admin/content",
-      label: "Content Management",
-      icon: "bi-folder",
-    },
-    {
-      path: "/admin/settings",
-      label: "Website Settings",
-      icon: "bi-gear",
-    },
+    { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
+    { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
+    { path: "/", label: "Home", icon: "bi-house" },
   ];
 
-  // Check if a path is active
   const isActive = (path, exact = false) => {
     const currentPath = location.pathname;
+
+    // For Home path "/", only match exactly "/"
+    if (path === "/") {
+      return currentPath === "/";
+    }
+
     if (exact) return currentPath === path;
     return currentPath.startsWith(path);
   };
 
-  // Check if any child is active
-  const isChildActive = (children) => {
-    return children?.some((child) => location.pathname === child.path);
-  };
-
   return (
     <div className="admin-wrapper d-flex pt-0" style={{ minHeight: "100vh" }}>
-      {/* ===== SIDEBAR ===== */}
+      {/* Sidebar */}
       <aside
         className={`admin-sidebar bg-dark text-white d-flex flex-column ${sidebarOpen ? "open" : ""}`}
         style={{
@@ -265,89 +538,78 @@ const AdminDashboard = () => {
           boxShadow: "2px 0 20px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Brand */}
+        {/* Brand with Logo */}
         <div className="sidebar-brand p-3 text-center border-bottom border-secondary">
-          <h4
-            className="fw-bold mb-0"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-          >
-            <span className="text-primary">GDC</span> Gulabad
-          </h4>
-          <small className="text-muted">Admin Panel</small>
-        </div>
-
-        {/* User Info */}
-        <div className="p-3 border-bottom border-secondary">
-          <div className="d-flex align-items-center gap-3">
-            <div className="bg-primary bg-opacity-10 rounded-circle p-2">
-              <i className="bi bi-person-circle fs-3 text-primary"></i>
-            </div>
-            <div className="flex-grow-1">
-              <p
-                className="mb-0 fw-semibold text-white"
-                style={{ fontSize: "0.95rem" }}
+          <div className="d-flex align-items-center justify-content-center gap-2">
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt="Logo"
+                style={{
+                  height: "40px",
+                  width: "40px",
+                  objectFit: "contain",
+                  borderRadius: "4px",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  height: "40px",
+                  width: "40px",
+                  borderRadius: "8px",
+                  background: "#A51C30",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: "700",
+                  fontSize: "1.2rem",
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                }}
               >
-                {user?.displayName || user?.email?.split("@")[0] || "Admin"}
-              </p>
-              <small className="text-muted">{user?.email}</small>
-            </div>
+                G
+              </div>
+            )}
+            <h4
+              className="fw-bold mb-0"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            >
+              <span style={{ color: "#A51C30" }}>GDC</span> Gulabad
+            </h4>
           </div>
+          <small className="text-muted">Admin Panel</small>
         </div>
 
         {/* Navigation */}
         <nav className="nav flex-column p-3 flex-grow-1">
           {navItems.map((item) => {
             const isItemActive = isActive(item.path, item.exact);
-            const hasActiveChild = isChildActive(item.children);
-            const isExpanded = isItemActive || hasActiveChild;
-
             return (
-              <div key={item.path} className="mb-1">
-                <Link
-                  to={item.path}
-                  className={`nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded ${
-                    isItemActive ? "active bg-primary" : ""
-                  }`}
-                  style={{
-                    textDecoration: "none",
-                    transition: "all 0.2s ease",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  <i className={`bi ${item.icon} fs-5`}></i>
-                  <span className="flex-grow-1">{item.label}</span>
-                  {item.children && (
-                    <i
-                      className={`bi bi-chevron-${isExpanded ? "down" : "right"} small`}
-                    ></i>
-                  )}
-                </Link>
-
-                {/* Sub-items */}
-                {item.children && isExpanded && (
-                  <div className="ms-3 mt-1">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.path}
-                        to={child.path}
-                        className={`nav-link d-flex align-items-center gap-2 py-1 px-3 rounded small ${
-                          location.pathname === child.path
-                            ? "active text-white bg-primary bg-opacity-25"
-                            : "text-white-50"
-                        }`}
-                        style={{
-                          textDecoration: "none",
-                          transition: "all 0.2s ease",
-                          fontSize: "0.85rem",
-                        }}
-                      >
-                        <i className="bi bi-dot"></i>
-                        <span>{child.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded ${isItemActive ? "active" : ""}`}
+                style={{
+                  textDecoration: "none",
+                  transition: "all 0.2s ease",
+                  fontSize: "0.95rem",
+                  background: isItemActive ? "#A51C30" : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isItemActive) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isItemActive) {
+                    e.currentTarget.style.background = "transparent";
+                  }
+                }}
+              >
+                <i className={`bi ${item.icon} fs-5`}></i>
+                <span className="flex-grow-1">{item.label}</span>
+              </Link>
             );
           })}
         </nav>
@@ -356,8 +618,27 @@ const AdminDashboard = () => {
         <div className="p-3 border-top border-secondary">
           <button
             onClick={logout}
-            className="btn btn-outline-danger btn-sm w-100"
-            style={{ borderRadius: "50px" }}
+            className="btn w-100"
+            style={{
+              background: "rgba(165, 28, 48, 0.15)",
+              color: "#A51C30",
+              borderRadius: "50px",
+              padding: "0.4rem 1rem",
+              fontWeight: "500",
+              fontSize: "0.85rem",
+              border: "1px solid rgba(165, 28, 48, 0.2)",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#A51C30";
+              e.target.style.color = "#fff";
+              e.target.style.border = "1px solid #A51C30";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "rgba(165, 28, 48, 0.15)";
+              e.target.style.color = "#A51C30";
+              e.target.style.border = "1px solid rgba(165, 28, 48, 0.2)";
+            }}
           >
             <i className="bi bi-box-arrow-right me-2"></i>
             Logout
@@ -365,7 +646,7 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* ===== OVERLAY FOR MOBILE ===== */}
+      {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
           className="d-md-none"
@@ -382,9 +663,9 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* ===== MAIN CONTENT ===== */}
+      {/* Main Content */}
       <main
-        className="admin-content flex-grow-1 p-4"
+        className="admin-content flex-grow-1 p-3 p-md-4"
         style={{
           background: "var(--color-bg-alt)",
           minHeight: "100vh",
@@ -393,18 +674,23 @@ const AdminDashboard = () => {
         }}
       >
         {/* Mobile Hamburger */}
-        <button
-          className="btn btn-dark d-md-none mb-3"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          style={{
-            position: "sticky",
-            top: "10px",
-            zIndex: 10,
-            borderRadius: "8px",
-          }}
-        >
-          <i className="bi bi-list fs-4"></i>
-        </button>
+        <div className="d-flex justify-content-end d-md-none mb-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              position: "sticky",
+              top: "10px",
+              zIndex: 10,
+              borderRadius: "8px",
+              background: "#A51C30",
+              color: "#fff",
+              border: "none",
+              padding: "0.4rem 0.8rem",
+            }}
+          >
+            <i className="bi bi-list fs-4"></i>
+          </button>
+        </div>
 
         {/* Routes */}
         <Routes>
@@ -438,6 +724,8 @@ const AdminDashboard = () => {
             path="/content/faqs"
             element={<ContentManager initialTab="faqs" />}
           />
+          <Route path="/announcements" element={<AnnouncementsManager />} />
+          <Route path="/results" element={<ResultsManager />} />
           <Route path="/settings" element={<SettingsManager />} />
           <Route
             path="/settings/principal"

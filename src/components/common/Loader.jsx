@@ -9,4 +9,4 @@ const Loader = () => (
   </div>
 );
 
-export default Loader; // ✅ this is essential
+export default Loader;

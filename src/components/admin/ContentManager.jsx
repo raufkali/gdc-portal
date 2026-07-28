@@ -13,28 +13,13 @@ const ContentManager = () => {
   const [activeTab, setActiveTab] = useState("banners");
 
   const tabs = [
-    { id: "banners", label: "Banners", icon: "bi-images", color: "primary" },
-    { id: "programs", label: "Programs", icon: "bi-book", color: "success" },
-    {
-      id: "departments",
-      label: "Departments",
-      icon: "bi-building",
-      color: "info",
-    },
-    {
-      id: "activities",
-      label: "Activities",
-      icon: "bi-calendar-event",
-      color: "warning",
-    },
-    { id: "gallery", label: "Gallery", icon: "bi-image", color: "secondary" },
-    {
-      id: "testimonials",
-      label: "Testimonials",
-      icon: "bi-chat-quote",
-      color: "danger",
-    },
-    { id: "faqs", label: "FAQs", icon: "bi-question-circle", color: "dark" },
+    { id: "banners", label: "Banners", icon: "bi-images" },
+    { id: "programs", label: "Programs", icon: "bi-book" },
+    { id: "departments", label: "Departments", icon: "bi-building" },
+    { id: "activities", label: "Activities", icon: "bi-calendar-event" },
+    { id: "gallery", label: "Gallery", icon: "bi-image" },
+    { id: "testimonials", label: "Testimonials", icon: "bi-chat-quote" },
+    { id: "faqs", label: "FAQs", icon: "bi-question-circle" },
   ];
 
   const renderContent = () => {
@@ -62,17 +47,45 @@ const ContentManager = () => {
 
   return (
     <div>
-      {/* Desktop Tabs */}
+      {/* Page Header */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h4 className="mb-0">
+          <i
+            className={`bi ${info?.icon} me-2`}
+            style={{ color: "#A51C30" }}
+          ></i>
+          Manage {info?.label || activeTab}
+        </h4>
+      </div>
+
+      {/* Desktop Tabs - All crimson theme */}
       <div className="d-none d-md-flex flex-wrap gap-1 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            className={`btn btn-sm ${activeTab === tab.id ? `btn-${tab.color} text-white` : "btn-outline-secondary"}`}
+            className={`btn btn-sm ${activeTab === tab.id ? "text-white" : "btn-outline-secondary"}`}
             onClick={() => setActiveTab(tab.id)}
             style={{
               borderRadius: "50px",
               padding: "0.3rem 1rem",
               fontSize: "0.8rem",
+              background: activeTab === tab.id ? "#A51C30" : "transparent",
+              borderColor:
+                activeTab === tab.id ? "#A51C30" : "var(--color-border)",
+              color: activeTab === tab.id ? "#fff" : "var(--color-text)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab.id) {
+                e.target.style.borderColor = "#A51C30";
+                e.target.style.color = "#A51C30";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab.id) {
+                e.target.style.borderColor = "var(--color-border)";
+                e.target.style.color = "var(--color-text)";
+              }
             }}
           >
             <i className={`bi ${tab.icon} me-1`}></i>
@@ -81,11 +94,11 @@ const ContentManager = () => {
         ))}
       </div>
 
-      {/* Mobile Dropdown */}
+      {/* Mobile Dropdown - All crimson theme */}
       <div className="d-md-none mb-4">
         <div className="dropdown w-100">
           <button
-            className="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center justify-content-between"
+            className="btn dropdown-toggle w-100 text-start d-flex align-items-center justify-content-between"
             type="button"
             id="contentDropdown"
             data-bs-toggle="dropdown"
@@ -94,14 +107,17 @@ const ContentManager = () => {
               borderRadius: "12px",
               padding: "0.6rem 1rem",
               borderColor: "#e5e5e5",
-              backgroundColor: "#fff",
+              backgroundColor: "var(--color-bg)",
+              color: "var(--color-text)",
             }}
           >
             <span>
-              <i className={`bi ${info?.icon} me-2 text-${info?.color}`}></i>
+              <i
+                className={`bi ${info?.icon} me-2`}
+                style={{ color: "#A51C30" }}
+              ></i>
               {info?.label}
             </span>
-            <i className="bi bi-chevron-down"></i>
           </button>
           <ul
             className="dropdown-menu w-100"
@@ -112,6 +128,7 @@ const ContentManager = () => {
               boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
               border: "none",
               marginTop: "4px",
+              backgroundColor: "var(--color-bg)",
             }}
           >
             {tabs.map((tab) => (
@@ -125,10 +142,20 @@ const ContentManager = () => {
                     padding: "0.5rem 1rem",
                     borderRadius: "8px",
                     backgroundColor:
-                      activeTab === tab.id
-                        ? `var(--bs-${tab.color})`
-                        : "transparent",
-                    color: activeTab === tab.id ? "#fff" : "inherit",
+                      activeTab === tab.id ? "#A51C30" : "transparent",
+                    color: activeTab === tab.id ? "#fff" : "var(--color-text)",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== tab.id) {
+                      e.target.style.backgroundColor =
+                        "rgba(165, 28, 48, 0.05)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== tab.id) {
+                      e.target.style.backgroundColor = "transparent";
+                    }
                   }}
                 >
                   <i className={`bi ${tab.icon}`}></i>

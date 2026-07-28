@@ -66,7 +66,6 @@ const SettingsManager = () => {
       if (result && result.url) {
         setForm({ ...form, [field]: result.url });
         setUploadProgress(100);
-        // Small delay to show 100% before hiding
         setTimeout(() => {
           setUploadProgress(0);
         }, 1000);
@@ -77,7 +76,6 @@ const SettingsManager = () => {
       console.error("❌ Upload error:", err);
       setUploadError(err.message || "Upload failed");
 
-      // Show more specific error message
       let errorMessage = "Upload failed: ";
       if (err.message.includes("ERR_NAME_NOT_RESOLVED")) {
         errorMessage +=
@@ -100,9 +98,9 @@ const SettingsManager = () => {
     return (
       <div className="text-center py-5">
         <div
-          className="spinner-border text-primary"
+          className="spinner-border"
           role="status"
-          style={{ width: "3rem", height: "3rem" }}
+          style={{ width: "3rem", height: "3rem", color: "#A51C30" }}
         >
           <span className="visually-hidden">Loading...</span>
         </div>
@@ -110,19 +108,14 @@ const SettingsManager = () => {
     );
   }
 
-  // Section configuration with icons and colors
+  // Section configuration with icons and colors - ALL CRIMSON
   const sections = [
-    { id: "general", label: "General", icon: "bi-house", color: "primary" },
-    { id: "branding", label: "Branding", icon: "bi-palette", color: "success" },
-    {
-      id: "principal",
-      label: "Principal",
-      icon: "bi-person-badge",
-      color: "info",
-    },
-    { id: "about", label: "About", icon: "bi-info-circle", color: "warning" },
-    { id: "contact", label: "Contact", icon: "bi-envelope", color: "danger" },
-    { id: "social", label: "Social", icon: "bi-share", color: "secondary" },
+    { id: "general", label: "General", icon: "bi-house" },
+    { id: "branding", label: "Branding", icon: "bi-palette" },
+    { id: "principal", label: "Principal", icon: "bi-person-badge" },
+    { id: "about", label: "About", icon: "bi-info-circle" },
+    { id: "contact", label: "Contact", icon: "bi-envelope" },
+    { id: "social", label: "Social", icon: "bi-share" },
   ];
 
   const renderSection = () => {
@@ -160,21 +153,30 @@ const SettingsManager = () => {
       <div className="d-flex align-items-center gap-2 mb-3">
         <h5 className="fw-bold mb-0">
           <i
-            className={`bi ${currentSection?.icon} me-2 text-${currentSection?.color}`}
+            className={`bi ${currentSection?.icon} me-2`}
+            style={{ color: "#A51C30" }}
           ></i>
           {currentSection?.label}
         </h5>
         <span
-          className="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1"
-          style={{ fontSize: "10px" }}
+          className="badge rounded-pill px-2 py-1"
+          style={{
+            fontSize: "10px",
+            background: "rgba(40, 167, 69, 0.1)",
+            color: "#28a745",
+          }}
         >
           <i className="bi bi-circle-fill me-1" style={{ fontSize: "6px" }}></i>
           Live
         </span>
         {uploading && (
           <span
-            className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1"
-            style={{ fontSize: "10px" }}
+            className="badge rounded-pill px-2 py-1"
+            style={{
+              fontSize: "10px",
+              background: "rgba(165, 28, 48, 0.1)",
+              color: "#A51C30",
+            }}
           >
             <span
               className="spinner-border spinner-border-sm me-1"
@@ -185,17 +187,38 @@ const SettingsManager = () => {
         )}
       </div>
 
-      {/* Section Tabs */}
+      {/* Section Tabs - ALL CRIMSON */}
       <div className="d-none d-md-flex flex-wrap gap-1 mb-4">
         {sections.map((section) => (
           <button
             key={section.id}
-            className={`btn ${activeSection === section.id ? `btn-${section.color} text-white` : "btn-outline-secondary"}`}
+            className={`btn ${activeSection === section.id ? "text-white" : "btn-outline-secondary"}`}
             onClick={() => setActiveSection(section.id)}
             style={{
               borderRadius: "50px",
               padding: "0.4rem 1.2rem",
               fontSize: "0.85rem",
+              background:
+                activeSection === section.id ? "#A51C30" : "transparent",
+              borderColor:
+                activeSection === section.id
+                  ? "#A51C30"
+                  : "var(--color-border)",
+              color:
+                activeSection === section.id ? "#fff" : "var(--color-text)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (activeSection !== section.id) {
+                e.target.style.borderColor = "#A51C30";
+                e.target.style.color = "#A51C30";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeSection !== section.id) {
+                e.target.style.borderColor = "var(--color-border)";
+                e.target.style.color = "var(--color-text)";
+              }
             }}
           >
             <i className={`bi ${section.icon} me-1`}></i>
@@ -204,11 +227,11 @@ const SettingsManager = () => {
         ))}
       </div>
 
-      {/* Mobile Dropdown */}
+      {/* Mobile Dropdown - ALL CRIMSON */}
       <div className="d-md-none mb-4">
         <div className="dropdown w-100">
           <button
-            className="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center justify-content-between"
+            className="btn dropdown-toggle w-100 text-start d-flex align-items-center justify-content-between"
             type="button"
             id="settingsDropdown"
             data-bs-toggle="dropdown"
@@ -217,16 +240,17 @@ const SettingsManager = () => {
               borderRadius: "12px",
               padding: "0.7rem 1.2rem",
               borderColor: "#e5e5e5",
-              backgroundColor: "#fff",
+              backgroundColor: "var(--color-bg)",
+              color: "var(--color-text)",
             }}
           >
             <span>
               <i
-                className={`bi ${currentSection?.icon} me-2 text-${currentSection?.color}`}
+                className={`bi ${currentSection?.icon} me-2`}
+                style={{ color: "#A51C30" }}
               ></i>
               {currentSection?.label}
             </span>
-            <i className="bi bi-chevron-down"></i>
           </button>
           <ul
             className="dropdown-menu w-100"
@@ -237,6 +261,7 @@ const SettingsManager = () => {
               boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
               border: "none",
               marginTop: "4px",
+              backgroundColor: "var(--color-bg)",
             }}
           >
             {sections.map((section) => (
@@ -250,10 +275,23 @@ const SettingsManager = () => {
                     padding: "0.6rem 1rem",
                     borderRadius: "8px",
                     backgroundColor:
+                      activeSection === section.id ? "#A51C30" : "transparent",
+                    color:
                       activeSection === section.id
-                        ? `var(--bs-${section.color})`
-                        : "transparent",
-                    color: activeSection === section.id ? "#fff" : "inherit",
+                        ? "#fff"
+                        : "var(--color-text)",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeSection !== section.id) {
+                      e.target.style.backgroundColor =
+                        "rgba(165, 28, 48, 0.05)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeSection !== section.id) {
+                      e.target.style.backgroundColor = "transparent";
+                    }
                   }}
                 >
                   <i className={`bi ${section.icon}`}></i>
@@ -274,12 +312,24 @@ const SettingsManager = () => {
           <div className="card-body p-4">{renderSection()}</div>
         </div>
 
-        {/* Save Buttons */}
+        {/* Save Buttons - ALL CRIMSON */}
         <div className="d-flex flex-wrap gap-2 mt-4">
           <button
             type="submit"
-            className="btn btn-primary px-4 rounded-pill"
+            className="btn px-4 rounded-pill"
             disabled={uploading || saving}
+            style={{
+              background: "#A51C30",
+              color: "#fff",
+              border: "none",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#7A1523";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "#A51C30";
+            }}
           >
             {saving ? (
               <>

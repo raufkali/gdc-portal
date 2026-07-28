@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
 // ----- Fallback Banners (HTML/CSS – no images needed) -----
@@ -41,28 +41,14 @@ const HeroCarousel = () => {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        // Try to fetch with ordering first
-        let data = [];
-        try {
-          const q = query(
-            collection(db, "banners"),
-            where("active", "==", true),
-            orderBy("order"),
-          );
-          const snap = await getDocs(q);
-          data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        } catch (indexError) {
-          // If index doesn't exist, fetch without orderBy
-          console.warn(
-            "Index not found, fetching without orderBy:",
-            indexError,
-          );
-          const snap = await getDocs(collection(db, "banners"));
-          data = snap.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .filter((b) => b.active === true || b.active === "true")
-            .sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
+        // Fetch only active banners WITHOUT orderBy (no index needed)
+        const q = query(collection(db, "banners"), where("active", "==", true));
+        const snap = await getDocs(q);
+
+        // Map and sort manually in JavaScript
+        const data = snap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
 
         if (data.length > 0) {
           setBanners(data);
@@ -106,7 +92,7 @@ const HeroCarousel = () => {
   return (
     <div
       id="heroCarousel"
-      className="carousel slide mt-5"
+      className="carousel slide"
       data-bs-ride="carousel"
       style={{
         height: "85vh",
@@ -117,10 +103,7 @@ const HeroCarousel = () => {
         overflow: "hidden",
       }}
     >
-      <div
-        className="carousel-inner mt-3"
-        style={{ height: "100%", width: "100%" }}
-      >
+      <div className="carousel-inner" style={{ height: "100%", width: "100%" }}>
         {banners.map((banner, index) => {
           const isFallback = banner.bgGradient !== undefined;
           const hasImageError = imageErrors[banner.id];

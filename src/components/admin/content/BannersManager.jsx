@@ -124,16 +124,27 @@ const BannersManager = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="mb-0">
-          <i className="bi bi-images me-2 text-primary"></i>Banners
-        </h4>
+      {/* Header - Only Add Banner button, no title */}
+      <div className="d-flex justify-content-end mb-3">
         <button
-          className="btn btn-primary rounded-pill px-4"
+          className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
             setShowModal(true);
+          }}
+          style={{
+            background: "#A51C30",
+            color: "#fff",
+            fontSize: "0.85rem",
+            border: "none",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = "#7A1523";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "#A51C30";
           }}
         >
           <i className="bi bi-plus-circle me-1"></i> Add Banner
@@ -142,32 +153,67 @@ const BannersManager = () => {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary"></div>
+          <div
+            className="spinner-border"
+            role="status"
+            style={{ color: "#A51C30" }}
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-5">
-          <p className="text-muted">No banners found.</p>
+          <div className="display-4 text-muted mb-3">
+            <i className="bi bi-images"></i>
+          </div>
+          <p className="text-muted">
+            No banners found. Click "Add Banner" to create one.
+          </p>
         </div>
       ) : (
         <div className="row g-3">
           {items.map((item) => (
             <div key={item.id} className="col-md-6 col-lg-4">
-              <div className="card h-100 shadow-sm border-0">
+              <div
+                className="card h-100 shadow-sm border-0"
+                style={{
+                  borderRadius: "10px",
+                  backgroundColor: "var(--card-bg)",
+                }}
+              >
                 {item.imageUrl && (
                   <img
                     src={item.imageUrl}
                     className="card-img-top"
                     alt={item.title}
                     style={{ height: "150px", objectFit: "cover" }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
                   />
                 )}
                 <div className="card-body">
-                  <h6 className="fw-bold">{item.title}</h6>
+                  <h6
+                    className="fw-bold"
+                    style={{ color: "var(--color-text)" }}
+                  >
+                    {item.title}
+                  </h6>
                   {item.subtitle && (
                     <p className="small text-muted">{item.subtitle}</p>
                   )}
                   <span
-                    className={`badge bg-${item.active ? "success" : "danger"}`}
+                    className="badge"
+                    style={{
+                      background: item.active
+                        ? "rgba(40, 167, 69, 0.1)"
+                        : "rgba(220, 53, 69, 0.1)",
+                      color: item.active ? "#28a745" : "#dc3545",
+                      padding: "0.25rem 0.7rem",
+                      borderRadius: "50px",
+                      fontWeight: "500",
+                      fontSize: "0.65rem",
+                    }}
                   >
                     {item.active ? "Active" : "Inactive"}
                   </span>
@@ -175,20 +221,54 @@ const BannersManager = () => {
                 <div className="card-footer bg-transparent border-0 pt-0">
                   <div className="d-flex gap-2">
                     <button
-                      className="btn btn-warning btn-sm flex-grow-1"
+                      className="btn btn-sm flex-grow-1"
+                      style={{
+                        background: "rgba(165, 28, 48, 0.08)",
+                        color: "#A51C30",
+                        borderRadius: "50px",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                        border: "none",
+                        transition: "all 0.2s ease",
+                      }}
                       onClick={() => {
                         setEditing(item);
                         setFormData(item);
                         setShowModal(true);
                       }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#A51C30";
+                        e.target.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(165, 28, 48, 0.08)";
+                        e.target.style.color = "#A51C30";
+                      }}
                     >
                       <i className="bi bi-pencil me-1"></i> Edit
                     </button>
                     <button
-                      className="btn btn-danger btn-sm"
+                      className="btn btn-sm"
+                      style={{
+                        background: "rgba(220, 53, 69, 0.08)",
+                        color: "#dc3545",
+                        borderRadius: "50px",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                        border: "none",
+                        transition: "all 0.2s ease",
+                      }}
                       onClick={() => {
                         setDeletingId(item.id);
                         setShowDeleteModal(true);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#dc3545";
+                        e.target.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(220, 53, 69, 0.08)";
+                        e.target.style.color = "#dc3545";
                       }}
                     >
                       <i className="bi bi-trash"></i>
@@ -247,8 +327,20 @@ const BannersManager = () => {
                   <div className="d-flex gap-2 mt-4">
                     <button
                       type="submit"
-                      className="btn btn-primary px-4 rounded-pill"
+                      className="btn px-4 rounded-pill"
                       disabled={uploading}
+                      style={{
+                        background: "#A51C30",
+                        color: "#fff",
+                        border: "none",
+                        transition: "all 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#7A1523";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "#A51C30";
+                      }}
                     >
                       {uploading ? (
                         <>

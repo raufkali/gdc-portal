@@ -17,9 +17,8 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const auth = getAuth(app); // ✅ this is exported
+export const auth = getAuth(app);
 
-// Secondary app (for creating new accounts without affecting admin session)
 const secondaryApp =
   getApps().find((a) => a.name === "Secondary") ||
   initializeApp(firebaseConfig, "Secondary");

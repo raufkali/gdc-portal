@@ -122,18 +122,40 @@ const TestimonialsManager = () => {
     );
   };
 
+  // Render stars for rating display
+  const renderStars = (rating) => {
+    if (!rating) return null;
+    return (
+      <span style={{ color: "#ffc107", fontSize: "0.85rem" }}>
+        {"★".repeat(Math.floor(rating))}
+        {rating % 1 !== 0 && "☆"}
+      </span>
+    );
+  };
+
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="mb-0">
-          <i className="bi bi-chat-quote me-2 text-danger"></i>Testimonials
-        </h4>
+      {/* Header - Only Add Testimonial button, no title */}
+      <div className="d-flex justify-content-end mb-3">
         <button
-          className="btn btn-danger rounded-pill px-4"
+          className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
             setShowModal(true);
+          }}
+          style={{
+            background: "#A51C30",
+            color: "#fff",
+            fontSize: "0.85rem",
+            border: "none",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = "#7A1523";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "#A51C30";
           }}
         >
           <i className="bi bi-plus-circle me-1"></i> Add Testimonial
@@ -142,20 +164,37 @@ const TestimonialsManager = () => {
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-danger"></div>
+          <div
+            className="spinner-border"
+            role="status"
+            style={{ color: "#A51C30" }}
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-5">
-          <p className="text-muted">No testimonials found.</p>
+          <div className="display-4 text-muted mb-3">
+            <i className="bi bi-chat-quote"></i>
+          </div>
+          <p className="text-muted">
+            No testimonials found. Click "Add Testimonial" to create one.
+          </p>
         </div>
       ) : (
         <div className="row g-3">
           {items.map((item) => (
             <div key={item.id} className="col-md-6 col-lg-4">
-              <div className="card h-100 shadow-sm border-0">
+              <div
+                className="card h-100 shadow-sm border-0"
+                style={{
+                  borderRadius: "10px",
+                  backgroundColor: "var(--card-bg)",
+                }}
+              >
                 <div className="card-body">
                   <div className="d-flex align-items-start gap-2">
-                    {item.imageUrl && (
+                    {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
                         className="rounded-circle"
@@ -164,40 +203,114 @@ const TestimonialsManager = () => {
                           width: "50px",
                           height: "50px",
                           objectFit: "cover",
+                          border: "2px solid rgba(165, 28, 48, 0.1)",
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
                         }}
                       />
+                    ) : (
+                      <div
+                        style={{
+                          width: "50px",
+                          height: "50px",
+                          borderRadius: "50%",
+                          background: "rgba(165, 28, 48, 0.08)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#A51C30",
+                          fontWeight: "600",
+                          fontSize: "1.2rem",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.studentName?.charAt(0) || "S"}
+                      </div>
                     )}
                     <div>
-                      <h6 className="fw-bold">{item.studentName}</h6>
+                      <h6
+                        className="fw-bold"
+                        style={{ color: "var(--color-text)" }}
+                      >
+                        {item.studentName}
+                      </h6>
                       {item.program && (
-                        <small className="text-muted">{item.program}</small>
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "0.75rem" }}
+                        >
+                          {item.program}
+                        </small>
                       )}
                     </div>
                     {item.rating && (
-                      <span className="ms-auto text-warning">
-                        {"★".repeat(item.rating)}
+                      <span className="ms-auto">
+                        {renderStars(item.rating)}
                       </span>
                     )}
                   </div>
-                  <p className="small mt-2">{item.content}</p>
+                  <p
+                    className="small mt-2"
+                    style={{
+                      color: "var(--color-text-muted)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    "{item.content}"
+                  </p>
                 </div>
                 <div className="card-footer bg-transparent border-0 pt-0">
                   <div className="d-flex gap-2">
                     <button
-                      className="btn btn-warning btn-sm flex-grow-1"
+                      className="btn btn-sm flex-grow-1"
+                      style={{
+                        background: "rgba(165, 28, 48, 0.08)",
+                        color: "#A51C30",
+                        borderRadius: "50px",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                        border: "none",
+                        transition: "all 0.2s ease",
+                      }}
                       onClick={() => {
                         setEditing(item);
                         setFormData(item);
                         setShowModal(true);
                       }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#A51C30";
+                        e.target.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(165, 28, 48, 0.08)";
+                        e.target.style.color = "#A51C30";
+                      }}
                     >
                       <i className="bi bi-pencil me-1"></i> Edit
                     </button>
                     <button
-                      className="btn btn-danger btn-sm"
+                      className="btn btn-sm"
+                      style={{
+                        background: "rgba(220, 53, 69, 0.08)",
+                        color: "#dc3545",
+                        borderRadius: "50px",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                        border: "none",
+                        transition: "all 0.2s ease",
+                      }}
                       onClick={() => {
                         setDeletingId(item.id);
                         setShowDeleteModal(true);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#dc3545";
+                        e.target.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(220, 53, 69, 0.08)";
+                        e.target.style.color = "#dc3545";
                       }}
                     >
                       <i className="bi bi-trash"></i>
@@ -257,8 +370,20 @@ const TestimonialsManager = () => {
                   <div className="d-flex gap-2 mt-4">
                     <button
                       type="submit"
-                      className="btn btn-danger px-4 rounded-pill"
+                      className="btn px-4 rounded-pill"
                       disabled={uploading}
+                      style={{
+                        background: "#A51C30",
+                        color: "#fff",
+                        border: "none",
+                        transition: "all 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#7A1523";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "#A51C30";
+                      }}
                     >
                       {uploading ? (
                         <>

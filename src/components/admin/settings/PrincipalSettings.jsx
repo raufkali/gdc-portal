@@ -49,17 +49,6 @@ const PrincipalSettings = ({
   return (
     <div>
       <div className="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-        <div
-          className="d-flex align-items-center justify-content-center rounded-circle"
-          style={{
-            width: "48px",
-            height: "48px",
-            backgroundColor: "rgba(23, 162, 184, 0.08)",
-            color: "#17a2b8",
-          }}
-        >
-          <i className="bi bi-person-badge fs-4"></i>
-        </div>
         <div>
           <h5 className="fw-bold mb-0">Principal Information</h5>
           <p className="text-muted small mb-0">
