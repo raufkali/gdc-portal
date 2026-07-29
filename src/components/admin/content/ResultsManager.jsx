@@ -180,7 +180,7 @@ const ResultsManager = () => {
 
   return (
     <div>
-      {/* Header - With title and Add button on the right */}
+      {/* Header */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
         <h4 className="mb-0">
           <i
@@ -280,8 +280,8 @@ const ResultsManager = () => {
                       <span
                         className="badge"
                         style={{
-                          background: "rgba(23, 162, 184, 0.1)",
-                          color: "#17a2b8",
+                          background: "rgba(165, 28, 48, 0.08)",
+                          color: "#A51C30",
                           padding: "0.25rem 0.7rem",
                           borderRadius: "50px",
                           fontWeight: "500",
@@ -295,8 +295,8 @@ const ResultsManager = () => {
                       <span
                         className="badge"
                         style={{
-                          background: "rgba(255, 193, 7, 0.1)",
-                          color: "#d39e00",
+                          background: "rgba(165, 28, 48, 0.08)",
+                          color: "#A51C30",
                           padding: "0.25rem 0.7rem",
                           borderRadius: "50px",
                           fontWeight: "500",

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 
@@ -37,6 +38,20 @@ import AdminDashboard from "./components/admin/AdminDashboard";
 import ContentManager from "./components/admin/ContentManager";
 import SettingsManager from "./components/admin/SettingsManager";
 
+// ===== Scroll to Top Component =====
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, [pathname]);
+
+  return null;
+};
+
 // ===== Navigation Layout (hides navbar on admin routes) =====
 function NavigationLayout() {
   const location = useLocation();
@@ -61,6 +76,7 @@ function App() {
     <AuthProvider>
       <SettingsProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <div className="d-flex flex-column min-vh-100">
             <NavigationLayout />
             <main className="flex-grow-1">

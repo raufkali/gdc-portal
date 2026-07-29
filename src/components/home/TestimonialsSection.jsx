@@ -28,7 +28,6 @@ const TestimonialsSection = () => {
     <section
       className="py-5"
       style={{
-        backgroundColor: "var(--color-bg-alt)",
         position: "relative",
         overflow: "hidden",
       }}

@@ -93,7 +93,7 @@ const BrandingSettings = ({
         <div>
           <h5 className="fw-bold mb-0">Branding & Identity</h5>
           <p className="text-muted small mb-0">
-            Upload your college logo, favicon, and customize brand colors
+            Upload your college logo & Fav Icons.
           </p>
         </div>
       </div>
@@ -235,84 +235,6 @@ const BrandingSettings = ({
               <i className="bi bi-info-circle me-1"></i>
               Upload your favicon (ICO, PNG, SVG). Recommended size: 32x32px.
             </small>
-          </div>
-        </div>
-
-        {/* Primary Color */}
-        <div className="col-md-6">
-          <div className="form-group">
-            <label className="form-label fw-semibold">Primary Color</label>
-            <div className="d-flex align-items-center gap-3">
-              <input
-                type="color"
-                className="form-control"
-                value={form.primaryColor || "#A51C30"}
-                onChange={(e) =>
-                  setForm({ ...form, primaryColor: e.target.value })
-                }
-                style={{
-                  width: "60px",
-                  height: "48px",
-                  padding: "4px",
-                  borderRadius: "10px",
-                  borderColor: "#e5e5e5",
-                  cursor: "pointer",
-                }}
-              />
-              <div>
-                <span
-                  className="badge rounded-pill px-3 py-2"
-                  style={{
-                    backgroundColor: form.primaryColor || "#A51C30",
-                    color: "#fff",
-                  }}
-                >
-                  {form.primaryColor || "#A51C30"}
-                </span>
-                <small className="text-muted d-block mt-1">
-                  Brand primary color
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary Color */}
-        <div className="col-md-6">
-          <div className="form-group">
-            <label className="form-label fw-semibold">Secondary Color</label>
-            <div className="d-flex align-items-center gap-3">
-              <input
-                type="color"
-                className="form-control"
-                value={form.secondaryColor || "#1A1A1A"}
-                onChange={(e) =>
-                  setForm({ ...form, secondaryColor: e.target.value })
-                }
-                style={{
-                  width: "60px",
-                  height: "48px",
-                  padding: "4px",
-                  borderRadius: "10px",
-                  borderColor: "#e5e5e5",
-                  cursor: "pointer",
-                }}
-              />
-              <div>
-                <span
-                  className="badge rounded-pill px-3 py-2"
-                  style={{
-                    backgroundColor: form.secondaryColor || "#1A1A1A",
-                    color: "#fff",
-                  }}
-                >
-                  {form.secondaryColor || "#1A1A1A"}
-                </span>
-                <small className="text-muted d-block mt-1">
-                  Brand secondary color
-                </small>
-              </div>
-            </div>
           </div>
         </div>
       </div>

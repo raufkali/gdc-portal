@@ -22,6 +22,7 @@ const Contact = () => {
       await addDoc(collection(db, "contacts"), {
         ...form,
         timestamp: new Date(),
+        status: "unread", // ✅ Add status for admin tracking
       });
       setSubmitted(true);
       setForm({ name: "", email: "", subject: "", message: "" });
@@ -54,6 +55,12 @@ const Contact = () => {
       color: "#0a66c2",
     },
   ];
+
+  // ✅ Check if contact info exists in settings
+  const hasContactInfo =
+    settings?.contactPhone ||
+    settings?.contactEmail ||
+    settings?.contactAddress;
 
   return (
     <div
@@ -131,112 +138,140 @@ const Contact = () => {
                   Contact Information
                 </h5>
 
-                {/* Phone */}
-                <div className="d-flex align-items-start gap-3 mb-4">
-                  <div
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      borderRadius: "50%",
-                      background: "rgba(165, 28, 48, 0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <i
-                      className="bi bi-telephone fs-5"
-                      style={{ color: "#A51C30" }}
-                    ></i>
-                  </div>
-                  <div>
-                    <h6
-                      className="fw-bold mb-0"
-                      style={{ color: "var(--color-text)" }}
-                    >
-                      Phone
-                    </h6>
-                    <p
-                      className="mb-0"
-                      style={{ color: "var(--color-text-muted)" }}
-                    >
-                      {settings?.contactPhone || "Not provided"}
+                {/* If no contact info in settings, show placeholder */}
+                {!hasContactInfo ? (
+                  <div className="text-center py-4">
+                    <i className="bi bi-building display-4 text-muted d-block mb-2"></i>
+                    <p className="text-muted small">
+                      Contact information coming soon.
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Phone */}
+                    {settings?.contactPhone && (
+                      <div className="d-flex align-items-start gap-3 mb-4">
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "50%",
+                            background: "rgba(165, 28, 48, 0.08)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <i
+                            className="bi bi-telephone fs-5"
+                            style={{ color: "#A51C30" }}
+                          ></i>
+                        </div>
+                        <div>
+                          <h6
+                            className="fw-bold mb-0"
+                            style={{ color: "var(--color-text)" }}
+                          >
+                            Phone
+                          </h6>
+                          <p
+                            className="mb-0"
+                            style={{ color: "var(--color-text-muted)" }}
+                          >
+                            <a
+                              href={`tel:${settings.contactPhone}`}
+                              style={{ color: "var(--color-text-muted)" }}
+                            >
+                              {settings.contactPhone}
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
-                {/* Email */}
-                <div className="d-flex align-items-start gap-3 mb-4">
-                  <div
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      borderRadius: "50%",
-                      background: "rgba(40, 167, 69, 0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <i
-                      className="bi bi-envelope fs-5"
-                      style={{ color: "#28a745" }}
-                    ></i>
-                  </div>
-                  <div>
-                    <h6
-                      className="fw-bold mb-0"
-                      style={{ color: "var(--color-text)" }}
-                    >
-                      Email
-                    </h6>
-                    <p
-                      className="mb-0"
-                      style={{ color: "var(--color-text-muted)" }}
-                    >
-                      {settings?.contactEmail || "Not provided"}
-                    </p>
-                  </div>
-                </div>
+                    {/* Email */}
+                    {settings?.contactEmail && (
+                      <div className="d-flex align-items-start gap-3 mb-4">
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "50%",
+                            background: "rgba(40, 167, 69, 0.08)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <i
+                            className="bi bi-envelope fs-5"
+                            style={{ color: "#28a745" }}
+                          ></i>
+                        </div>
+                        <div>
+                          <h6
+                            className="fw-bold mb-0"
+                            style={{ color: "var(--color-text)" }}
+                          >
+                            Email
+                          </h6>
+                          <p
+                            className="mb-0"
+                            style={{ color: "var(--color-text-muted)" }}
+                          >
+                            <a
+                              href={`mailto:${settings.contactEmail}`}
+                              style={{ color: "var(--color-text-muted)" }}
+                            >
+                              {settings.contactEmail}
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
-                {/* Address */}
-                <div className="d-flex align-items-start gap-3 mb-4">
-                  <div
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      borderRadius: "50%",
-                      background: "rgba(255, 193, 7, 0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <i
-                      className="bi bi-geo-alt fs-5"
-                      style={{ color: "#ffc107" }}
-                    ></i>
-                  </div>
-                  <div>
-                    <h6
-                      className="fw-bold mb-0"
-                      style={{ color: "var(--color-text)" }}
-                    >
-                      Address
-                    </h6>
-                    <p
-                      className="mb-0"
-                      style={{ color: "var(--color-text-muted)" }}
-                    >
-                      {settings?.contactAddress || "Not provided"}
-                    </p>
-                  </div>
-                </div>
+                    {/* Address */}
+                    {settings?.contactAddress && (
+                      <div className="d-flex align-items-start gap-3 mb-4">
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "50%",
+                            background: "rgba(255, 193, 7, 0.08)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <i
+                            className="bi bi-geo-alt fs-5"
+                            style={{ color: "#ffc107" }}
+                          ></i>
+                        </div>
+                        <div>
+                          <h6
+                            className="fw-bold mb-0"
+                            style={{ color: "var(--color-text)" }}
+                          >
+                            Address
+                          </h6>
+                          <p
+                            className="mb-0"
+                            style={{ color: "var(--color-text-muted)" }}
+                          >
+                            {settings.contactAddress}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
-                {/* Working Hours */}
+                {/* Working Hours - Static */}
                 <div className="d-flex align-items-start gap-3">
                   <div
                     style={{
@@ -334,7 +369,7 @@ const Contact = () => {
           </div>
 
           {/* Contact Form */}
-          <div className="col-lg-8" data-aos="fade-left" data-aos-delay="200">
+          <div className="col-lg-8" data-aos="fade-up" data-aos-delay="200">
             <div
               className="card border-0 shadow-sm"
               style={{

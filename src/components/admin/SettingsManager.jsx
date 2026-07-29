@@ -5,7 +5,6 @@ import {
   GeneralSettings,
   BrandingSettings,
   PrincipalSettings,
-  AboutSettings,
   ContactSettings,
   SocialSettings,
 } from "./settings";
@@ -113,7 +112,6 @@ const SettingsManager = () => {
     { id: "general", label: "General", icon: "bi-house" },
     { id: "branding", label: "Branding", icon: "bi-palette" },
     { id: "principal", label: "Principal", icon: "bi-person-badge" },
-    { id: "about", label: "About", icon: "bi-info-circle" },
     { id: "contact", label: "Contact", icon: "bi-envelope" },
     { id: "social", label: "Social", icon: "bi-share" },
   ];
@@ -134,8 +132,6 @@ const SettingsManager = () => {
         return <BrandingSettings {...props} />;
       case "principal":
         return <PrincipalSettings {...props} />;
-      case "about":
-        return <AboutSettings {...props} />;
       case "contact":
         return <ContactSettings {...props} />;
       case "social":

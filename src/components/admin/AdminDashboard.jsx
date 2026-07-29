@@ -10,6 +10,7 @@ import ContentManager from "./ContentManager";
 import SettingsManager from "./SettingsManager";
 import AnnouncementsManager from "./content/AnnouncementsManager";
 import ResultsManager from "./content/ResultsManager";
+import MessagesManager from "./content/MessagesManager"; // ✅ Added import
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
@@ -492,7 +493,6 @@ const AdminDashboard = () => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Navigation items - Only main items, no child links
   const navItems = [
     { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
     {
@@ -501,17 +501,15 @@ const AdminDashboard = () => {
       icon: "bi-megaphone",
     },
     { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
-    { path: "/", label: "Home", icon: "bi-house" },
-
     { path: "/admin/content", label: "Content", icon: "bi-folder" },
-
+    { path: "/admin/messages", label: "Messages", icon: "bi-envelope" }, // ✅ Added
     { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
+    { path: "/", label: "Back To Home", icon: "bi-house" },
   ];
 
   const isActive = (path, exact = false) => {
     const currentPath = location.pathname;
 
-    // For Home path "/", only match exactly "/"
     if (path === "/") {
       return currentPath === "/";
     }
@@ -728,6 +726,8 @@ const AdminDashboard = () => {
           />
           <Route path="/announcements" element={<AnnouncementsManager />} />
           <Route path="/results" element={<ResultsManager />} />
+          <Route path="/messages" element={<MessagesManager />} />{" "}
+          {/* ✅ Added route */}
           <Route path="/settings" element={<SettingsManager />} />
           <Route
             path="/settings/principal"
