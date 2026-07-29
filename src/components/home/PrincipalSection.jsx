@@ -3,32 +3,57 @@ import { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 
-// Cache settings for 10 minutes
+// ✅ Cache settings for 10 minutes
 let cachedSettings = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 const PrincipalSection = () => {
   const { settings: contextSettings, loading: contextLoading } = useSettings();
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
+
+  // ✅ Initialize with cached data if available
+  const [settings, setSettings] = useState(() => {
+    if (
+      cachedSettings &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Principal settings instant from cache");
+      return cachedSettings;
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedSettings &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedSettings &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
     const fetchSettings = async () => {
-      // If context settings are already loaded, use them
+      // ✅ If context settings are already loaded, use them
       if (contextSettings && !contextLoading) {
         setSettings(contextSettings);
         setLoading(false);
         return;
       }
 
-      // Try to get from cache
-      const now = Date.now();
+      // ✅ If cache is valid, skip fetching
       if (
         cachedSettings &&
         cacheTimestamp &&
-        now - cacheTimestamp < CACHE_TTL
+        Date.now() - cacheTimestamp < CACHE_TTL
       ) {
         console.log("📦 Principal settings from cache");
         setSettings(cachedSettings);
@@ -46,7 +71,7 @@ const PrincipalSection = () => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           cachedSettings = data;
-          cacheTimestamp = now;
+          cacheTimestamp = Date.now();
           setSettings(data);
           setFromCache(false);
         } else {
@@ -64,7 +89,7 @@ const PrincipalSection = () => {
             programs: "12+",
           };
           cachedSettings = fallback;
-          cacheTimestamp = now;
+          cacheTimestamp = Date.now();
           setSettings(fallback);
           setFromCache(false);
         }
@@ -161,27 +186,6 @@ const PrincipalSection = () => {
         overflow: "hidden",
       }}
     >
-      {/* ✅ Cache indicator */}
-      {fromCache && process.env.NODE_ENV === "development" && (
-        <div
-          style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
-            zIndex: 10,
-            background: "rgba(40, 167, 69, 0.9)",
-            color: "#fff",
-            padding: "4px 12px",
-            borderRadius: "50px",
-            fontSize: "10px",
-            fontWeight: "600",
-            letterSpacing: "0.5px",
-          }}
-        >
-          ⚡ Cached
-        </div>
-      )}
-
       {/* Decorative background elements */}
       <div
         style={{

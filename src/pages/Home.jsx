@@ -46,6 +46,7 @@ const Home = () => {
         data-aos-duration="600"
         data-aos-once="true"
         data-aos-delay="100"
+        id="programs"
       >
         <ProgramsSection />
       </div>

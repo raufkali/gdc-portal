@@ -4,17 +4,79 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for announcements
+let cachedAnnouncements = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const Announcements = () => {
-  const [announcements, setAnnouncements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [announcements, setAnnouncements] = useState(() => {
+    if (
+      cachedAnnouncements &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Announcements instant from cache");
+      return cachedAnnouncements;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedAnnouncements &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedAnnouncements &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchCollection("announcements", [
-      { type: "orderBy", field: "date", direction: "desc" },
-    ])
-      .then(setAnnouncements)
-      .finally(() => setLoading(false));
+    const fetchAnnouncements = async () => {
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedAnnouncements &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setAnnouncements(cachedAnnouncements);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching announcements from server");
+        const data = await fetchCollection("announcements", [
+          { type: "orderBy", field: "date", direction: "desc" },
+        ]);
+
+        cachedAnnouncements = data;
+        cacheTimestamp = Date.now();
+        setAnnouncements(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+        if (cachedAnnouncements) {
+          setAnnouncements(cachedAnnouncements);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
   }, []);
 
   // Filter announcements
@@ -75,6 +137,21 @@ const Announcements = () => {
             Stay informed about important updates, events, and notices from GDC
             Gulabad
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
         {/* Search Bar */}

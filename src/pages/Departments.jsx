@@ -3,18 +3,71 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for departments
+let cachedDepartments = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const Departments = () => {
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [departments, setDepartments] = useState(() => {
+    if (
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Departments instant from cache");
+      return cachedDepartments;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => {
     const fetchDepartments = async () => {
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedDepartments &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setDepartments(cachedDepartments);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
       try {
+        console.log("📡 Fetching departments from server");
         const data = await fetchCollection("departments");
+
+        cachedDepartments = data;
+        cacheTimestamp = Date.now();
         setDepartments(data);
+        setFromCache(false);
       } catch (error) {
         console.error("Error fetching departments:", error);
+        if (cachedDepartments) {
+          setDepartments(cachedDepartments);
+          setFromCache(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -115,6 +168,21 @@ const Departments = () => {
             <p className="text-muted mb-0">
               Discover excellence across various disciplines.
             </p>
+            {fromCache && process.env.NODE_ENV === "development" && (
+              <span
+                style={{
+                  fontSize: "0.65rem",
+                  color: "#28a745",
+                  background: "rgba(40, 167, 69, 0.1)",
+                  padding: "0.15rem 0.8rem",
+                  borderRadius: "50px",
+                  display: "inline-block",
+                  marginTop: "0.5rem",
+                }}
+              >
+                ⚡ Cached
+              </span>
+            )}
           </div>
 
           {/* Category Filter */}

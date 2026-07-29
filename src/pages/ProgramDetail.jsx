@@ -3,19 +3,61 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for program detail (by slug/id)
+const cachedPrograms = {};
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 const ProgramDetail = () => {
   const { slug } = useParams();
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
 
   useEffect(() => {
-    fetchCollection("programs")
-      .then((data) => {
-        const found = data.find((p) => p.slug === slug || p.id === slug);
-        setProgram(found || null);
+    const fetchProgram = async () => {
+      // ✅ Check cache for this specific program
+      const cacheKey = slug;
+      if (
+        cachedPrograms[cacheKey] &&
+        cachedPrograms[cacheKey].timestamp &&
+        Date.now() - cachedPrograms[cacheKey].timestamp < CACHE_TTL
+      ) {
+        console.log(`📦 Program "${slug}" from cache`);
+        setProgram(cachedPrograms[cacheKey].data);
+        setFromCache(true);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+        return;
+      }
+
+      try {
+        console.log(`📡 Fetching program "${slug}" from server`);
+        const data = await fetchCollection("programs");
+        const found = data.find((p) => p.slug === slug || p.id === slug);
+
+        if (found) {
+          // ✅ Cache the found program
+          cachedPrograms[cacheKey] = {
+            data: found,
+            timestamp: Date.now(),
+          };
+          setProgram(found);
+          setFromCache(false);
+        } else {
+          setProgram(null);
+        }
+      } catch (error) {
+        console.error("Error fetching program:", error);
+        // ✅ Try to use stale cache if available
+        if (cachedPrograms[cacheKey]) {
+          setProgram(cachedPrograms[cacheKey].data);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProgram();
   }, [slug]);
 
   if (loading) return <Loader />;
@@ -65,4 +107,5 @@ const ProgramDetail = () => {
     </div>
   );
 };
+
 export default ProgramDetail;

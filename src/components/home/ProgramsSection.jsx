@@ -2,26 +2,49 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// Cache for programs data
+// ✅ Cache for programs
 let cachedPrograms = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const ProgramsSection = () => {
-  const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
+  // ✅ Initialize with cached data if available
+  const [programs, setPrograms] = useState(() => {
+    if (
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Programs instant from cache");
+      return cachedPrograms;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
     const fetchPrograms = async () => {
-      // Check cache first
-      const now = Date.now();
+      // ✅ If cache is valid, skip fetching
       if (
         cachedPrograms &&
         cacheTimestamp &&
-        now - cacheTimestamp < CACHE_TTL
+        Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        console.log("📦 Programs from cache");
         setPrograms(cachedPrograms);
         setFromCache(true);
         setLoading(false);
@@ -32,16 +55,13 @@ const ProgramsSection = () => {
         console.log("📡 Fetching programs from server");
         const data = await fetchCollection("programs");
 
-        // Cache the data
         cachedPrograms = data;
-        cacheTimestamp = now;
+        cacheTimestamp = Date.now();
         setPrograms(data);
         setFromCache(false);
       } catch (error) {
         console.error("Error fetching programs:", error);
-        // Use cached data if available (even if expired)
         if (cachedPrograms) {
-          console.log("⚠️ Using stale cache for programs");
           setPrograms(cachedPrograms);
           setFromCache(true);
         }
@@ -73,7 +93,6 @@ const ProgramsSection = () => {
 
   if (!programs.length) return null;
 
-  // Get first 4 programs
   const displayPrograms = programs.slice(0, 4);
 
   return (
@@ -82,7 +101,6 @@ const ProgramsSection = () => {
       style={{ backgroundColor: "var(--color-bg-alt)" }}
     >
       <div className="container">
-        {/* Section Header */}
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
@@ -119,10 +137,8 @@ const ProgramsSection = () => {
               margin: "0 auto",
             }}
           >
-            Explore our diverse range of academic programs designed to shape
-            future leaders
+            Explore our diverse range of academic programs
           </p>
-          {/* ✅ Cache indicator */}
           {fromCache && process.env.NODE_ENV === "development" && (
             <span
               style={{
@@ -149,17 +165,6 @@ const ProgramsSection = () => {
                   borderRadius: "12px",
                   overflow: "hidden",
                   backgroundColor: "var(--card-bg)",
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-6px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 15px 35px rgba(0,0,0,0.08)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 5px 15px rgba(0,0,0,0.05)";
                 }}
               >
                 {program.imageUrl && (
@@ -229,8 +234,7 @@ const ProgramsSection = () => {
                       e.target.style.boxShadow = "none";
                     }}
                   >
-                    <i className="bi bi-arrow-right me-1"></i>
-                    Learn More
+                    <i className="bi bi-arrow-right me-1"></i> Learn More
                   </Link>
                 </div>
               </div>
@@ -267,8 +271,7 @@ const ProgramsSection = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i>
-            View All Programs
+            <i className="bi bi-arrow-right me-2"></i> View All Programs
           </Link>
         </div>
       </div>

@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for testimonials
+let cachedTestimonials = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 // Star rating component
 const StarRating = ({ rating }) => {
   return (
@@ -22,13 +27,69 @@ const StarRating = ({ rating }) => {
 };
 
 const Testimonials = () => {
-  const [testimonials, setTestimonials] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [testimonials, setTestimonials] = useState(() => {
+    if (
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Testimonials instant from cache");
+      return cachedTestimonials;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
-    fetchCollection("testimonials")
-      .then(setTestimonials)
-      .finally(() => setLoading(false));
+    const fetchTestimonials = async () => {
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedTestimonials &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setTestimonials(cachedTestimonials);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching testimonials from server");
+        const data = await fetchCollection("testimonials");
+
+        cachedTestimonials = data;
+        cacheTimestamp = Date.now();
+        setTestimonials(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching testimonials:", error);
+        if (cachedTestimonials) {
+          setTestimonials(cachedTestimonials);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTestimonials();
   }, []);
 
   if (loading) return <Loader />;
@@ -83,6 +144,21 @@ const Testimonials = () => {
             Real stories from real students about their experience at GDC
             Gulabad
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
         {/* Testimonials Grid */}

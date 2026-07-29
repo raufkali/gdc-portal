@@ -3,6 +3,11 @@ import { db } from "../firebase/config";
 import { collection, getDocs } from "firebase/firestore";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for gallery images
+let cachedImages = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 // Sample fallback images when no images exist
 const FALLBACK_IMAGES = [
   {
@@ -38,16 +43,53 @@ const FALLBACK_IMAGES = [
 ];
 
 const Gallery = () => {
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [images, setImages] = useState(() => {
+    if (
+      cachedImages &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Gallery images instant from cache");
+      return cachedImages;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedImages &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedImages &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     const fetchImages = async () => {
-      try {
-        setLoading(true);
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedImages &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setImages(cachedImages);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
 
-        console.log("📸 Fetching gallery images...");
+      try {
+        console.log("📡 Fetching gallery images from server...");
 
         // Fetch all images from gallery collection
         const snap = await getDocs(collection(db, "gallery"));
@@ -56,16 +98,33 @@ const Gallery = () => {
         console.log(`📦 Found ${data.length} images`);
 
         if (data.length > 0) {
+          // ✅ Cache the data
+          cachedImages = data;
+          cacheTimestamp = Date.now();
           setImages(data);
+          setFromCache(false);
         } else {
           // Use fallback images if no images exist
           console.log("🔄 Using fallback images");
-          setImages(FALLBACK_IMAGES);
+          const fallback = FALLBACK_IMAGES;
+          cachedImages = fallback;
+          cacheTimestamp = Date.now();
+          setImages(fallback);
+          setFromCache(false);
         }
       } catch (error) {
         console.error("❌ Error fetching gallery:", error);
         // Use fallback images on error
-        setImages(FALLBACK_IMAGES);
+        if (cachedImages) {
+          setImages(cachedImages);
+          setFromCache(true);
+        } else {
+          const fallback = FALLBACK_IMAGES;
+          cachedImages = fallback;
+          cacheTimestamp = Date.now();
+          setImages(fallback);
+          setFromCache(false);
+        }
       } finally {
         setLoading(false);
       }
@@ -146,6 +205,21 @@ const Gallery = () => {
           >
             Explore our campus life, events, and achievements through images
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
         {/* Gallery Grid */}

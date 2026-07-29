@@ -2,26 +2,46 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// Cache for departments data
+// ✅ Cache for departments
 let cachedDepartments = null;
 let cacheTimestamp = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
 const DepartmentsSection = () => {
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
+  const [departments, setDepartments] = useState(() => {
+    if (
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      return cachedDepartments;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedDepartments &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
     const fetchDepartments = async () => {
-      // Check cache first
-      const now = Date.now();
       if (
         cachedDepartments &&
         cacheTimestamp &&
-        now - cacheTimestamp < CACHE_TTL
+        Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        console.log("📦 Departments from cache");
         setDepartments(cachedDepartments);
         setFromCache(true);
         setLoading(false);
@@ -32,13 +52,12 @@ const DepartmentsSection = () => {
         console.log("📡 Fetching departments from server");
         const data = await fetchCollection("departments");
         cachedDepartments = data;
-        cacheTimestamp = now;
+        cacheTimestamp = Date.now();
         setDepartments(data);
         setFromCache(false);
       } catch (error) {
         console.error("Error fetching departments:", error);
         if (cachedDepartments) {
-          console.log("⚠️ Using stale cache for departments");
           setDepartments(cachedDepartments);
           setFromCache(true);
         }
@@ -141,17 +160,6 @@ const DepartmentsSection = () => {
                     borderRadius: "12px",
                     overflow: "hidden",
                     backgroundColor: "var(--card-bg)",
-                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-6px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 15px 35px rgba(0,0,0,0.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow =
-                      "0 5px 15px rgba(0,0,0,0.05)";
                   }}
                 >
                   {dept.imageUrl && (
@@ -215,8 +223,7 @@ const DepartmentsSection = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i>
-            All Departments
+            <i className="bi bi-arrow-right me-2"></i> All Departments
           </Link>
         </div>
       </div>

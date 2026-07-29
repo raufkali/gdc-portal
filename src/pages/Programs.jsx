@@ -3,14 +3,75 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for programs
+let cachedPrograms = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const Programs = () => {
-  const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [programs, setPrograms] = useState(() => {
+    if (
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Programs instant from cache");
+      return cachedPrograms;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
-    fetchCollection("programs")
-      .then(setPrograms)
-      .finally(() => setLoading(false));
+    const fetchPrograms = async () => {
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedPrograms &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setPrograms(cachedPrograms);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching programs from server");
+        const data = await fetchCollection("programs");
+
+        cachedPrograms = data;
+        cacheTimestamp = Date.now();
+        setPrograms(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching programs:", error);
+        if (cachedPrograms) {
+          setPrograms(cachedPrograms);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrograms();
   }, []);
 
   if (loading) return <Loader />;
@@ -61,6 +122,21 @@ const Programs = () => {
             Explore our diverse range of academic programs designed to shape
             future leaders and professionals
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
         {/* Programs Grid */}

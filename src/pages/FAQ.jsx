@@ -284,6 +284,7 @@ const FAQ = () => {
                 fontFamily: "'Playfair Display', Georgia, serif",
                 fontSize: "clamp(1.5rem, 2vw, 2rem)",
                 fontWeight: "700",
+                color: "white",
                 marginBottom: "0.5rem",
               }}
             >

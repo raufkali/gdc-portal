@@ -2,26 +2,48 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// Cache for testimonials
+// ✅ Cache for testimonials
 let cachedTestimonials = null;
 let cacheTimestamp = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
 const TestimonialsSection = () => {
-  const [testimonials, setTestimonials] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
+  const [testimonials, setTestimonials] = useState(() => {
+    if (
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      return cachedTestimonials;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedTestimonials &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
-      const now = Date.now();
       if (
         cachedTestimonials &&
         cacheTimestamp &&
-        now - cacheTimestamp < CACHE_TTL
+        Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        console.log("📦 Testimonials from cache");
         setTestimonials(cachedTestimonials);
         setFromCache(true);
         setLoading(false);
@@ -32,13 +54,12 @@ const TestimonialsSection = () => {
         console.log("📡 Fetching testimonials from server");
         const data = await fetchCollection("testimonials");
         cachedTestimonials = data;
-        cacheTimestamp = now;
+        cacheTimestamp = Date.now();
         setTestimonials(data);
         setFromCache(false);
       } catch (error) {
         console.error("Error fetching testimonials:", error);
         if (cachedTestimonials) {
-          console.log("⚠️ Using stale cache for testimonials");
           setTestimonials(cachedTestimonials);
           setFromCache(true);
         }
@@ -88,7 +109,6 @@ const TestimonialsSection = () => {
         overflow: "hidden",
       }}
     >
-      {/* Decorative background */}
       <div
         style={{
           position: "absolute",
@@ -115,7 +135,6 @@ const TestimonialsSection = () => {
       />
 
       <div className="container position-relative">
-        {/* Section Header */}
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{

@@ -473,7 +473,7 @@ const Navbar = () => {
                 to="/announcements"
                 className="position-relative"
                 style={{
-                  color: "rgba(255,255,255,0.8)",
+                  color: "#fff",
                   fontSize: "1.2rem",
                   padding: "0.3rem 0.3rem",
                   display: "inline-flex",
@@ -481,24 +481,20 @@ const Navbar = () => {
                   transition: "color 0.3s ease",
                   textDecoration: "none",
                 }}
-                onMouseEnter={(e) => (e.target.style.color = "#fff")}
-                onMouseLeave={(e) =>
-                  (e.target.style.color = "rgba(255,255,255,0.8)")
-                }
               >
                 <i className="bi bi-bell"></i>
                 {announcementCount > 0 && (
                   <span
                     style={{
                       position: "absolute",
-                      top: "-4px",
-                      right: "-6px",
+                      top: "10px",
+                      right: "0px",
                       background: "#dc3545",
                       color: "#fff",
                       fontSize: "0.5rem",
                       fontWeight: "700",
-                      minWidth: "16px",
-                      height: "16px",
+                      minWidth: "10px",
+                      height: "10px",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
@@ -507,9 +503,7 @@ const Navbar = () => {
                       boxShadow: "0 2px 8px rgba(220, 53, 69, 0.4)",
                       animation: "pulse-badge 2s infinite",
                     }}
-                  >
-                    {announcementCount > 9 ? "9+" : announcementCount}
-                  </span>
+                  ></span>
                 )}
               </Link>
 

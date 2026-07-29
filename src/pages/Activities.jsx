@@ -4,17 +4,79 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for activities
+let cachedActivities = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const Activities = () => {
-  const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ Initialize with cached data if available
+  const [activities, setActivities] = useState(() => {
+    if (
+      cachedActivities &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Activities instant from cache");
+      return cachedActivities;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedActivities &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedActivities &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [shareSuccess, setShareSuccess] = useState(false);
 
   useEffect(() => {
-    fetchCollection("activities", [
-      { type: "orderBy", field: "date", direction: "desc" },
-    ])
-      .then(setActivities)
-      .finally(() => setLoading(false));
+    const fetchActivities = async () => {
+      // ✅ If cache is valid, skip fetching
+      if (
+        cachedActivities &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setActivities(cachedActivities);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching activities from server");
+        const data = await fetchCollection("activities", [
+          { type: "orderBy", field: "date", direction: "desc" },
+        ]);
+
+        cachedActivities = data;
+        cacheTimestamp = Date.now();
+        setActivities(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching activities:", error);
+        if (cachedActivities) {
+          setActivities(cachedActivities);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
   }, []);
 
   // Share function using Web Share API
@@ -98,6 +160,21 @@ const Activities = () => {
             Stay updated with the latest events, achievements, and happenings at
             GDC Gulabad
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
         {/* Share Success Toast */}

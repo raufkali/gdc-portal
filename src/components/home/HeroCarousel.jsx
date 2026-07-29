@@ -192,28 +192,6 @@ const HeroCarousel = () => {
         overflow: "hidden",
       }}
     >
-      {/* ✅ Cache indicator */}
-      {fromCache &&
-        !usingFallback &&
-        process.env.NODE_ENV === "development" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "20px",
-              left: "20px",
-              zIndex: 20,
-              background: "rgba(40, 167, 69, 0.9)",
-              color: "#fff",
-              padding: "4px 12px",
-              borderRadius: "50px",
-              fontSize: "10px",
-              fontWeight: "600",
-            }}
-          >
-            ⚡ Cached
-          </div>
-        )}
-
       <div className="carousel-inner" style={{ height: "100%", width: "100%" }}>
         {banners.map((banner, index) => {
           const isFallback = banner.bgGradient !== undefined;
@@ -308,7 +286,7 @@ const HeroCarousel = () => {
                     {banner.subtitle}
                   </p>
                   <Link
-                    to="#programs"
+                    to="/programs"
                     className="btn btn-primary"
                     style={{
                       padding: "0.7rem 2.2rem",

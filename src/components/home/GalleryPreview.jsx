@@ -2,21 +2,46 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// Cache for gallery images
+// ✅ Cache for gallery
 let cachedGallery = null;
 let cacheTimestamp = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
 const GalleryPreview = () => {
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
+  const [images, setImages] = useState(() => {
+    if (
+      cachedGallery &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      return cachedGallery;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedGallery &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedGallery &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
     const fetchGallery = async () => {
-      const now = Date.now();
-      if (cachedGallery && cacheTimestamp && now - cacheTimestamp < CACHE_TTL) {
-        console.log("📦 Gallery from cache");
+      if (
+        cachedGallery &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
         setImages(cachedGallery);
         setFromCache(true);
         setLoading(false);
@@ -29,13 +54,12 @@ const GalleryPreview = () => {
           { type: "orderBy", field: "uploadedAt", direction: "desc" },
         ]);
         cachedGallery = data;
-        cacheTimestamp = now;
+        cacheTimestamp = Date.now();
         setImages(data);
         setFromCache(false);
       } catch (error) {
         console.error("Error fetching gallery:", error);
         if (cachedGallery) {
-          console.log("⚠️ Using stale cache for gallery");
           setImages(cachedGallery);
           setFromCache(true);
         }
@@ -184,8 +208,7 @@ const GalleryPreview = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i>
-            View Full Gallery
+            <i className="bi bi-arrow-right me-2"></i> View Full Gallery
           </Link>
         </div>
       </div>

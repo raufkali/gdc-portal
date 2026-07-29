@@ -3,20 +3,62 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
+// ✅ Cache for department detail (by slug/id)
+const cachedDepartments = {};
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 const DepartmentDetail = () => {
   const { slug } = useParams();
   const [dept, setDept] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    fetchCollection("departments")
-      .then((data) => {
-        const found = data.find((d) => d.slug === slug || d.id === slug);
-        setDept(found || null);
+    const fetchDepartment = async () => {
+      // ✅ Check cache for this specific department
+      const cacheKey = slug;
+      if (
+        cachedDepartments[cacheKey] &&
+        cachedDepartments[cacheKey].timestamp &&
+        Date.now() - cachedDepartments[cacheKey].timestamp < CACHE_TTL
+      ) {
+        console.log(`📦 Department "${slug}" from cache`);
+        setDept(cachedDepartments[cacheKey].data);
+        setFromCache(true);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+        return;
+      }
+
+      try {
+        console.log(`📡 Fetching department "${slug}" from server`);
+        const data = await fetchCollection("departments");
+        const found = data.find((d) => d.slug === slug || d.id === slug);
+
+        if (found) {
+          // ✅ Cache the found department
+          cachedDepartments[cacheKey] = {
+            data: found,
+            timestamp: Date.now(),
+          };
+          setDept(found);
+          setFromCache(false);
+        } else {
+          setDept(null);
+        }
+      } catch (error) {
+        console.error("Error fetching department:", error);
+        // ✅ Try to use stale cache if available
+        if (cachedDepartments[cacheKey]) {
+          setDept(cachedDepartments[cacheKey].data);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDepartment();
   }, [slug]);
 
   // Get images array (single imageUrl or multiple images)
