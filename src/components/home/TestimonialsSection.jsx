@@ -2,23 +2,78 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
+// Cache for testimonials
+let cachedTestimonials = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    fetchCollection("testimonials").then(setTestimonials);
+    const fetchTestimonials = async () => {
+      const now = Date.now();
+      if (
+        cachedTestimonials &&
+        cacheTimestamp &&
+        now - cacheTimestamp < CACHE_TTL
+      ) {
+        console.log("📦 Testimonials from cache");
+        setTestimonials(cachedTestimonials);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching testimonials from server");
+        const data = await fetchCollection("testimonials");
+        cachedTestimonials = data;
+        cacheTimestamp = now;
+        setTestimonials(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching testimonials:", error);
+        if (cachedTestimonials) {
+          console.log("⚠️ Using stale cache for testimonials");
+          setTestimonials(cachedTestimonials);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTestimonials();
   }, []);
 
-  // Auto-rotate testimonials - moved inside useEffect that always runs
+  // Auto-rotate testimonials
   useEffect(() => {
     if (testimonials.length === 0) return;
-
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % Math.min(testimonials.length, 3));
     }, 5000);
     return () => clearInterval(interval);
   }, [testimonials.length]);
+
+  if (loading) {
+    return (
+      <section className="py-5 bg-light">
+        <div className="container text-center">
+          <div
+            className="spinner-border"
+            role="status"
+            style={{ color: "#A51C30" }}
+          >
+            <span className="visually-hidden">Loading testimonials...</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!testimonials.length) return null;
 
@@ -28,11 +83,12 @@ const TestimonialsSection = () => {
     <section
       className="py-5"
       style={{
+        backgroundColor: "var(--color-bg-alt)",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      {/* Decorative background elements */}
+      {/* Decorative background */}
       <div
         style={{
           position: "absolute",
@@ -98,9 +154,23 @@ const TestimonialsSection = () => {
           >
             Real experiences from students who found their path at GDC Gulabad
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
-        {/* Testimonials Grid */}
         <div className="row g-4 justify-content-center">
           {visibleTestimonials.map((t, index) => (
             <div
@@ -129,7 +199,6 @@ const TestimonialsSection = () => {
                     "0 5px 15px rgba(0,0,0,0.05)";
                 }}
               >
-                {/* Quote Icon */}
                 <div
                   style={{
                     position: "absolute",
@@ -146,7 +215,6 @@ const TestimonialsSection = () => {
                 </div>
 
                 <div className="card-body p-4">
-                  {/* Student Info */}
                   <div className="d-flex align-items-center gap-3 mb-3">
                     {t.imageUrl ? (
                       <img
@@ -208,7 +276,6 @@ const TestimonialsSection = () => {
                     </div>
                   </div>
 
-                  {/* Rating */}
                   {t.rating && (
                     <div className="mb-2">
                       <span style={{ color: "#ffc107", fontSize: "0.85rem" }}>
@@ -218,7 +285,6 @@ const TestimonialsSection = () => {
                     </div>
                   )}
 
-                  {/* Content */}
                   <blockquote className="blockquote mb-0">
                     <p
                       style={{
@@ -240,7 +306,6 @@ const TestimonialsSection = () => {
           ))}
         </div>
 
-        {/* View All Button */}
         <div className="text-center mt-5">
           <Link
             to="/testimonials"
@@ -270,8 +335,7 @@ const TestimonialsSection = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i>
-            View All Testimonials
+            <i className="bi bi-arrow-right me-2"></i> View All Testimonials
           </Link>
         </div>
       </div>

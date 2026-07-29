@@ -3,6 +3,12 @@ const R2_UPLOAD_TOKEN = import.meta.env.VITE_R2_UPLOAD_TOKEN;
 const R2_BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;
 const R2_PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL;
 
+// ✅ Cache configuration
+const CACHE_CONFIG = {
+  maxAge: 60 * 60 * 24 * 30, // 30 days
+  cacheControl: "public, max-age=2592000, immutable",
+};
+
 export const uploadToR2WithProgress = (
   file,
   folder = "",
@@ -31,6 +37,9 @@ export const uploadToR2WithProgress = (
       "Content-Type",
       file.type || "application/octet-stream",
     );
+
+    // ✅ Add cache control headers on upload
+    xhr.setRequestHeader("Cache-Control", CACHE_CONFIG.cacheControl);
 
     xhr.onload = () => {
       if (xhr.status === 200) {
@@ -83,10 +92,89 @@ export const deleteFromR2 = async (key) => {
   return true;
 };
 
-export const getR2FileUrl = (key) => {
-  return `${R2_PUBLIC_URL}/${key}`;
+export const getR2FileUrl = (key, options = {}) => {
+  const { width, height, quality, format } = options;
+  let url = `${R2_PUBLIC_URL}/${key}`;
+
+  // ✅ Add query params for image optimization
+  const params = new URLSearchParams();
+  if (width) params.append("w", width);
+  if (height) params.append("h", height);
+  if (quality) params.append("q", quality);
+  if (format) params.append("f", format);
+
+  const queryString = params.toString();
+  if (queryString) {
+    url += `?${queryString}`;
+  }
+
+  return url;
 };
 
 export const getKeyFromUrl = (url) => {
   return url.replace(`${R2_PUBLIC_URL}/`, "");
+};
+
+// ✅ Prefetch images (load in background)
+export const prefetchImages = (imageUrls) => {
+  if (!imageUrls || imageUrls.length === 0) return;
+
+  imageUrls.forEach((url) => {
+    try {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "image";
+      link.href = url;
+      document.head.appendChild(link);
+    } catch (error) {
+      console.warn("Failed to prefetch image:", url, error);
+    }
+  });
+};
+
+// ✅ Preload critical images
+export const preloadImages = (imageUrls) => {
+  if (!imageUrls || imageUrls.length === 0) return;
+
+  imageUrls.forEach((url) => {
+    try {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = url;
+      document.head.appendChild(link);
+    } catch (error) {
+      console.warn("Failed to preload image:", url, error);
+    }
+  });
+};
+
+// ✅ Get image with cache-busting (force refresh)
+export const getImageWithCacheBust = (url) => {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}_t=${Date.now()}`;
+};
+
+// ✅ Get optimized image URL for different sizes
+export const getResponsiveImageUrl = (key, sizes = {}) => {
+  const { small, medium, large } = sizes;
+
+  return {
+    small: getR2FileUrl(key, { width: small || 300, quality: 80 }),
+    medium: getR2FileUrl(key, { width: medium || 600, quality: 85 }),
+    large: getR2FileUrl(key, { width: large || 900, quality: 90 }),
+    original: getR2FileUrl(key),
+  };
+};
+
+export default {
+  uploadToR2WithProgress,
+  deleteFromR2,
+  getR2FileUrl,
+  getKeyFromUrl,
+  prefetchImages,
+  preloadImages,
+  getImageWithCacheBust,
+  getResponsiveImageUrl,
+  CACHE_CONFIG,
 };

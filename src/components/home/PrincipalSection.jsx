@@ -1,7 +1,97 @@
 import { useSettings } from "../../contexts/SettingsContext";
+import { useState, useEffect } from "react";
+import { db } from "../../firebase/config";
+import { doc, getDoc } from "firebase/firestore";
+
+// Cache settings for 10 minutes
+let cachedSettings = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 const PrincipalSection = () => {
-  const { settings, loading } = useSettings();
+  const { settings: contextSettings, loading: contextLoading } = useSettings();
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      // If context settings are already loaded, use them
+      if (contextSettings && !contextLoading) {
+        setSettings(contextSettings);
+        setLoading(false);
+        return;
+      }
+
+      // Try to get from cache
+      const now = Date.now();
+      if (
+        cachedSettings &&
+        cacheTimestamp &&
+        now - cacheTimestamp < CACHE_TTL
+      ) {
+        console.log("📦 Principal settings from cache");
+        setSettings(cachedSettings);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch from Firestore
+      try {
+        console.log("📡 Fetching principal settings from server");
+        const docRef = doc(db, "settings", "website");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          cachedSettings = data;
+          cacheTimestamp = now;
+          setSettings(data);
+          setFromCache(false);
+        } else {
+          // Use fallback settings
+          const fallback = {
+            principalName: "Dr. Muhammad Ali",
+            principalDesignation: "Principal, GDC Gulabad",
+            principalImageUrl: "",
+            principalMessage:
+              "Welcome to our college. We are committed to providing quality education and fostering academic excellence.",
+            contactEmail: "info@gdcgulabad.edu.pk",
+            contactPhone: "+92 123 4567890",
+            experience: "20+",
+            students: "5000+",
+            programs: "12+",
+          };
+          cachedSettings = fallback;
+          cacheTimestamp = now;
+          setSettings(fallback);
+          setFromCache(false);
+        }
+      } catch (error) {
+        console.error("Error fetching principal settings:", error);
+        // Use cached settings if available, even if expired
+        if (cachedSettings) {
+          console.log("⚠️ Using stale cache for principal settings");
+          setSettings(cachedSettings);
+          setFromCache(true);
+        } else {
+          // Ultimate fallback
+          setSettings({
+            principalName: "Dr. Muhammad Ali",
+            principalDesignation: "Principal, GDC Gulabad",
+            principalMessage: "Welcome to our college.",
+            contactEmail: "info@gdcgulabad.edu.pk",
+            contactPhone: "+92 123 4567890",
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, [contextSettings, contextLoading]);
 
   // Show loading state
   if (loading) {
@@ -12,7 +102,11 @@ const PrincipalSection = () => {
             className="d-flex justify-content-center align-items-center"
             style={{ height: "200px" }}
           >
-            <div className="spinner-border text-primary" role="status">
+            <div
+              className="spinner-border"
+              role="status"
+              style={{ color: "#A51C30" }}
+            >
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -67,6 +161,27 @@ const PrincipalSection = () => {
         overflow: "hidden",
       }}
     >
+      {/* ✅ Cache indicator */}
+      {fromCache && process.env.NODE_ENV === "development" && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            right: "20px",
+            zIndex: 10,
+            background: "rgba(40, 167, 69, 0.9)",
+            color: "#fff",
+            padding: "4px 12px",
+            borderRadius: "50px",
+            fontSize: "10px",
+            fontWeight: "600",
+            letterSpacing: "0.5px",
+          }}
+        >
+          ⚡ Cached
+        </div>
+      )}
+
       {/* Decorative background elements */}
       <div
         style={{
@@ -95,7 +210,7 @@ const PrincipalSection = () => {
 
       <div className="container position-relative">
         {/* Section Title */}
-        <div className="text-center mb-5">
+        <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
               fontSize: "0.85rem",
@@ -153,6 +268,7 @@ const PrincipalSection = () => {
                 <img
                   src={imageUrl}
                   alt={settings.principalName || "Principal"}
+                  loading="lazy"
                   style={{
                     width: "100%",
                     height: "320px",

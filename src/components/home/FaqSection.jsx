@@ -2,14 +2,73 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
+// ✅ Cache for FAQs
+let cachedFaqs = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 const FaqSection = () => {
-  const [faqs, setFaqs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [faqs, setFaqs] = useState(() => {
+    if (
+      cachedFaqs &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      return cachedFaqs;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !(
+      cachedFaqs &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedFaqs &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   useEffect(() => {
-    fetchCollection("faqs", [{ type: "orderBy", field: "order" }])
-      .then(setFaqs)
-      .finally(() => setLoading(false));
+    const fetchFaqs = async () => {
+      if (
+        cachedFaqs &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        setFaqs(cachedFaqs);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching FAQs from server");
+        const data = await fetchCollection("faqs", [
+          { type: "orderBy", field: "order" },
+        ]);
+        cachedFaqs = data;
+        cacheTimestamp = Date.now();
+        setFaqs(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching FAQs:", error);
+        if (cachedFaqs) {
+          setFaqs(cachedFaqs);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFaqs();
   }, []);
 
   if (loading) {
@@ -20,8 +79,12 @@ const FaqSection = () => {
       >
         <div className="container">
           <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
+            <div
+              className="spinner-border"
+              role="status"
+              style={{ color: "#A51C30" }}
+            >
+              <span className="visually-hidden">Loading FAQs...</span>
             </div>
           </div>
         </div>
@@ -40,7 +103,6 @@ const FaqSection = () => {
         overflow: "hidden",
       }}
     >
-      {/* Decorative background */}
       <div
         style={{
           position: "absolute",
@@ -67,7 +129,6 @@ const FaqSection = () => {
       />
 
       <div className="container position-relative">
-        {/* Section Header */}
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
@@ -106,9 +167,23 @@ const FaqSection = () => {
           >
             Find answers to the most common questions about GDC Gulabad
           </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
         </div>
 
-        {/* FAQs Accordion */}
         <div className="row justify-content-center">
           <div className="col-lg-10" data-aos="fade-up" data-aos-delay="100">
             <div className="accordion" id="faqAccordion">
@@ -175,7 +250,6 @@ const FaqSection = () => {
               ))}
             </div>
 
-            {/* View All Button */}
             {faqs.length > 3 && (
               <div className="text-center mt-4">
                 <Link
@@ -207,8 +281,7 @@ const FaqSection = () => {
                     e.target.style.boxShadow = "none";
                   }}
                 >
-                  <i className="bi bi-arrow-right me-2"></i>
-                  View All FAQs
+                  <i className="bi bi-arrow-right me-2"></i> View All FAQs
                 </Link>
               </div>
             )}

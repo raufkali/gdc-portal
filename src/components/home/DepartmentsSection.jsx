@@ -2,43 +2,220 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
+// Cache for departments data
+let cachedDepartments = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const DepartmentsSection = () => {
   const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
+
   useEffect(() => {
-    fetchCollection("departments").then(setDepartments);
+    const fetchDepartments = async () => {
+      // Check cache first
+      const now = Date.now();
+      if (
+        cachedDepartments &&
+        cacheTimestamp &&
+        now - cacheTimestamp < CACHE_TTL
+      ) {
+        console.log("📦 Departments from cache");
+        setDepartments(cachedDepartments);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching departments from server");
+        const data = await fetchCollection("departments");
+        cachedDepartments = data;
+        cacheTimestamp = now;
+        setDepartments(data);
+        setFromCache(false);
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+        if (cachedDepartments) {
+          console.log("⚠️ Using stale cache for departments");
+          setDepartments(cachedDepartments);
+          setFromCache(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDepartments();
   }, []);
 
+  if (loading) {
+    return (
+      <section className="py-5 bg-light">
+        <div className="container text-center">
+          <div
+            className="spinner-border"
+            role="status"
+            style={{ color: "#A51C30" }}
+          >
+            <span className="visually-hidden">Loading departments...</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!departments.length) return null;
+
+  const displayDepartments = departments.slice(0, 4);
+
   return (
     <section className="py-5 bg-light">
       <div className="container">
-        <h2 className="text-center mb-4">Our Departments</h2>
-        <div className="row">
-          {departments.slice(0, 4).map((dept) => (
-            <div key={dept.id} className="col-md-3 mb-4">
-              <div className="card h-100 shadow-sm">
-                {dept.imageUrl && (
-                  <img
-                    src={dept.imageUrl}
-                    className="card-img-top"
-                    alt={dept.name}
-                  />
-                )}
-                <div className="card-body">
-                  <h5 className="card-title">{dept.name}</h5>
-                  <Link
-                    to={`/departments/${dept.slug || dept.id}`}
-                    className="btn btn-outline-primary btn-sm"
-                  >
-                    View Department
-                  </Link>
+        <div className="text-center mb-5" data-aos="fade-up">
+          <span
+            style={{
+              fontSize: "0.8rem",
+              fontWeight: "600",
+              color: "#A51C30",
+              textTransform: "uppercase",
+              letterSpacing: "2px",
+              display: "inline-block",
+              background: "rgba(165, 28, 48, 0.08)",
+              padding: "0.3rem 1.2rem",
+              borderRadius: "50px",
+              marginBottom: "0.5rem",
+            }}
+          >
+            Academics
+          </span>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: "clamp(2rem, 3vw, 2.5rem)",
+              fontWeight: "700",
+              color: "var(--color-text)",
+              marginBottom: "0.25rem",
+            }}
+          >
+            Our <span style={{ color: "#A51C30" }}>Departments</span>
+          </h2>
+          <p
+            style={{
+              color: "var(--color-text-muted)",
+              fontSize: "1rem",
+              maxWidth: "600px",
+              margin: "0 auto",
+            }}
+          >
+            Discover excellence across various disciplines
+          </p>
+          {fromCache && process.env.NODE_ENV === "development" && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "#28a745",
+                background: "rgba(40, 167, 69, 0.1)",
+                padding: "0.15rem 0.8rem",
+                borderRadius: "50px",
+                display: "inline-block",
+                marginTop: "0.5rem",
+              }}
+            >
+              ⚡ Cached
+            </span>
+          )}
+        </div>
+
+        <div className="row g-4">
+          {displayDepartments.map((dept) => (
+            <div key={dept.id} className="col-md-3 col-sm-6">
+              <Link
+                to={`/departments/${dept.slug || dept.id}`}
+                className="text-decoration-none"
+              >
+                <div
+                  className="card h-100 shadow-sm border-0 hover-lift"
+                  style={{
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    backgroundColor: "var(--card-bg)",
+                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-6px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 15px 35px rgba(0,0,0,0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 5px 15px rgba(0,0,0,0.05)";
+                  }}
+                >
+                  {dept.imageUrl && (
+                    <img
+                      src={dept.imageUrl}
+                      className="card-img-top"
+                      alt={dept.name}
+                      loading="lazy"
+                      style={{ height: "160px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <div className="card-body text-center">
+                    <h5
+                      className="card-title fw-bold"
+                      style={{ fontSize: "1rem", color: "var(--color-text)" }}
+                    >
+                      {dept.name}
+                    </h5>
+                    <p
+                      className="card-text small text-muted"
+                      style={{ fontSize: "0.8rem" }}
+                    >
+                      {dept.description?.substring(0, 50)}...
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </Link>
             </div>
           ))}
         </div>
-        <div className="text-center">
-          <Link to="/departments" className="btn btn-primary">
+
+        <div className="text-center mt-4">
+          <Link
+            to="/departments"
+            className="btn"
+            style={{
+              background: "transparent",
+              color: "#A51C30",
+              padding: "0.6rem 2.5rem",
+              borderRadius: "50px",
+              fontWeight: "600",
+              fontSize: "0.95rem",
+              border: "2px solid #A51C30",
+              textDecoration: "none",
+              transition: "all 0.3s ease",
+              display: "inline-block",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#A51C30";
+              e.target.style.color = "#fff";
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 8px 25px rgba(165, 28, 48, 0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "transparent";
+              e.target.style.color = "#A51C30";
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "none";
+            }}
+          >
+            <i className="bi bi-arrow-right me-2"></i>
             All Departments
           </Link>
         </div>
@@ -46,4 +223,5 @@ const DepartmentsSection = () => {
     </section>
   );
 };
+
 export default DepartmentsSection;

@@ -32,17 +32,63 @@ const FALLBACK_BANNERS = [
   },
 ];
 
+// ✅ Cache for banners with TTL
+let cachedBanners = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const HeroCarousel = () => {
-  const [banners, setBanners] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState(() => {
+    // ✅ Initialize with cached data if available
+    if (
+      cachedBanners &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      console.log("📦 Instant: Banners from cache on load");
+      return cachedBanners;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    // ✅ If cache exists and valid, don't show loading
+    return !(
+      cachedBanners &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
+
   const [usingFallback, setUsingFallback] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
   const [activeIndex, setActiveIndex] = useState(0);
+  const [fromCache, setFromCache] = useState(() => {
+    return !!(
+      cachedBanners &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
   const carouselRef = useRef(null);
 
   useEffect(() => {
     const fetchBanners = async () => {
       try {
+        // ✅ If we have valid cache, skip fetching
+        if (
+          cachedBanners &&
+          cacheTimestamp &&
+          Date.now() - cacheTimestamp < CACHE_TTL
+        ) {
+          console.log("📦 Using cached banners");
+          setBanners(cachedBanners);
+          setFromCache(true);
+          setLoading(false);
+          return;
+        }
+
+        console.log("📡 Fetching banners from server...");
         const q = query(collection(db, "banners"), where("active", "==", true));
         const snap = await getDocs(q);
 
@@ -50,9 +96,15 @@ const HeroCarousel = () => {
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .sort((a, b) => (a.order || 0) - (b.order || 0));
 
+        console.log("✅ Banners fetched:", data.length);
+
         if (data.length > 0) {
+          // ✅ Cache the data
+          cachedBanners = data;
+          cacheTimestamp = Date.now();
           setBanners(data);
           setUsingFallback(false);
+          setFromCache(false);
         } else {
           setBanners(FALLBACK_BANNERS);
           setUsingFallback(true);
@@ -65,10 +117,11 @@ const HeroCarousel = () => {
         setLoading(false);
       }
     };
+
     fetchBanners();
   }, []);
 
-  // Listen to carousel slide events to update active index
+  // Listen to carousel slide events
   useEffect(() => {
     const carouselElement = document.getElementById("heroCarousel");
     if (carouselElement) {
@@ -76,7 +129,6 @@ const HeroCarousel = () => {
         const newIndex = event.to;
         setActiveIndex(newIndex);
 
-        // Update indicators manually
         const indicators = carouselElement.querySelectorAll(
           ".carousel-indicators button",
         );
@@ -102,6 +154,7 @@ const HeroCarousel = () => {
     setImageErrors((prev) => ({ ...prev, [bannerId]: true }));
   };
 
+  // ✅ If still loading and no cached data, show spinner
   if (loading) {
     return (
       <div
@@ -119,6 +172,11 @@ const HeroCarousel = () => {
     );
   }
 
+  // ✅ If no banners and not loading, show nothing (or fallback)
+  if (!banners || banners.length === 0) {
+    return null;
+  }
+
   return (
     <div
       id="heroCarousel"
@@ -134,6 +192,28 @@ const HeroCarousel = () => {
         overflow: "hidden",
       }}
     >
+      {/* ✅ Cache indicator */}
+      {fromCache &&
+        !usingFallback &&
+        process.env.NODE_ENV === "development" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "20px",
+              left: "20px",
+              zIndex: 20,
+              background: "rgba(40, 167, 69, 0.9)",
+              color: "#fff",
+              padding: "4px 12px",
+              borderRadius: "50px",
+              fontSize: "10px",
+              fontWeight: "600",
+            }}
+          >
+            ⚡ Cached
+          </div>
+        )}
+
       <div className="carousel-inner" style={{ height: "100%", width: "100%" }}>
         {banners.map((banner, index) => {
           const isFallback = banner.bgGradient !== undefined;
@@ -150,12 +230,13 @@ const HeroCarousel = () => {
                 position: "relative",
               }}
             >
-              {/* Image background for Firestore banners */}
+              {/* Image for Firestore banners */}
               {!isFallback && banner.imageUrl && !hasImageError && (
                 <img
                   src={banner.imageUrl}
                   className="d-block w-100 h-100"
                   alt={banner.title || "Banner"}
+                  loading={index > 1 ? "lazy" : "eager"}
                   style={{
                     objectFit: "cover",
                     position: "absolute",
@@ -166,7 +247,7 @@ const HeroCarousel = () => {
                 />
               )}
 
-              {/* Dark overlay for all banners */}
+              {/* Dark overlay */}
               <div
                 style={{
                   position: "absolute",
@@ -311,7 +392,7 @@ const HeroCarousel = () => {
         </>
       )}
 
-      {/* Indicators - Fixed with proper active state */}
+      {/* Indicators */}
       {banners.length > 1 && (
         <div
           className="carousel-indicators"
