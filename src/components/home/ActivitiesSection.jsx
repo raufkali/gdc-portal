@@ -98,7 +98,7 @@ const ActivitiesSection = () => {
       style={{ backgroundColor: "var(--color-bg-alt)" }}
     >
       <div className="container">
-        <div className="text-center mb-5" data-aos="fade-right">
+        <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
               fontSize: "0.8rem",
@@ -142,7 +142,7 @@ const ActivitiesSection = () => {
           {displayActivities.map((activity) => (
             <div key={activity.id} className="col-md-4">
               <div
-                data-aos="fade-up"
+                data-aos="fade-right"
                 data-aos-duration="600"
                 data-aos-once="false"
                 data-aos-delay="100"

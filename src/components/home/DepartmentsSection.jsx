@@ -92,7 +92,7 @@ const DepartmentsSection = () => {
   return (
     <section className="py-5 bg-light">
       <div className="container">
-        <div className="text-center mb-5" data-aos="fade-left">
+        <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
               fontSize: "0.8rem",
@@ -136,7 +136,7 @@ const DepartmentsSection = () => {
           {displayDepartments.map((dept) => (
             <div
               key={dept.id}
-              data-aos="fade-up"
+              data-aos="fade-left"
               data-aos-duration="600"
               data-aos-once="false"
               data-aos-delay="100"

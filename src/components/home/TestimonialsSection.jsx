@@ -135,7 +135,7 @@ const TestimonialsSection = () => {
       />
 
       <div className="container position-relative">
-        <div className="text-center mb-5" data-aos="fade-right">
+        <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
               fontSize: "0.8rem",
