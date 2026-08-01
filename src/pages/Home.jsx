@@ -10,7 +10,6 @@ import TestimonialsSection from "../components/home/TestimonialsSection";
 import FaqSection from "../components/home/FaqSection";
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
-
 const Home = () => {
   useEffect(() => {
     // ✅ Prefetch all home data
