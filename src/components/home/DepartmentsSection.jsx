@@ -92,7 +92,7 @@ const DepartmentsSection = () => {
   return (
     <section className="py-5 bg-light">
       <div className="container">
-        <div className="text-center mb-5" data-aos="fade-up">
+        <div className="text-center mb-5" data-aos="fade-left">
           <span
             style={{
               fontSize: "0.8rem",
@@ -130,26 +130,18 @@ const DepartmentsSection = () => {
           >
             Discover excellence across various disciplines
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            >
-              ⚡ Cached
-            </span>
-          )}
         </div>
 
         <div className="row g-4">
           {displayDepartments.map((dept) => (
-            <div key={dept.id} className="col-md-3 col-sm-6">
+            <div
+              key={dept.id}
+              data-aos="fade-up"
+              data-aos-duration="600"
+              data-aos-once="false"
+              data-aos-delay="100"
+              className="col-md-3 col-sm-6"
+            >
               <Link
                 to={`/departments/${dept.slug || dept.id}`}
                 className="text-decoration-none"

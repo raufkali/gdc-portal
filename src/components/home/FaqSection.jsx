@@ -167,21 +167,6 @@ const FaqSection = () => {
           >
             Find answers to the most common questions about GDC Gulabad
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            >
-              ⚡ Cached
-            </span>
-          )}
         </div>
 
         <div className="row justify-content-center">

@@ -98,7 +98,7 @@ const ActivitiesSection = () => {
       style={{ backgroundColor: "var(--color-bg-alt)" }}
     >
       <div className="container">
-        <div className="text-center mb-5" data-aos="fade-up">
+        <div className="text-center mb-5" data-aos="fade-right">
           <span
             style={{
               fontSize: "0.8rem",
@@ -136,27 +136,16 @@ const ActivitiesSection = () => {
           >
             Stay updated with the latest events and happenings
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            >
-              ⚡ Cached
-            </span>
-          )}
         </div>
 
         <div className="row g-4">
           {displayActivities.map((activity) => (
             <div key={activity.id} className="col-md-4">
               <div
+                data-aos="fade-up"
+                data-aos-duration="600"
+                data-aos-once="false"
+                data-aos-delay="100"
                 className="card h-100 shadow-sm border-0 hover-lift"
                 style={{
                   borderRadius: "12px",

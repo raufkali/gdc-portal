@@ -38,64 +38,28 @@ const Home = () => {
   return (
     <>
       <HeroCarousel />
-      <div data-aos="fade-up" data-aos-duration="600" data-aos-once="true">
+      <div data-aos="fade-up" data-aos-duration="600" data-aos-once="false">
         <PrincipalSection />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="100"
-        id="programs"
-      >
+      <div>
         <ProgramsSection />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="200"
-      >
+      <div>
         <DepartmentsSection />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="100"
-      >
+      <div>
         <ActivitiesSection />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="150"
-      >
+      <div>
         <VisionMissionAims />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="100"
-      >
+      <div>
         <GalleryPreview />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="100"
-      >
+      <div>
         <TestimonialsSection />
       </div>
-      <div
-        data-aos="fade-up"
-        data-aos-duration="600"
-        data-aos-once="true"
-        data-aos-delay="50"
-      >
+      <div>
         <FaqSection />
       </div>
     </>

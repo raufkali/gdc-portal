@@ -139,21 +139,6 @@ const ProgramsSection = () => {
           >
             Explore our diverse range of academic programs
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            >
-              ⚡ Cached
-            </span>
-          )}
         </div>
 
         <div className="row g-4">
@@ -161,6 +146,10 @@ const ProgramsSection = () => {
             <div key={program.id} className="col-md-3 col-sm-6">
               <div
                 className="card h-100 shadow-sm border-0 hover-lift"
+                data-aos="fade-right"
+                data-aos-duration="600"
+                data-aos-once="false"
+                data-aos-delay="100"
                 style={{
                   borderRadius: "12px",
                   overflow: "hidden",

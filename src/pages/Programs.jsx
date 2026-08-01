@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
@@ -38,6 +38,11 @@ const Programs = () => {
     );
   });
 
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef(null);
+  const [imageErrors, setImageErrors] = useState({});
+
+  // ✅ Fetch programs
   useEffect(() => {
     const fetchPrograms = async () => {
       // ✅ If cache is valid, skip fetching
@@ -74,16 +79,65 @@ const Programs = () => {
     fetchPrograms();
   }, []);
 
+  // ✅ Refresh AOS when programs load and section becomes visible
+  useEffect(() => {
+    if (!loading && programs.length > 0) {
+      // Small delay to ensure DOM is rendered
+      const timeoutId = setTimeout(() => {
+        if (window.AOS) {
+          window.AOS.refresh();
+          console.log("🔄 AOS refreshed for Programs page");
+        }
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading, programs]);
+
+  // ✅ Intersection Observer for manual visibility control
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.1, rootMargin: "50px" },
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
+
+  const handleImageError = (programId) => {
+    setImageErrors((prev) => ({ ...prev, [programId]: true }));
+  };
+
   if (loading) return <Loader />;
 
   return (
     <div
       className="py-5 mt-5"
       style={{ backgroundColor: "var(--color-bg-alt)" }}
+      ref={sectionRef}
     >
       <div className="container">
         {/* Page Header */}
-        <div className="text-center mb-5" data-aos="fade-up">
+        <div
+          className="text-center mb-5"
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(30px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        >
           <span
             style={{
               fontSize: "0.85rem",
@@ -122,21 +176,6 @@ const Programs = () => {
             Explore our diverse range of academic programs designed to shape
             future leaders and professionals
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            >
-              ⚡ Cached
-            </span>
-          )}
         </div>
 
         {/* Programs Grid */}
@@ -152,219 +191,253 @@ const Programs = () => {
           </div>
         ) : (
           <div className="row g-4">
-            {programs.map((program, index) => (
-              <div
-                key={program.id}
-                className="col-md-6 col-lg-4"
-                data-aos="fade-up"
-                data-aos-delay={index * 100}
-              >
+            {programs.map((program, index) => {
+              const hasImageError = imageErrors[program.id];
+
+              return (
                 <div
-                  className="card border-0 shadow-lg h-100"
+                  key={program.id}
+                  className="col-md-6 col-lg-4"
                   style={{
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                    backgroundColor: "var(--card-bg)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-8px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 20px 40px rgba(0,0,0,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow =
-                      "0 10px 30px rgba(0,0,0,0.08)";
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? "translateY(0)" : "translateY(30px)",
+                    transition: `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`,
                   }}
                 >
-                  {/* Image */}
-                  {program.imageUrl && (
-                    <div
-                      style={{
-                        height: "200px",
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      <img
-                        src={program.imageUrl}
-                        alt={program.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          transition: "transform 0.3s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.transform = "scale(1.05)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.transform = "scale(1)";
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          e.target.parentElement.innerHTML = `
-                            <div style="
-                              height: 200px;
-                              background: linear-gradient(145deg, #1A1A1A, #2C2C2C);
-                              display: flex;
-                              align-items: center;
-                              justify-content: center;
-                              color: #fff;
-                              font-family: 'Playfair Display', Georgia, serif;
-                              font-size: 4rem;
-                              font-weight: 700;
-                              color: rgba(255,255,255,0.1);
-                            ">
-                              <span>${program.title?.charAt(0) || "P"}</span>
-                            </div>
-                          `;
-                        }}
-                      />
-                      {/* Program type badge */}
+                  <div
+                    className="card border-0 shadow-lg h-100"
+                    style={{
+                      borderRadius: "16px",
+                      overflow: "hidden",
+                      transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                      backgroundColor: "var(--card-bg)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-8px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 20px 40px rgba(0,0,0,0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow =
+                        "0 10px 30px rgba(0,0,0,0.08)";
+                    }}
+                  >
+                    {/* Image */}
+                    {program.imageUrl && !hasImageError ? (
                       <div
                         style={{
-                          position: "absolute",
-                          top: "1rem",
-                          right: "1rem",
-                          background: "rgba(165, 28, 48, 0.9)",
-                          color: "#fff",
-                          padding: "0.3rem 1rem",
-                          borderRadius: "50px",
-                          fontSize: "0.75rem",
-                          fontWeight: "600",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
+                          height: "200px",
+                          overflow: "hidden",
+                          position: "relative",
+                          background: "#f0f0f0",
                         }}
                       >
-                        {program.duration || "Program"}
+                        <img
+                          src={program.imageUrl}
+                          alt={program.title}
+                          loading="lazy"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            transition: "transform 0.3s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = "scale(1.05)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = "scale(1)";
+                          }}
+                          onError={() => handleImageError(program.id)}
+                        />
+                        {/* Program type badge */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "1rem",
+                            right: "1rem",
+                            background: "rgba(165, 28, 48, 0.9)",
+                            color: "#fff",
+                            padding: "0.3rem 1rem",
+                            borderRadius: "50px",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          {program.duration || "Program"}
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Content */}
-                  <div className="card-body p-4">
-                    <h5
-                      className="card-title fw-bold"
-                      style={{
-                        fontFamily: "'Playfair Display', Georgia, serif",
-                        fontSize: "1.25rem",
-                        color: "var(--color-text)",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      {program.title}
-                    </h5>
-
-                    {program.subtitle && (
-                      <p
+                    ) : (
+                      <div
                         style={{
-                          fontSize: "0.85rem",
-                          color: "#A51C30",
-                          fontWeight: "500",
+                          height: "200px",
+                          background:
+                            "linear-gradient(145deg, #1A1A1A, #2C2C2C)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                          position: "relative",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "'Playfair Display', Georgia, serif",
+                            fontSize: "4rem",
+                            fontWeight: "700",
+                            color: "rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          {program.title?.charAt(0) || "P"}
+                        </div>
+                        {/* Program type badge */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "1rem",
+                            right: "1rem",
+                            background: "rgba(165, 28, 48, 0.9)",
+                            color: "#fff",
+                            padding: "0.3rem 1rem",
+                            borderRadius: "50px",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          {program.duration || "Program"}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="card-body p-4">
+                      <h5
+                        className="card-title fw-bold"
+                        style={{
+                          fontFamily: "'Playfair Display', Georgia, serif",
+                          fontSize: "1.25rem",
+                          color: "var(--color-text)",
                           marginBottom: "0.5rem",
                         }}
                       >
-                        {program.subtitle}
-                      </p>
-                    )}
+                        {program.title}
+                      </h5>
 
-                    <p
-                      className="card-text"
-                      style={{
-                        color: "var(--color-text-muted)",
-                        fontSize: "0.95rem",
-                        lineHeight: "1.7",
-                        marginBottom: "1rem",
-                      }}
-                    >
-                      {program.description?.substring(0, 120)}
-                      {program.description?.length > 120 && "..."}
-                    </p>
-
-                    {/* Program details tags */}
-                    <div className="d-flex flex-wrap gap-2 mb-3">
-                      {program.duration && (
-                        <span
+                      {program.subtitle && (
+                        <p
                           style={{
-                            fontSize: "0.75rem",
-                            background: "rgba(165, 28, 48, 0.08)",
+                            fontSize: "0.85rem",
                             color: "#A51C30",
-                            padding: "0.25rem 0.75rem",
-                            borderRadius: "50px",
                             fontWeight: "500",
+                            marginBottom: "0.5rem",
                           }}
                         >
-                          <i className="bi bi-clock me-1"></i>
-                          {program.duration}
-                        </span>
+                          {program.subtitle}
+                        </p>
                       )}
-                      {program.eligibility && (
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            background: "rgba(40, 167, 69, 0.08)",
-                            color: "#28a745",
-                            padding: "0.25rem 0.75rem",
-                            borderRadius: "50px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          <i className="bi bi-check-circle me-1"></i>
-                          Eligible
-                        </span>
-                      )}
-                      {program.fee && (
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            background: "rgba(255, 193, 7, 0.08)",
-                            color: "#ffc107",
-                            padding: "0.25rem 0.75rem",
-                            borderRadius: "50px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          <i className="bi bi-cash-stack me-1"></i>
-                          {program.fee}
-                        </span>
-                      )}
-                    </div>
 
-                    <Link
-                      to={`/programs/${program.slug || program.id}`}
-                      className="btn w-100"
-                      style={{
-                        background: "linear-gradient(145deg, #A51C30, #7A1523)",
-                        color: "#fff",
-                        borderRadius: "50px",
-                        padding: "0.6rem 1.5rem",
-                        fontWeight: "600",
-                        fontSize: "0.9rem",
-                        border: "none",
-                        transition: "all 0.3s ease",
-                        textDecoration: "none",
-                        display: "inline-block",
-                        textAlign: "center",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = "translateY(-2px)";
-                        e.target.style.boxShadow =
-                          "0 8px 25px rgba(165, 28, 48, 0.3)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = "translateY(0)";
-                        e.target.style.boxShadow = "none";
-                      }}
-                    >
-                      <i className="bi bi-arrow-right me-2"></i>
-                      View Details
-                    </Link>
+                      <p
+                        className="card-text"
+                        style={{
+                          color: "var(--color-text-muted)",
+                          fontSize: "0.95rem",
+                          lineHeight: "1.7",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        {program.description?.substring(0, 120)}
+                        {program.description?.length > 120 && "..."}
+                      </p>
+
+                      {/* Program details tags */}
+                      <div className="d-flex flex-wrap gap-2 mb-3">
+                        {program.duration && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              background: "rgba(165, 28, 48, 0.08)",
+                              color: "#A51C30",
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "50px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            <i className="bi bi-clock me-1"></i>
+                            {program.duration}
+                          </span>
+                        )}
+                        {program.eligibility && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              background: "rgba(40, 167, 69, 0.08)",
+                              color: "#28a745",
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "50px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            <i className="bi bi-check-circle me-1"></i>
+                            Eligible
+                          </span>
+                        )}
+                        {program.fee && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              background: "rgba(255, 193, 7, 0.08)",
+                              color: "#856404",
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "50px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            <i className="bi bi-cash-stack me-1"></i>
+                            {program.fee}
+                          </span>
+                        )}
+                      </div>
+
+                      <Link
+                        to={`/programs/${program.slug || program.id}`}
+                        className="btn w-100"
+                        style={{
+                          background:
+                            "linear-gradient(145deg, #A51C30, #7A1523)",
+                          color: "#fff",
+                          borderRadius: "50px",
+                          padding: "0.6rem 1.5rem",
+                          fontWeight: "600",
+                          fontSize: "0.9rem",
+                          border: "none",
+                          transition: "all 0.3s ease",
+                          textDecoration: "none",
+                          display: "inline-block",
+                          textAlign: "center",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = "translateY(-2px)";
+                          e.target.style.boxShadow =
+                            "0 8px 25px rgba(165, 28, 48, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = "translateY(0)";
+                          e.target.style.boxShadow = "none";
+                        }}
+                      >
+                        <i className="bi bi-arrow-right me-2"></i>
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -372,8 +445,11 @@ const Programs = () => {
         {programs.length > 0 && (
           <div
             className="text-center mt-5 pt-3"
-            data-aos="fade-up"
-            data-aos-delay="300"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateY(0)" : "translateY(30px)",
+              transition: `opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s`,
+            }}
           >
             <div
               className="card border-0 shadow-sm"
@@ -461,6 +537,41 @@ const Programs = () => {
           </div>
         )}
       </div>
+
+      {/* Add shimmer animation styles */}
+      <style>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+        
+        /* Smooth fade-in for cards */
+        .program-card {
+          opacity: 0;
+          transform: translateY(30px);
+          animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        /* Prevent content from being hidden during animation */
+        [data-aos] {
+          pointer-events: none;
+        }
+        
+        [data-aos].aos-animate {
+          pointer-events: auto;
+        }
+      `}</style>
     </div>
   );
 };

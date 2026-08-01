@@ -1,5 +1,5 @@
 import { useSettings } from "../../contexts/SettingsContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -10,6 +10,11 @@ const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 const PrincipalSection = () => {
   const { settings: contextSettings, loading: contextLoading } = useSettings();
+
+  // ✅ Add refs for AOS elements
+  const sectionRef = useRef(null);
+  const leftColumnRef = useRef(null);
+  const rightColumnRef = useRef(null);
 
   // ✅ Initialize with cached data if available
   const [settings, setSettings] = useState(() => {
@@ -39,6 +44,9 @@ const PrincipalSection = () => {
       Date.now() - cacheTimestamp < CACHE_TTL
     );
   });
+
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -118,10 +126,53 @@ const PrincipalSection = () => {
     fetchSettings();
   }, [contextSettings, contextLoading]);
 
+  // ✅ Intersection Observer for manual animation control
+  useEffect(() => {
+    if (!loading && settings) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setIsVisible(true);
+              // Apply animations when visible
+              if (leftColumnRef.current) {
+                leftColumnRef.current.style.opacity = "1";
+                leftColumnRef.current.style.transform = "translateX(0)";
+              }
+              if (rightColumnRef.current) {
+                rightColumnRef.current.style.opacity = "1";
+                rightColumnRef.current.style.transform = "translateX(0)";
+              }
+            }
+          });
+        },
+        {
+          threshold: 0.1,
+          rootMargin: "50px",
+        },
+      );
+
+      if (sectionRef.current) {
+        observer.observe(sectionRef.current);
+      }
+
+      return () => {
+        if (sectionRef.current) {
+          observer.unobserve(sectionRef.current);
+        }
+      };
+    }
+  }, [loading, settings]);
+
+  // ✅ Handle image load
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
   // Show loading state
   if (loading) {
     return (
-      <section className="py-5 bg-light">
+      <section className="py-5 bg-light" ref={sectionRef}>
         <div className="container">
           <div
             className="d-flex justify-content-center align-items-center"
@@ -146,6 +197,7 @@ const PrincipalSection = () => {
       <section
         className="py-5"
         style={{ backgroundColor: "var(--color-bg-alt)" }}
+        ref={sectionRef}
       >
         <div className="container">
           <div className="text-center py-5">
@@ -184,7 +236,9 @@ const PrincipalSection = () => {
         backgroundColor: "var(--color-bg-alt)",
         position: "relative",
         overflow: "hidden",
+        minHeight: "400px", // ✅ Prevent layout shift
       }}
+      ref={sectionRef}
     >
       {/* Decorative background elements */}
       <div
@@ -213,8 +267,14 @@ const PrincipalSection = () => {
       />
 
       <div className="container position-relative">
-        {/* Section Title */}
-        <div className="text-center mb-5" data-aos="fade-up">
+        <div
+          className="text-center mb-5"
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(20px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        >
           <span
             style={{
               fontSize: "0.85rem",
@@ -239,6 +299,10 @@ const PrincipalSection = () => {
               color: "var(--color-text)",
               marginBottom: "0.5rem",
             }}
+            data-aos="fade-up"
+            data-aos-duration="600"
+            data-aos-once="false"
+            data-aos-delay="100"
           >
             Message from the <span style={{ color: "#A51C30" }}>Principal</span>
           </h2>
@@ -249,15 +313,33 @@ const PrincipalSection = () => {
               maxWidth: "600px",
               margin: "0 auto",
             }}
+            data-aos="fade-up"
+            data-aos-duration="600"
+            data-aos-once="false"
+            data-aos-delay="100"
           >
             A word from our leader about our vision and commitment to excellence
           </p>
         </div>
 
         {/* Main Content */}
-        <div className="row g-4 align-items-center">
-          {/* Left Column - Image */}
-          <div className="col-lg-4 col-md-5" data-aos="fade-right">
+        <div
+          className="row g-4 align-items-center"
+          data-aos="fade-up"
+          data-aos-duration="600"
+          data-aos-once="false"
+          data-aos-delay="100"
+        >
+          {/* Left Column - Image with manual animation */}
+          <div
+            className="col-lg-4 col-md-5"
+            ref={leftColumnRef}
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateX(0)" : "translateX(-30px)",
+              transition: "opacity 0.8s ease, transform 0.8s ease",
+            }}
+          >
             <div
               className="card border-0 shadow-lg"
               style={{
@@ -269,52 +351,73 @@ const PrincipalSection = () => {
               }}
             >
               {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={settings.principalName || "Principal"}
-                  loading="lazy"
-                  style={{
-                    width: "100%",
-                    height: "320px",
-                    objectFit: "cover",
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.parentElement.innerHTML = `
-                      <div style="
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        height: 320px;
-                        padding: 2rem;
-                        text-align: center;
-                        background: linear-gradient(145deg, #1A1A1A, #2C2C2C);
-                        color: #fff;
-                      ">
-                        <div>
-                          <div style="
-                            width: 80px;
-                            height: 80px;
-                            border-radius: 50%;
-                            background: rgba(165, 28, 48, 0.2);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            margin: 0 auto 1rem;
-                          ">
-                            <i class="bi bi-person display-4" style="color: #A51C30;"></i>
+                <div style={{ position: "relative", minHeight: "320px" }}>
+                  <img
+                    src={imageUrl}
+                    alt={settings.principalName || "Principal"}
+                    loading="lazy"
+                    onLoad={handleImageLoad}
+                    style={{
+                      width: "100%",
+                      height: "320px",
+                      objectFit: "cover",
+                      opacity: imageLoaded ? 1 : 0,
+                      transition: "opacity 0.5s ease",
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.innerHTML = `
+                        <div style="
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          height: 320px;
+                          padding: 2rem;
+                          text-align: center;
+                          background: linear-gradient(145deg, #1A1A1A, #2C2C2C);
+                          color: #fff;
+                        ">
+                          <div>
+                            <div style="
+                              width: 80px;
+                              height: 80px;
+                              border-radius: 50%;
+                              background: rgba(165, 28, 48, 0.2);
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              margin: 0 auto 1rem;
+                            ">
+                              <i class="bi bi-person display-4" style="color: #A51C30;"></i>
+                            </div>
+                            <h4 style="color: #fff; font-family: 'Playfair Display', Georgia, serif; font-size: 1.2rem;">
+                              ${settings.principalName || "Principal"}
+                            </h4>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                              ${settings.principalDesignation || "GDC Gulabad"}
+                            </p>
                           </div>
-                          <h4 style="color: #fff; font-family: 'Playfair Display', Georgia, serif; font-size: 1.2rem;">
-                            ${settings.principalName || "Principal"}
-                          </h4>
-                          <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">
-                            ${settings.principalDesignation || "GDC Gulabad"}
-                          </p>
                         </div>
-                      </div>
-                    `;
-                  }}
-                />
+                      `;
+                    }}
+                  />
+                  {/* Image loading skeleton */}
+                  {!imageLoaded && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background:
+                          "linear-gradient(90deg, #2C2C2C 25%, #3C3C3C 50%, #2C2C2C 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
                 <div
                   style={{
@@ -369,8 +472,17 @@ const PrincipalSection = () => {
             </div>
           </div>
 
-          {/* Right Column - Content */}
-          <div className="col-lg-8 col-md-7" data-aos="fade-left">
+          {/* Right Column - Content with manual animation */}
+          <div
+            className="col-lg-8 col-md-7"
+            ref={rightColumnRef}
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateX(0)" : "translateX(30px)",
+              transition: "opacity 0.8s ease, transform 0.8s ease",
+              transitionDelay: "0.2s",
+            }}
+          >
             <div
               className="card border-0 shadow-lg"
               style={{ borderRadius: "16px" }}
@@ -557,6 +669,18 @@ const PrincipalSection = () => {
           </div>
         </div>
       </div>
+
+      {/* Add shimmer animation styles */}
+      <style>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+      `}</style>
     </section>
   );
 };

@@ -68,6 +68,10 @@ const VisionMissionAims = () => {
           {/* Vision */}
           <div className="col-md-6" data-aos="fade-up" data-aos-delay="100">
             <div
+              data-aos="fade-up"
+              data-aos-duration="600"
+              data-aos-once="false"
+              data-aos-delay="100"
               className="card border-0 shadow-sm h-100"
               style={{
                 borderRadius: "16px",
@@ -129,7 +133,13 @@ const VisionMissionAims = () => {
           </div>
 
           {/* Mission */}
-          <div className="col-md-6" data-aos="fade-up" data-aos-delay="150">
+          <div
+            className="col-md-6"
+            data-aos="fade-up"
+            data-aos-duration="600"
+            data-aos-once="false"
+            data-aos-delay="100"
+          >
             <div
               className="card border-0 shadow-sm h-100"
               style={{
@@ -196,7 +206,13 @@ const VisionMissionAims = () => {
         </div>
 
         {/* Aims - Full Width */}
-        <div className="row g-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+        <div
+          className="row g-4 mb-4"
+          data-aos="fade-up"
+          data-aos-duration="600"
+          data-aos-once="false"
+          data-aos-delay="200"
+        >
           <div className="col-12">
             <div
               className="card border-0 shadow-sm"
@@ -279,7 +295,13 @@ const VisionMissionAims = () => {
         </div>
 
         {/* What We Offer - Full Width with Gradient */}
-        <div className="row" data-aos="fade-up" data-aos-delay="250">
+        <div
+          className="row"
+          data-aos="fade-up"
+          data-aos-duration="600"
+          data-aos-once="false"
+          data-aos-delay="100"
+        >
           <div className="col-12">
             <div
               className="card border-0 shadow-sm"
