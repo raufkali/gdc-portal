@@ -53,7 +53,6 @@ export const clearCache = (key = null) => {
     memoryCache.data = {};
     memoryCache.timestamps = {};
   }
-  console.log("🗑️ Cache cleared:", key || "all");
 };
 
 // Generate cache key from collection and conditions
@@ -87,14 +86,9 @@ export const fetchCollection = async (
   if (!forceRefresh) {
     const cachedData = getFromCache(cacheKey);
     if (cachedData) {
-      console.log(
-        `📦 Cache hit: ${collectionName} (${cachedData.length} items)`,
-      );
       return cachedData;
     }
   }
-
-  console.log(`📡 Fetching from server: ${collectionName}`);
 
   try {
     // Build query
@@ -130,7 +124,6 @@ export const fetchCollection = async (
 
     // Cache the data
     setInCache(cacheKey, data, cacheTTL);
-    console.log(`✅ Cached: ${collectionName} (${data.length} items)`);
 
     return data;
   } catch (error) {
@@ -138,7 +131,6 @@ export const fetchCollection = async (
     // Return cached data if available (even if expired)
     const cachedData = memoryCache.data[cacheKey];
     if (cachedData) {
-      console.log(`⚠️ Using stale cache for ${collectionName}`);
       return cachedData;
     }
     throw error;
@@ -154,12 +146,9 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
   if (!forceRefresh) {
     const cachedData = getFromCache(cacheKey);
     if (cachedData) {
-      console.log(`📦 Cache hit: ${collectionName}/${id}`);
       return cachedData;
     }
   }
-
-  console.log(`📡 Fetching from server: ${collectionName}/${id}`);
 
   try {
     const docRef = doc(db, collectionName, id);
@@ -171,14 +160,12 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
 
     const data = { id: snap.id, ...snap.data() };
     setInCache(cacheKey, data, cacheTTL);
-    console.log(`✅ Cached: ${collectionName}/${id}`);
 
     return data;
   } catch (error) {
     console.error(`❌ Error fetching ${collectionName}/${id}:`, error);
     const cachedData = memoryCache.data[cacheKey];
     if (cachedData) {
-      console.log(`⚠️ Using stale cache for ${collectionName}/${id}`);
       return cachedData;
     }
     throw error;
@@ -191,7 +178,6 @@ export const addDocument = async (collectionName, data) => {
     const result = await addDoc(collection(db, collectionName), data);
     // Clear all cache for this collection
     clearCacheForCollection(collectionName);
-    console.log(`📝 Added document to ${collectionName}, cache cleared`);
     return result;
   } catch (error) {
     console.error(`❌ Error adding to ${collectionName}:`, error);
@@ -207,7 +193,6 @@ export const updateDocument = async (collectionName, id, data) => {
     // Clear cache for this collection and document
     clearCacheForCollection(collectionName);
     clearCacheForDocument(collectionName, id);
-    console.log(`📝 Updated ${collectionName}/${id}, cache cleared`);
     return true;
   } catch (error) {
     console.error(`❌ Error updating ${collectionName}/${id}:`, error);
@@ -223,7 +208,6 @@ export const deleteDocument = async (collectionName, id) => {
     // Clear cache for this collection and document
     clearCacheForCollection(collectionName);
     clearCacheForDocument(collectionName, id);
-    console.log(`🗑️ Deleted ${collectionName}/${id}, cache cleared`);
     return true;
   } catch (error) {
     console.error(`❌ Error deleting ${collectionName}/${id}:`, error);
@@ -260,7 +244,6 @@ export const prefetchCollection = async (
   options = {},
 ) => {
   const { cacheTTL = 10 * 60 * 1000 } = options; // 10 minutes for prefetch
-  console.log(`🔄 Prefetching: ${collectionName}`);
   return fetchCollection(collectionName, conditions, {
     ...options,
     cacheTTL,
@@ -312,15 +295,12 @@ export const getCachedImageUrl = (imageId, imageUrl) => {
 
 export const clearImageCache = () => {
   imageUrlCache.clear();
-  console.log("🗑️ Image URL cache cleared");
 };
 
 // ============================================
 // PREFETCH HOME DATA (Optimized)
 // ============================================
 export const prefetchHomeData = async () => {
-  console.log("🚀 Prefetching home page data...");
-
   const collections = [
     {
       name: "banners",
@@ -375,7 +355,6 @@ export const prefetchHomeData = async () => {
 
   try {
     await Promise.all(promises);
-    console.log("✅ Home page data prefetched and cached");
   } catch (error) {
     console.error("❌ Error prefetching home data:", error);
   }

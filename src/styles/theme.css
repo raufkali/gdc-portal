@@ -108,6 +108,15 @@ ol {
     padding-left: 1.5rem;
 }
 
+.bg-primary {
+    background-color: var(--color-primary) !important;
+}
+
+.bg-primary-dark {
+    background-color: var(--color-primary-dark) !important;
+
+}
+
 blockquote {
     border-left: 4px solid var(--color-primary);
     padding-left: 1.2rem;

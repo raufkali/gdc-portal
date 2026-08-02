@@ -104,7 +104,7 @@ const TestimonialsSection = () => {
     <section
       className="py-5"
       style={{
-        backgroundColor: "var(--color-bg-alt)",
+        backgroundColor: "var(--color-primary-dark)",
         position: "relative",
         overflow: "hidden",
       }}
@@ -140,14 +140,15 @@ const TestimonialsSection = () => {
             style={{
               fontSize: "0.8rem",
               fontWeight: "600",
-              color: "#A51C30",
+              color: "#fff",
               textTransform: "uppercase",
               letterSpacing: "2px",
               display: "inline-block",
-              background: "rgba(165, 28, 48, 0.08)",
+              background: "var(--bg-dark)",
               padding: "0.3rem 1.2rem",
               borderRadius: "50px",
               marginBottom: "0.5rem",
+              border: "2px solid #fff",
             }}
           >
             Testimonials
@@ -157,15 +158,15 @@ const TestimonialsSection = () => {
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: "clamp(2rem, 3vw, 2.5rem)",
               fontWeight: "700",
-              color: "var(--color-text)",
+              color: "#fff",
               marginBottom: "0.25rem",
             }}
           >
-            What Our <span style={{ color: "#A51C30" }}>Students Say</span>
+            What Our Students Say
           </h2>
           <p
             style={{
-              color: "var(--color-text-muted)",
+              color: "var(--color-text-light)",
               fontSize: "1rem",
               maxWidth: "600px",
               margin: "0 auto",
@@ -320,25 +321,24 @@ const TestimonialsSection = () => {
             className="btn"
             style={{
               background: "transparent",
-              color: "#A51C30",
+              color: "#ffff",
               padding: "0.6rem 2.5rem",
               borderRadius: "50px",
               fontWeight: "600",
               fontSize: "0.95rem",
-              border: "2px solid #A51C30",
+              border: "2px solid #ffff",
               textDecoration: "none",
               transition: "all 0.3s ease",
               display: "inline-block",
             }}
             onMouseEnter={(e) => {
-              e.target.style.background = "#A51C30";
+              e.target.style.background = "#ee2846";
               e.target.style.color = "#fff";
               e.target.style.transform = "translateY(-2px)";
               e.target.style.boxShadow = "0 8px 25px rgba(165, 28, 48, 0.2)";
             }}
             onMouseLeave={(e) => {
               e.target.style.background = "transparent";
-              e.target.style.color = "#A51C30";
               e.target.style.transform = "translateY(0)";
               e.target.style.boxShadow = "none";
             }}
