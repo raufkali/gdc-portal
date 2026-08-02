@@ -37,57 +37,57 @@ let cachedBanners = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// ✅ Helper to check if cache is valid
+const isCacheValid = () => {
+  return (
+    cachedBanners && cacheTimestamp && Date.now() - cacheTimestamp < CACHE_TTL
+  );
+};
+
 const HeroCarousel = () => {
+  // ✅ Initialize with cached data if available
   const [banners, setBanners] = useState(() => {
-    // ✅ Initialize with cached data if available
-    if (
-      cachedBanners &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    ) {
+    if (isCacheValid()) {
       console.log("📦 Instant: Banners from cache on load");
       return cachedBanners;
     }
     return [];
   });
 
+  // ✅ Only show loading if no cache
   const [loading, setLoading] = useState(() => {
-    // ✅ If cache exists and valid, don't show loading
-    return !(
-      cachedBanners &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
+    return !isCacheValid();
   });
 
   const [usingFallback, setUsingFallback] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
   const [activeIndex, setActiveIndex] = useState(0);
   const [fromCache, setFromCache] = useState(() => {
-    return !!(
-      cachedBanners &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
+    return isCacheValid();
   });
   const carouselRef = useRef(null);
 
+  // ✅ Ref to track if data is already being fetched
+  const fetchingRef = useRef(false);
+
   useEffect(() => {
     const fetchBanners = async () => {
-      try {
-        // ✅ If we have valid cache, skip fetching
-        if (
-          cachedBanners &&
-          cacheTimestamp &&
-          Date.now() - cacheTimestamp < CACHE_TTL
-        ) {
-          console.log("📦 Using cached banners");
-          setBanners(cachedBanners);
-          setFromCache(true);
-          setLoading(false);
-          return;
-        }
+      // ✅ Prevent multiple fetches
+      if (fetchingRef.current) return;
 
+      // ✅ Check cache again (in case it expired during fetch)
+      if (isCacheValid()) {
+        console.log("📦 Using cached banners");
+        setBanners(cachedBanners);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Set fetching flag
+      fetchingRef.current = true;
+
+      try {
         console.log("📡 Fetching banners from server...");
         const q = query(collection(db, "banners"), where("active", "==", true));
         const snap = await getDocs(q);
@@ -115,11 +115,12 @@ const HeroCarousel = () => {
         setUsingFallback(true);
       } finally {
         setLoading(false);
+        fetchingRef.current = false;
       }
     };
 
     fetchBanners();
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs on mount
 
   // Listen to carousel slide events
   useEffect(() => {
@@ -172,7 +173,7 @@ const HeroCarousel = () => {
     );
   }
 
-  // ✅ If no banners and not loading, show nothing (or fallback)
+  // ✅ If no banners and not loading, show nothing
   if (!banners || banners.length === 0) {
     return null;
   }
@@ -235,7 +236,7 @@ const HeroCarousel = () => {
                   height: "100%",
                   background: isFallback
                     ? "rgba(0,0,0,0.1)"
-                    : "linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%)",
+                    : "linear-gradient(to right, rgba(0, 0, 0, 0.53) 0%, rgba(0, 0, 0, 0.19) 100%)",
                   zIndex: 1,
                 }}
               />
@@ -408,30 +409,6 @@ const HeroCarousel = () => {
               }}
             />
           ))}
-        </div>
-      )}
-
-      {/* Preview Mode badge */}
-      {usingFallback && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "90px",
-            right: "20px",
-            zIndex: 10,
-            background: "rgba(0,0,0,0.8)",
-            color: "#fff",
-            padding: "6px 16px",
-            borderRadius: "50px",
-            fontSize: "clamp(10px, 0.7vw, 12px)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            letterSpacing: "0.3px",
-          }}
-        >
-          <span style={{ marginRight: "4px" }}>⚡</span>
-          Preview Mode
         </div>
       )}
     </div>

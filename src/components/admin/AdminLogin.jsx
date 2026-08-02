@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -8,6 +9,7 @@ const AdminLogin = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -34,7 +36,6 @@ const AdminLogin = () => {
       }}
     >
       <div className="container col-12 col-lg-8">
-        {/* Back to Home Button */}
         {/* Login Card */}
         <div
           className="card shadow-lg border-0"
@@ -44,19 +45,41 @@ const AdminLogin = () => {
             background: "rgba(255,255,255,0.95)",
           }}
         >
-          <div className="mb-3"></div>
           <div className="card-body p-4 p-md-5">
-            {/* Logo / Icon */}
+            {/* Logo / Brand */}
             <div className="text-center mb-4">
               <div
-                className="d-inline-flex align-items-center justify-content-center rounded-circle p-3 mb-3"
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
                 style={{
                   background: "linear-gradient(135deg, #A51C30, #7A1523)",
-                  width: "80px",
-                  height: "80px",
+                  width: "100px",
+                  height: "100px",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  border: "2px solid var(--color-primary-dark)",
                 }}
               >
-                <i className="bi bi-shield-lock fs-1 text-white"></i>
+                {settings?.logoUrl ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings?.brandName || "Logo"}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "fill",
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      // Show fallback icon on error
+                      const parent = e.target.parentElement;
+                      const icon = document.createElement("i");
+                      icon.className = "bi bi-shield-lock fs-1 text-white";
+                      parent.appendChild(icon);
+                    }}
+                  />
+                ) : (
+                  <i className="bi bi-shield-lock fs-1 text-white"></i>
+                )}
               </div>
               <h3
                 className="fw-bold"
@@ -65,8 +88,9 @@ const AdminLogin = () => {
                   color: "#1A1A1A",
                 }}
               >
-                Login
+                {settings?.brandName || "GDC Gulabad"}
               </h3>
+              <p className="text-muted small">Admin Login</p>
             </div>
 
             {/* Error Alert */}
@@ -103,7 +127,7 @@ const AdminLogin = () => {
                       background: "#f8f9fa",
                       padding: "0.75rem 1rem",
                     }}
-                    placeholder="email@example.com"
+                    placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -129,7 +153,7 @@ const AdminLogin = () => {
                       background: "#f8f9fa",
                       padding: "0.75rem 1rem",
                     }}
-                    placeholder="Enter your password"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -172,8 +196,25 @@ const AdminLogin = () => {
                   </>
                 )}
               </button>
-              <div class="row text-center pt-3">
-                <Link to="/" className="">
+
+              <div className="row text-center pt-3">
+                <Link
+                  to="/"
+                  style={{
+                    color: "#A51C30",
+                    textDecoration: "none",
+                    fontWeight: "500",
+                    transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = "#7A1523";
+                    e.target.style.transform = "translateX(-3px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = "#A51C30";
+                    e.target.style.transform = "translateX(0)";
+                  }}
+                >
                   <i className="bi bi-arrow-left me-1"></i>
                   Back to Home
                 </Link>
@@ -185,7 +226,8 @@ const AdminLogin = () => {
         {/* Footer Text */}
         <div className="text-center mt-3">
           <small style={{ color: "rgba(255,255,255,0.5)" }}>
-            &copy; {new Date().getFullYear()} GDC Gulabad. All rights reserved.
+            &copy; {new Date().getFullYear()}{" "}
+            {settings?.brandName || "GDC Gulabad"}. All rights reserved.
           </small>
         </div>
       </div>

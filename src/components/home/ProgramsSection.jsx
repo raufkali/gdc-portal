@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
@@ -36,6 +36,11 @@ const ProgramsSection = () => {
       Date.now() - cacheTimestamp < CACHE_TTL
     );
   });
+
+  // ✅ Memoize display programs to prevent recalculation
+  const displayPrograms = useMemo(() => {
+    return programs.slice(0, 4);
+  }, [programs]);
 
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -93,8 +98,6 @@ const ProgramsSection = () => {
 
   if (!programs.length) return null;
 
-  const displayPrograms = programs.slice(0, 4);
-
   return (
     <section className="py-5 bg-primary-dark">
       <div className="container">
@@ -139,19 +142,38 @@ const ProgramsSection = () => {
           </p>
         </div>
 
-        <div className="row g-4">
-          {displayPrograms.map((program) => (
-            <div key={program.id} className="col-md-3 col-sm-6">
+        <div className="row g-4" style={{ display: "flex", flexWrap: "wrap" }}>
+          {displayPrograms.map((program, index) => (
+            <div
+              key={program.id}
+              className="col-md-3 col-sm-6"
+              style={{ display: "flex" }}
+              data-aos="fade-right"
+              data-aos-duration="400"
+              data-aos-once="false"
+              data-aos-delay={index * 100}
+            >
               <div
-                className="card h-100 shadow-sm border-0 hover-lift"
-                data-aos="fade-right"
-                data-aos-duration="600"
-                data-aos-once="false"
-                data-aos-delay="100"
+                className="card shadow-sm border-0 hover-lift"
                 style={{
                   borderRadius: "12px",
                   overflow: "hidden",
                   backgroundColor: "var(--card-bg)",
+                  display: "flex",
+                  flexDirection: "column",
+                  width: "100%",
+                  flex: "1",
+                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-5px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 30px rgba(0,0,0,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 10px rgba(0,0,0,0.08)";
                 }}
               >
                 {program.imageUrl && (
@@ -166,7 +188,10 @@ const ProgramsSection = () => {
                     }}
                   />
                 )}
-                <div className="card-body d-flex flex-column">
+                <div
+                  className="card-body d-flex flex-column"
+                  style={{ flex: "1" }}
+                >
                   <h5
                     className="card-title fw-bold"
                     style={{
@@ -186,11 +211,12 @@ const ProgramsSection = () => {
                     </p>
                   )}
                   <p
-                    className="card-text flex-grow-1"
+                    className="card-text"
                     style={{
                       color: "var(--color-text-muted)",
                       fontSize: "0.85rem",
                       lineHeight: "1.6",
+                      flex: "1",
                     }}
                   >
                     {program.description?.substring(0, 80)}...
@@ -208,6 +234,7 @@ const ProgramsSection = () => {
                       border: "none",
                       transition: "all 0.3s ease",
                       textDecoration: "none",
+                      marginTop: "auto",
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.background = "#7A1523";

@@ -145,7 +145,7 @@ const VisionMissionAims = () => {
               style={{
                 borderRadius: "16px",
                 overflow: "hidden",
-                borderLeft: "4px solid #28a745",
+                borderLeft: "4px solid #A51C30",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
                 backgroundColor: "var(--card-bg)",
               }}
@@ -167,8 +167,8 @@ const VisionMissionAims = () => {
                       width: "50px",
                       height: "50px",
                       borderRadius: "12px",
-                      backgroundColor: "rgba(40, 167, 69, 0.1)",
-                      color: "#28a745",
+                      backgroundColor: "rgba(165, 28, 48, 0.1)",
+                      color: "#A51C30",
                     }}
                   >
                     <i
@@ -182,7 +182,7 @@ const VisionMissionAims = () => {
                       style={{
                         fontFamily: "'Playfair Display', Georgia, serif",
                         fontSize: "clamp(1.3rem, 1.8vw, 1.6rem)",
-                        color: "#28a745",
+                        color: "#A51C30",
                         marginBottom: "0.5rem",
                       }}
                     >
@@ -219,7 +219,7 @@ const VisionMissionAims = () => {
               style={{
                 borderRadius: "16px",
                 overflow: "hidden",
-                borderLeft: "4px solid #ffc107",
+                borderLeft: "4px solid #A51C30",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
                 backgroundColor: "var(--card-bg)",
               }}
@@ -241,8 +241,8 @@ const VisionMissionAims = () => {
                       width: "50px",
                       height: "50px",
                       borderRadius: "12px",
-                      backgroundColor: "rgba(255, 193, 7, 0.1)",
-                      color: "#ffc107",
+                      backgroundColor: "rgba(165, 28, 48, 0.1)",
+                      color: "#A51C30",
                     }}
                   >
                     <i
@@ -256,7 +256,7 @@ const VisionMissionAims = () => {
                       style={{
                         fontFamily: "'Playfair Display', Georgia, serif",
                         fontSize: "clamp(1.3rem, 1.8vw, 1.6rem)",
-                        color: "#ffc107",
+                        color: "#A51C30",
                       }}
                     >
                       Our Aims & Objectives

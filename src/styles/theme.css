@@ -70,7 +70,7 @@
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 body {
@@ -80,7 +80,7 @@ body {
     line-height: 1.7;
     transition: background-color var(--transition-speed),
         color var(--transition-speed);
-    overflow-x: hidden;
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
