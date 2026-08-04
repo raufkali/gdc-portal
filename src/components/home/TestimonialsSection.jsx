@@ -51,7 +51,6 @@ const TestimonialsSection = () => {
       }
 
       try {
-        console.log("📡 Fetching testimonials from server");
         const data = await fetchCollection("testimonials");
         cachedTestimonials = data;
         cacheTimestamp = Date.now();

@@ -3,20 +3,19 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for departments
+//  Cache for departments
 let cachedDepartments = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const Departments = () => {
-  // ✅ Initialize with cached data if available
+  //  Initialize with cached data if available
   const [departments, setDepartments] = useState(() => {
     if (
       cachedDepartments &&
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Departments instant from cache");
       return cachedDepartments;
     }
     return [];
@@ -42,7 +41,7 @@ const Departments = () => {
 
   useEffect(() => {
     const fetchDepartments = async () => {
-      // ✅ If cache is valid, skip fetching
+      //  If cache is valid, skip fetching
       if (
         cachedDepartments &&
         cacheTimestamp &&
@@ -55,7 +54,6 @@ const Departments = () => {
       }
 
       try {
-        console.log("📡 Fetching departments from server");
         const data = await fetchCollection("departments");
 
         cachedDepartments = data;

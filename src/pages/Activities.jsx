@@ -4,20 +4,19 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for activities
+//  Cache for activities
 let cachedActivities = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const Activities = () => {
-  // ✅ Initialize with cached data if available
+  //  Initialize with cached data if available
   const [activities, setActivities] = useState(() => {
     if (
       cachedActivities &&
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Activities instant from cache");
       return cachedActivities;
     }
     return [];
@@ -43,7 +42,7 @@ const Activities = () => {
 
   useEffect(() => {
     const fetchActivities = async () => {
-      // ✅ If cache is valid, skip fetching
+      //  If cache is valid, skip fetching
       if (
         cachedActivities &&
         cacheTimestamp &&
@@ -56,7 +55,6 @@ const Activities = () => {
       }
 
       try {
-        console.log("📡 Fetching activities from server");
         const data = await fetchCollection("activities", [
           { type: "orderBy", field: "date", direction: "desc" },
         ]);

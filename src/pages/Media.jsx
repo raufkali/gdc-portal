@@ -15,7 +15,6 @@ const Media = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Media instant from cache");
       return cachedMedia;
     }
     return [];
@@ -52,7 +51,6 @@ const Media = () => {
       }
 
       try {
-        console.log("📡 Fetching media from server");
         const data = await fetchCollection("gallery", [
           { type: "orderBy", field: "uploadedAt", direction: "desc" },
         ]);

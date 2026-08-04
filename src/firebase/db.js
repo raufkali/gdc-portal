@@ -2,6 +2,8 @@ import { db } from "./config";
 import {
   collection,
   getDocs,
+  getDocsFromCache,
+  getDocsFromServer,
   getDoc,
   doc,
   addDoc,
@@ -63,11 +65,48 @@ const generateCacheKey = (collectionName, conditions = []) => {
   return `${collectionName}_${conditionsStr}`;
 };
 
+// Build a Firestore query object from our condition shorthand
+const buildQuery = (collectionName, conditions = []) => {
+  let q = collection(db, collectionName);
+  const constraints = [];
+
+  conditions.forEach((c) => {
+    if (c.type === "where") {
+      constraints.push(where(c.field, c.operator, c.value));
+    } else if (c.type === "orderBy") {
+      constraints.push(orderBy(c.field, c.direction || "asc"));
+    } else if (c.type === "limit") {
+      constraints.push(limit(c.value));
+    }
+  });
+
+  if (constraints.length) {
+    q = query(q, ...constraints);
+  }
+  return q;
+};
+
+// Track in-flight requests so concurrent callers share one fetch
+// instead of firing duplicate reads (fixes double-fetch on
+// StrictMode / fast remounts / multiple components requesting
+// the same collection at once).
+const inFlightRequests = {};
+
 // ============================================
 // EXPORTED FUNCTIONS WITH CACHE
 // ============================================
 
-// ✅ Generic fetch all documents with caching
+/**
+ * Generic fetch-all with a 3-tier cache strategy:
+ *   1. In-memory cache (instant, valid within TTL)
+ *   2. IndexedDB persistence cache (near-instant, survives reloads)
+ *      -> returned immediately, then silently refreshed from server
+ *   3. Network (source of truth, used when no local cache exists yet)
+ *
+ * This is what actually fixes "slow every reload" - IndexedDB
+ * persistence was enabled in config.js but never used as a
+ * read-first source, so every reload was paying full network cost.
+ */
 export const fetchCollection = async (
   collectionName,
   conditions = [],
@@ -80,9 +119,18 @@ export const fetchCollection = async (
     limitCount = 0,
   } = options;
 
-  const cacheKey = generateCacheKey(collectionName, conditions);
+  // Apply useLimit/limitCount shorthand if caller didn't already add a limit condition
+  let finalConditions = conditions;
+  if (useLimit && limitCount > 0) {
+    const hasLimit = conditions.some((c) => c.type === "limit");
+    if (!hasLimit) {
+      finalConditions = [...conditions, { type: "limit", value: limitCount }];
+    }
+  }
 
-  // Return cached data if valid and not forcing refresh
+  const cacheKey = generateCacheKey(collectionName, finalConditions);
+
+  // 1) In-memory cache — instant, no async work at all
   if (!forceRefresh) {
     const cachedData = getFromCache(cacheKey);
     if (cachedData) {
@@ -90,54 +138,77 @@ export const fetchCollection = async (
     }
   }
 
-  try {
-    // Build query
-    let q = collection(db, collectionName);
-    const constraints = [];
+  // De-dupe concurrent requests for the same key
+  if (!forceRefresh && inFlightRequests[cacheKey]) {
+    return inFlightRequests[cacheKey];
+  }
 
-    if (conditions.length) {
-      conditions.forEach((c) => {
-        if (c.type === "where") {
-          constraints.push(where(c.field, c.operator, c.value));
-        } else if (c.type === "orderBy") {
-          constraints.push(orderBy(c.field, c.direction || "asc"));
-        } else if (c.type === "limit") {
-          constraints.push(limit(c.value));
+  const requestPromise = (async () => {
+    const q = buildQuery(collectionName, finalConditions);
+
+    // 2) Try local IndexedDB persistence cache first (fast, survives reloads)
+    if (!forceRefresh) {
+      try {
+        const cacheSnap = await getDocsFromCache(q);
+        if (!cacheSnap.empty) {
+          const localData = cacheSnap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }));
+          setInCache(cacheKey, localData, cacheTTL);
+
+          // Refresh from server in the background; don't block the UI.
+          getDocsFromServer(q)
+            .then((serverSnap) => {
+              const freshData = serverSnap.docs.map((d) => ({
+                id: d.id,
+                ...d.data(),
+              }));
+              setInCache(cacheKey, freshData, cacheTTL);
+            })
+            .catch((err) => {
+              // Background refresh failing is not fatal — we already
+              // served data from local cache.
+              console.warn(
+                `Background refresh failed for ${collectionName}:`,
+                err,
+              );
+            });
+
+          return localData;
         }
-      });
-    }
-
-    // Apply limit if specified and not already added
-    if (useLimit && limitCount > 0) {
-      const hasLimit = conditions.some((c) => c.type === "limit");
-      if (!hasLimit) {
-        constraints.push(limit(limitCount));
+      } catch (err) {
+        // No local cache yet (e.g. very first load ever) — fall through
+        // to a normal network fetch below.
       }
     }
 
-    if (constraints.length) {
-      q = query(q, ...constraints);
+    // 3) No usable local cache (or forceRefresh) — hit the network
+    try {
+      const snap = await getDocs(q);
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setInCache(cacheKey, data, cacheTTL);
+      return data;
+    } catch (error) {
+      console.error(`Error fetching ${collectionName}:`, error);
+      // Return stale in-memory data if we have any, rather than failing outright
+      const staleData = memoryCache.data[cacheKey];
+      if (staleData) {
+        return staleData;
+      }
+      throw error;
     }
+  })();
 
-    const snap = await getDocs(q);
-    const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    // Cache the data
-    setInCache(cacheKey, data, cacheTTL);
-
-    return data;
-  } catch (error) {
-    console.error(`❌ Error fetching ${collectionName}:`, error);
-    // Return cached data if available (even if expired)
-    const cachedData = memoryCache.data[cacheKey];
-    if (cachedData) {
-      return cachedData;
-    }
-    throw error;
+  inFlightRequests[cacheKey] = requestPromise;
+  try {
+    return await requestPromise;
+  } finally {
+    delete inFlightRequests[cacheKey];
   }
 };
 
-// ✅ Fetch single document with caching
+//  Fetch single document with caching
 export const fetchDocument = async (collectionName, id, options = {}) => {
   const { forceRefresh = false, cacheTTL = 5 * 60 * 1000 } = options;
 
@@ -163,7 +234,7 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error(`❌ Error fetching ${collectionName}/${id}:`, error);
+    console.error(`Error fetching ${collectionName}/${id}:`, error);
     const cachedData = memoryCache.data[cacheKey];
     if (cachedData) {
       return cachedData;
@@ -172,45 +243,42 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
   }
 };
 
-// ✅ Add document with cache invalidation
+//  Add document with cache invalidation
 export const addDocument = async (collectionName, data) => {
   try {
     const result = await addDoc(collection(db, collectionName), data);
-    // Clear all cache for this collection
     clearCacheForCollection(collectionName);
     return result;
   } catch (error) {
-    console.error(`❌ Error adding to ${collectionName}:`, error);
+    console.error(`Error adding to ${collectionName}:`, error);
     throw error;
   }
 };
 
-// ✅ Update document with cache invalidation
+//  Update document with cache invalidation
 export const updateDocument = async (collectionName, id, data) => {
   try {
     const docRef = doc(db, collectionName, id);
     await updateDoc(docRef, data);
-    // Clear cache for this collection and document
     clearCacheForCollection(collectionName);
     clearCacheForDocument(collectionName, id);
     return true;
   } catch (error) {
-    console.error(`❌ Error updating ${collectionName}/${id}:`, error);
+    console.error(`Error updating ${collectionName}/${id}:`, error);
     throw error;
   }
 };
 
-// ✅ Delete document with cache invalidation
+//  Delete document with cache invalidation
 export const deleteDocument = async (collectionName, id) => {
   try {
     const docRef = doc(db, collectionName, id);
     await deleteDoc(docRef);
-    // Clear cache for this collection and document
     clearCacheForCollection(collectionName);
     clearCacheForDocument(collectionName, id);
     return true;
   } catch (error) {
-    console.error(`❌ Error deleting ${collectionName}/${id}:`, error);
+    console.error(`Error deleting ${collectionName}/${id}:`, error);
     throw error;
   }
 };
@@ -219,7 +287,6 @@ export const deleteDocument = async (collectionName, id) => {
 // CACHE MANAGEMENT HELPERS
 // ============================================
 
-// Clear cache for a specific collection
 const clearCacheForCollection = (collectionName) => {
   const keys = Object.keys(memoryCache.data);
   keys.forEach((key) => {
@@ -230,14 +297,13 @@ const clearCacheForCollection = (collectionName) => {
   });
 };
 
-// Clear cache for a specific document
 const clearCacheForDocument = (collectionName, id) => {
   const docKey = `${collectionName}_doc_${id}`;
   delete memoryCache.data[docKey];
   delete memoryCache.timestamps[docKey];
 };
 
-// ✅ Prefetch collections with TTL
+//  Prefetch collections with TTL
 export const prefetchCollection = async (
   collectionName,
   conditions = [],
@@ -251,7 +317,7 @@ export const prefetchCollection = async (
   });
 };
 
-// ✅ Get cache stats
+//  Get cache stats
 export const getCacheStats = () => {
   const keys = Object.keys(memoryCache.data);
   const stats = {
@@ -271,7 +337,7 @@ export const getCacheStats = () => {
   return stats;
 };
 
-// ✅ Export cache control
+//  Export cache control
 export const cacheControl = {
   clear: clearCache,
   stats: getCacheStats,
@@ -287,8 +353,6 @@ export const getCachedImageUrl = (imageId, imageUrl) => {
   if (imageUrlCache.has(imageId)) {
     return imageUrlCache.get(imageId);
   }
-
-  // Cache the URL
   imageUrlCache.set(imageId, imageUrl);
   return imageUrl;
 };
@@ -345,18 +409,16 @@ export const prefetchHomeData = async () => {
     },
   ];
 
-  // Prefetch all collections in parallel
   const promises = collections.map((col) =>
     fetchCollection(col.name, col.conditions, {
       cacheTTL: 10 * 60 * 1000, // 10 minutes
-      forceRefresh: true,
     }),
   );
 
   try {
     await Promise.all(promises);
   } catch (error) {
-    console.error("❌ Error prefetching home data:", error);
+    console.error("Error prefetching home data:", error);
   }
 };
 

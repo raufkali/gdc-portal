@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// ✅ Cache for departments
+//  Cache for departments
 let cachedDepartments = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000;
@@ -45,7 +45,6 @@ const DepartmentsSection = () => {
       }
 
       try {
-        console.log("📡 Fetching departments from server");
         const data = await fetchCollection("departments");
         cachedDepartments = data;
         cacheTimestamp = Date.now();
@@ -329,7 +328,9 @@ const DepartmentsSection = () => {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundImage: `url(${currentDept.imageUrl || "https://via.placeholder.com/1200x600/1a1a1a/A51C30?text=Department"})`,
+              backgroundImage: currentDept.imageUrl
+                ? `url(${currentDept.imageUrl})`
+                : "linear-gradient(145deg, #1A1A1A, #2C2C2C)",
               backgroundSize: "cover",
               backgroundPosition: "center",
               transition: "all 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
@@ -347,7 +348,7 @@ const DepartmentsSection = () => {
               right: 0,
               bottom: 0,
               background:
-                "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0.1) 100%)",
+                "linear-gradient(to right, rgba(0, 0, 0, 0.46) 0%, rgba(0, 0, 0, 0.2) 60%, rgba(0,0,0,0.1) 100%)",
               zIndex: 1,
             }}
           />

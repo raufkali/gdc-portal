@@ -50,7 +50,6 @@ const Gallery = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Gallery images instant from cache");
       return cachedImages;
     }
     return [];
@@ -89,13 +88,9 @@ const Gallery = () => {
       }
 
       try {
-        console.log("📡 Fetching gallery images from server...");
-
         // Fetch all images from gallery collection
         const snap = await getDocs(collection(db, "gallery"));
         let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-        console.log(`📦 Found ${data.length} images`);
 
         if (data.length > 0) {
           // ✅ Cache the data
@@ -105,7 +100,6 @@ const Gallery = () => {
           setFromCache(false);
         } else {
           // Use fallback images if no images exist
-          console.log("🔄 Using fallback images");
           const fallback = FALLBACK_IMAGES;
           cachedImages = fallback;
           cacheTimestamp = Date.now();

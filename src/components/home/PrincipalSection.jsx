@@ -23,7 +23,6 @@ const PrincipalSection = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Principal settings instant from cache");
       return cachedSettings;
     }
     return null;
@@ -63,7 +62,6 @@ const PrincipalSection = () => {
         cacheTimestamp &&
         Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        console.log("📦 Principal settings from cache");
         setSettings(cachedSettings);
         setFromCache(true);
         setLoading(false);
@@ -72,7 +70,6 @@ const PrincipalSection = () => {
 
       // Fetch from Firestore
       try {
-        console.log("📡 Fetching principal settings from server");
         const docRef = doc(db, "settings", "website");
         const docSnap = await getDoc(docRef);
 
@@ -105,7 +102,6 @@ const PrincipalSection = () => {
         console.error("Error fetching principal settings:", error);
         // Use cached settings if available, even if expired
         if (cachedSettings) {
-          console.log("⚠️ Using stale cache for principal settings");
           setSettings(cachedSettings);
           setFromCache(true);
         } else {
@@ -356,6 +352,7 @@ const PrincipalSection = () => {
                     src={imageUrl}
                     alt={settings.principalName || "Principal"}
                     loading="lazy"
+                    decoding="async"
                     onLoad={handleImageLoad}
                     style={{
                       width: "100%",

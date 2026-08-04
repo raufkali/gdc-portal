@@ -252,7 +252,7 @@ const About = () => {
             style={{
               borderRadius: "16px",
               overflow: "hidden",
-              borderLeft: "6px solid #28a745",
+              borderLeft: "6px solid #A51C30",
             }}
           >
             <div className="card-body p-4 p-lg-5">
@@ -262,7 +262,7 @@ const About = () => {
                     width: "56px",
                     height: "56px",
                     borderRadius: "12px",
-                    background: "rgba(40, 167, 69, 0.1)",
+                    background: "rgba(165, 28, 48, 0.08)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -271,7 +271,7 @@ const About = () => {
                 >
                   <i
                     className="bi bi-bullseye fs-2"
-                    style={{ color: "#28a745" }}
+                    style={{ color: "#A51C30" }}
                   ></i>
                 </div>
                 <div>
@@ -280,7 +280,7 @@ const About = () => {
                       fontFamily: "'Playfair Display', Georgia, serif",
                       fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
                       fontWeight: "700",
-                      color: "#28a745",
+                      color: "#A51C30",
                       marginBottom: "0.5rem",
                     }}
                   >
@@ -309,7 +309,7 @@ const About = () => {
             style={{
               borderRadius: "16px",
               overflow: "hidden",
-              borderLeft: "6px solid #ffc107",
+              borderLeft: "6px solid #A51C30",
             }}
           >
             <div className="card-body p-4 p-lg-5">
@@ -319,7 +319,7 @@ const About = () => {
                     width: "56px",
                     height: "56px",
                     borderRadius: "12px",
-                    background: "rgba(255, 193, 7, 0.1)",
+                    background: "rgba(165, 28, 48, 0.08)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -328,7 +328,7 @@ const About = () => {
                 >
                   <i
                     className="bi bi-list-check fs-2"
-                    style={{ color: "#ffc107" }}
+                    style={{ color: "#A51C30" }}
                   ></i>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -337,7 +337,7 @@ const About = () => {
                       fontFamily: "'Playfair Display', Georgia, serif",
                       fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
                       fontWeight: "700",
-                      color: "#ffc107",
+                      color: "#A51C30",
                       marginBottom: "0.75rem",
                     }}
                   >
@@ -355,7 +355,7 @@ const About = () => {
                           }}
                         >
                           <span
-                            style={{ color: "#ffc107", fontSize: "1.2rem" }}
+                            style={{ color: "#A51C30", fontSize: "1.2rem" }}
                           >
                             <i className="bi bi-check-circle-fill"></i>
                           </span>

@@ -49,7 +49,6 @@ const GalleryPreview = () => {
       }
 
       try {
-        console.log("📡 Fetching gallery from server");
         const data = await fetchCollection("gallery", [
           { type: "orderBy", field: "uploadedAt", direction: "desc" },
         ]);
@@ -161,6 +160,7 @@ const GalleryPreview = () => {
                   className="w-100"
                   alt={img.caption || "Gallery"}
                   loading="lazy"
+                  decoding="async"
                   style={{
                     height: "200px",
                     objectFit: "cover",

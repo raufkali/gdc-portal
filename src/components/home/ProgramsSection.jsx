@@ -2,80 +2,35 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// ✅ Cache for programs
-let cachedPrograms = null;
-let cacheTimestamp = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// NOTE: no more module-level cachedPrograms/cacheTimestamp here.
+// This now shares the same cache as Programs.jsx via fetchCollection()
+// in firebase/db.js, so visiting Home then /programs (or vice versa)
+// doesn't trigger a second Firestore read for identical data.
 
 const ProgramsSection = () => {
-  // ✅ Initialize with cached data if available
-  const [programs, setPrograms] = useState(() => {
-    if (
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    ) {
-      console.log("📦 Programs instant from cache");
-      return cachedPrograms;
-    }
-    return [];
-  });
+  const [programs, setPrograms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [loading, setLoading] = useState(() => {
-    return !(
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
-  const [fromCache, setFromCache] = useState(() => {
-    return !!(
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
-  // ✅ Memoize display programs to prevent recalculation
-  const displayPrograms = useMemo(() => {
-    return programs.slice(0, 4);
-  }, [programs]);
+  const displayPrograms = useMemo(() => programs.slice(0, 4), [programs]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPrograms = async () => {
-      // ✅ If cache is valid, skip fetching
-      if (
-        cachedPrograms &&
-        cacheTimestamp &&
-        Date.now() - cacheTimestamp < CACHE_TTL
-      ) {
-        setPrograms(cachedPrograms);
-        setFromCache(true);
-        setLoading(false);
-        return;
-      }
-
       try {
-        console.log("📡 Fetching programs from server");
         const data = await fetchCollection("programs");
-
-        cachedPrograms = data;
-        cacheTimestamp = Date.now();
-        setPrograms(data);
-        setFromCache(false);
+        if (isMounted) setPrograms(data);
       } catch (error) {
         console.error("Error fetching programs:", error);
-        if (cachedPrograms) {
-          setPrograms(cachedPrograms);
-          setFromCache(true);
-        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchPrograms();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {
@@ -182,6 +137,7 @@ const ProgramsSection = () => {
                     className="card-img-top"
                     alt={program.title}
                     loading="lazy"
+                    decoding="async"
                     style={{ height: "180px", objectFit: "cover" }}
                     onError={(e) => {
                       e.target.style.display = "none";

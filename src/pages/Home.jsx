@@ -12,12 +12,10 @@ import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
 const Home = () => {
   useEffect(() => {
-    // ✅ Prefetch all home data
-    prefetchHomeData().then(() => {
-      console.log("✅ Home page data pre-loaded and cached");
-    });
+    //  Prefetch all home data
+    prefetchHomeData().then(() => {});
 
-    // ✅ Preload critical images (first 3 gallery images)
+    //  Preload critical images (first 3 gallery images)
     const criticalImages = [
       // Add your critical image URLs here
     ];
@@ -25,7 +23,7 @@ const Home = () => {
       preloadImages(criticalImages);
     }
 
-    // ✅ Prefetch remaining images
+    //  Prefetch remaining images
     const remainingImages = [
       // Add your remaining image URLs here
     ];

@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for department detail (by slug/id)
+//  Cache for department detail (by slug/id)
 const cachedDepartments = {};
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -16,14 +16,13 @@ const DepartmentDetail = () => {
 
   useEffect(() => {
     const fetchDepartment = async () => {
-      // ✅ Check cache for this specific department
+      //  Check cache for this specific department
       const cacheKey = slug;
       if (
         cachedDepartments[cacheKey] &&
         cachedDepartments[cacheKey].timestamp &&
         Date.now() - cachedDepartments[cacheKey].timestamp < CACHE_TTL
       ) {
-        console.log(`📦 Department "${slug}" from cache`);
         setDept(cachedDepartments[cacheKey].data);
         setFromCache(true);
         setLoading(false);
@@ -31,12 +30,11 @@ const DepartmentDetail = () => {
       }
 
       try {
-        console.log(`📡 Fetching department "${slug}" from server`);
         const data = await fetchCollection("departments");
         const found = data.find((d) => d.slug === slug || d.id === slug);
 
         if (found) {
-          // ✅ Cache the found department
+          //  Cache the found department
           cachedDepartments[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -48,7 +46,7 @@ const DepartmentDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching department:", error);
-        // ✅ Try to use stale cache if available
+        //  Try to use stale cache if available
         if (cachedDepartments[cacheKey]) {
           setDept(cachedDepartments[cacheKey].data);
           setFromCache(true);

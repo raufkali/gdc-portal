@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 import { formatDate } from "../../utils/helpers";
 
-// ✅ Cache for activities
+//  Cache for activities
 let cachedActivities = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000;
@@ -50,7 +50,6 @@ const ActivitiesSection = () => {
       }
 
       try {
-        console.log("📡 Fetching activities from server");
         const data = await fetchCollection("activities", [
           { type: "orderBy", field: "date", direction: "desc" },
         ]);

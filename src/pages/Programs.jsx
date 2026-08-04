@@ -3,90 +3,46 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for programs
-let cachedPrograms = null;
-let cacheTimestamp = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// NOTE: no more module-level cachedPrograms/cacheTimestamp here.
+// fetchCollection() in firebase/db.js already caches this data
+// (in-memory + IndexedDB persistence) and is shared with
+// ProgramsSection.jsx and anywhere else that reads "programs",
+// so keeping a second, isolated cache here just caused duplicate
+// fetches and stale/out-of-sync state between pages.
 
 const Programs = () => {
-  // ✅ Initialize with cached data if available
-  const [programs, setPrograms] = useState(() => {
-    if (
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    ) {
-      console.log("📦 Programs instant from cache");
-      return cachedPrograms;
-    }
-    return [];
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return !(
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
-  const [fromCache, setFromCache] = useState(() => {
-    return !!(
-      cachedPrograms &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
+  const [programs, setPrograms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
   const [imageErrors, setImageErrors] = useState({});
 
-  // ✅ Fetch programs
+  // Fetch programs
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPrograms = async () => {
-      // ✅ If cache is valid, skip fetching
-      if (
-        cachedPrograms &&
-        cacheTimestamp &&
-        Date.now() - cacheTimestamp < CACHE_TTL
-      ) {
-        setPrograms(cachedPrograms);
-        setFromCache(true);
-        setLoading(false);
-        return;
-      }
-
       try {
-        console.log("📡 Fetching programs from server");
         const data = await fetchCollection("programs");
-
-        cachedPrograms = data;
-        cacheTimestamp = Date.now();
-        setPrograms(data);
-        setFromCache(false);
+        if (isMounted) setPrograms(data);
       } catch (error) {
         console.error("Error fetching programs:", error);
-        if (cachedPrograms) {
-          setPrograms(cachedPrograms);
-          setFromCache(true);
-        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchPrograms();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // ✅ Refresh AOS when programs load and section becomes visible
   useEffect(() => {
     if (!loading && programs.length > 0) {
-      // Small delay to ensure DOM is rendered
       const timeoutId = setTimeout(() => {
         if (window.AOS) {
           window.AOS.refresh();
-          console.log("🔄 AOS refreshed for Programs page");
         }
       }, 300);
 
@@ -94,8 +50,21 @@ const Programs = () => {
     }
   }, [loading, programs]);
 
-  // ✅ Intersection Observer for manual visibility control
+  // Intersection Observer for manual visibility control.
+  //
+  // FIX: this used to run once on mount with an empty [] dependency
+  // array. But while `loading` is true, the component returns early
+  // with <Loader /> — so `sectionRef.current` is null at the moment
+  // this effect first runs, and observer.observe() is called on
+  // nothing. Once loading finishes and the real section mounts,
+  // nothing is watching it anymore, so isVisible never becomes true
+  // and the whole page sits at opacity:0 forever on a cold load.
+  //
+  // Depending on [loading] makes this effect re-run right after the
+  // real section mounts, so it actually has something to observe.
   useEffect(() => {
+    if (loading) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -114,7 +83,7 @@ const Programs = () => {
         observer.unobserve(sectionRef.current);
       }
     };
-  }, []);
+  }, [loading]);
 
   const handleImageError = (programId) => {
     setImageErrors((prev) => ({ ...prev, [programId]: true }));
@@ -237,6 +206,7 @@ const Programs = () => {
                           src={program.imageUrl}
                           alt={program.title}
                           loading="lazy"
+                          decoding="async"
                           style={{
                             width: "100%",
                             height: "100%",
@@ -537,41 +507,6 @@ const Programs = () => {
           </div>
         )}
       </div>
-
-      {/* Add shimmer animation styles */}
-      <style>{`
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
-        
-        /* Smooth fade-in for cards */
-        .program-card {
-          opacity: 0;
-          transform: translateY(30px);
-          animation: fadeInUp 0.6s ease forwards;
-        }
-        
-        @keyframes fadeInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        /* Prevent content from being hidden during animation */
-        [data-aos] {
-          pointer-events: none;
-        }
-        
-        [data-aos].aos-animate {
-          pointer-events: auto;
-        }
-      `}</style>
     </div>
   );
 };

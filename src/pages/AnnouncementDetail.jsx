@@ -4,7 +4,7 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for announcement detail (by slug/id)
+//  Cache for announcement detail (by slug/id)
 const cachedAnnouncements = {};
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -18,14 +18,13 @@ const AnnouncementDetail = () => {
 
   useEffect(() => {
     const fetchAnnouncement = async () => {
-      // ✅ Check cache for this specific announcement
+      //  Check cache for this specific announcement
       const cacheKey = slug;
       if (
         cachedAnnouncements[cacheKey] &&
         cachedAnnouncements[cacheKey].timestamp &&
         Date.now() - cachedAnnouncements[cacheKey].timestamp < CACHE_TTL
       ) {
-        console.log(`📦 Announcement "${slug}" from cache`);
         setAnnouncement(cachedAnnouncements[cacheKey].data);
         setFromCache(true);
         setLoading(false);
@@ -33,12 +32,11 @@ const AnnouncementDetail = () => {
       }
 
       try {
-        console.log(`📡 Fetching announcement "${slug}" from server`);
         const data = await fetchCollection("announcements");
         const found = data.find((a) => a.slug === slug || a.id === slug);
 
         if (found) {
-          // ✅ Cache the found announcement
+          //  Cache the found announcement
           cachedAnnouncements[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -50,7 +48,7 @@ const AnnouncementDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching announcement:", error);
-        // ✅ Try to use stale cache if available
+        //  Try to use stale cache if available
         if (cachedAnnouncements[cacheKey]) {
           setAnnouncement(cachedAnnouncements[cacheKey].data);
           setFromCache(true);
@@ -97,7 +95,7 @@ const AnnouncementDetail = () => {
         return;
       }
     } catch (err) {
-      console.log("Clipboard API failed, trying fallback...");
+      console.error("Clipboard API failed, trying fallback...");
     }
 
     // 3. Final Fallback: Create temporary input element

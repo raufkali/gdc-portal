@@ -4,7 +4,7 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for activity detail (by slug/id)
+//  Cache for activity detail (by slug/id)
 const cachedActivities = {};
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -16,14 +16,13 @@ const ActivityDetail = () => {
 
   useEffect(() => {
     const fetchActivity = async () => {
-      // ✅ Check cache for this specific activity
+      //  Check cache for this specific activity
       const cacheKey = slug;
       if (
         cachedActivities[cacheKey] &&
         cachedActivities[cacheKey].timestamp &&
         Date.now() - cachedActivities[cacheKey].timestamp < CACHE_TTL
       ) {
-        console.log(`📦 Activity "${slug}" from cache`);
         setActivity(cachedActivities[cacheKey].data);
         setFromCache(true);
         setLoading(false);
@@ -31,12 +30,11 @@ const ActivityDetail = () => {
       }
 
       try {
-        console.log(`📡 Fetching activity "${slug}" from server`);
         const data = await fetchCollection("activities");
         const found = data.find((a) => a.slug === slug || a.id === slug);
 
         if (found) {
-          // ✅ Cache the found activity
+          //  Cache the found activity
           cachedActivities[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -48,7 +46,7 @@ const ActivityDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching activity:", error);
-        // ✅ Try to use stale cache if available
+        //  Try to use stale cache if available
         if (cachedActivities[cacheKey]) {
           setActivity(cachedActivities[cacheKey].data);
           setFromCache(true);

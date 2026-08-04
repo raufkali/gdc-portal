@@ -22,7 +22,6 @@ const ProgramDetail = () => {
         cachedPrograms[cacheKey].timestamp &&
         Date.now() - cachedPrograms[cacheKey].timestamp < CACHE_TTL
       ) {
-        console.log(`📦 Program "${slug}" from cache`);
         setProgram(cachedPrograms[cacheKey].data);
         setFromCache(true);
         setLoading(false);
@@ -30,7 +29,6 @@ const ProgramDetail = () => {
       }
 
       try {
-        console.log(`📡 Fetching program "${slug}" from server`);
         const data = await fetchCollection("programs");
         const found = data.find((p) => p.slug === slug || p.id === slug);
 

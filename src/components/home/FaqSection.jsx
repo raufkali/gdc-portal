@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// ✅ Cache for FAQs
+//  Cache for FAQs
 let cachedFaqs = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -49,7 +49,6 @@ const FaqSection = () => {
       }
 
       try {
-        console.log("📡 Fetching FAQs from server");
         const data = await fetchCollection("faqs", [
           { type: "orderBy", field: "order" },
         ]);

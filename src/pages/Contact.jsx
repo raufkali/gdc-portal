@@ -22,7 +22,7 @@ const Contact = () => {
       await addDoc(collection(db, "contacts"), {
         ...form,
         timestamp: new Date(),
-        status: "unread", // ✅ Add status for admin tracking
+        status: "unread", //  Add status for admin tracking
       });
       setSubmitted(true);
       setForm({ name: "", email: "", subject: "", message: "" });
@@ -38,9 +38,9 @@ const Contact = () => {
       key: "facebook",
       label: "Facebook",
       icon: "bi-facebook",
-      color: "#1877f2",
+      color: "#e4405f",
     },
-    { key: "twitter", label: "Twitter", icon: "bi-twitter", color: "#1da1f2" },
+    { key: "twitter", label: "Twitter", icon: "bi-twitter", color: "#ff0000" },
     {
       key: "instagram",
       label: "Instagram",
@@ -52,11 +52,11 @@ const Contact = () => {
       key: "linkedin",
       label: "LinkedIn",
       icon: "bi-linkedin",
-      color: "#0a66c2",
+      color: "#e4405f",
     },
   ];
 
-  // ✅ Check if contact info exists in settings
+  //  Check if contact info exists in settings
   const hasContactInfo =
     settings?.contactPhone ||
     settings?.contactEmail ||
@@ -198,7 +198,7 @@ const Contact = () => {
                             width: "44px",
                             height: "44px",
                             borderRadius: "50%",
-                            background: "rgba(40, 167, 69, 0.08)",
+                            background: "rgba(165, 28, 48, 0.08)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -207,7 +207,7 @@ const Contact = () => {
                         >
                           <i
                             className="bi bi-envelope fs-5"
-                            style={{ color: "#28a745" }}
+                            style={{ color: "#A51C30" }}
                           ></i>
                         </div>
                         <div>
@@ -240,7 +240,7 @@ const Contact = () => {
                             width: "44px",
                             height: "44px",
                             borderRadius: "50%",
-                            background: "rgba(255, 193, 7, 0.08)",
+                            background: "rgba(165, 28, 48, 0.08)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -249,7 +249,7 @@ const Contact = () => {
                         >
                           <i
                             className="bi bi-geo-alt fs-5"
-                            style={{ color: "#ffc107" }}
+                            style={{ color: "#A51C30" }}
                           ></i>
                         </div>
                         <div>
@@ -278,7 +278,7 @@ const Contact = () => {
                       width: "44px",
                       height: "44px",
                       borderRadius: "50%",
-                      background: "rgba(23, 162, 184, 0.08)",
+                      background: "rgba(165, 28, 48, 0.08)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -287,7 +287,7 @@ const Contact = () => {
                   >
                     <i
                       className="bi bi-clock fs-5"
-                      style={{ color: "#17a2b8" }}
+                      style={{ color: "#A51C30" }}
                     ></i>
                   </div>
                   <div>

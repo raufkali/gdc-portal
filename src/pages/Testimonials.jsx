@@ -34,7 +34,6 @@ const Testimonials = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Testimonials instant from cache");
       return cachedTestimonials;
     }
     return [];
@@ -71,7 +70,6 @@ const Testimonials = () => {
       }
 
       try {
-        console.log("📡 Fetching testimonials from server");
         const data = await fetchCollection("testimonials");
 
         cachedTestimonials = data;

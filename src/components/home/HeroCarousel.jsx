@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { db } from "../../firebase/config";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { fetchCollection } from "../../firebase/db";
 import { Link } from "react-router-dom";
 
 // ----- Fallback Banners (HTML/CSS – no images needed) -----
@@ -32,95 +31,64 @@ const FALLBACK_BANNERS = [
   },
 ];
 
-// ✅ Cache for banners with TTL
-let cachedBanners = null;
-let cacheTimestamp = null;
+// NOTE: banners now go through the shared fetchCollection() cache in
+// firebase/db.js (in-memory + IndexedDB persistence + background
+// refresh) instead of keeping a separate, isolated module-level cache
+// here. This means Home, Programs, and anywhere else that reads
+// "banners" or "programs" all share one cache — no duplicate fetches,
+// and it actually benefits from the offline persistence already
+// enabled in firebase/config.js.
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// ✅ Helper to check if cache is valid
-const isCacheValid = () => {
-  return (
-    cachedBanners && cacheTimestamp && Date.now() - cacheTimestamp < CACHE_TTL
-  );
-};
-
 const HeroCarousel = () => {
-  // ✅ Initialize with cached data if available
-  const [banners, setBanners] = useState(() => {
-    if (isCacheValid()) {
-      console.log("📦 Instant: Banners from cache on load");
-      return cachedBanners;
-    }
-    return [];
-  });
-
-  // ✅ Only show loading if no cache
-  const [loading, setLoading] = useState(() => {
-    return !isCacheValid();
-  });
-
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
   const [activeIndex, setActiveIndex] = useState(0);
-  const [fromCache, setFromCache] = useState(() => {
-    return isCacheValid();
-  });
   const carouselRef = useRef(null);
 
-  // ✅ Ref to track if data is already being fetched
-  const fetchingRef = useRef(false);
-
   useEffect(() => {
+    let isMounted = true;
+
     const fetchBanners = async () => {
-      // ✅ Prevent multiple fetches
-      if (fetchingRef.current) return;
-
-      // ✅ Check cache again (in case it expired during fetch)
-      if (isCacheValid()) {
-        console.log("📦 Using cached banners");
-        setBanners(cachedBanners);
-        setFromCache(true);
-        setLoading(false);
-        return;
-      }
-
-      // ✅ Set fetching flag
-      fetchingRef.current = true;
-
       try {
-        console.log("📡 Fetching banners from server...");
-        const q = query(collection(db, "banners"), where("active", "==", true));
-        const snap = await getDocs(q);
+        const data = await fetchCollection(
+          "banners",
+          [{ type: "where", field: "active", operator: "==", value: true }],
+          { cacheTTL: CACHE_TTL },
+        );
 
-        const data = snap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        if (!isMounted) return;
 
-        console.log("✅ Banners fetched:", data.length);
+        const sorted = [...data].sort(
+          (a, b) => (a.order || 0) - (b.order || 0),
+        );
 
-        if (data.length > 0) {
-          // ✅ Cache the data
-          cachedBanners = data;
-          cacheTimestamp = Date.now();
-          setBanners(data);
+        if (sorted.length > 0) {
+          setBanners(sorted);
           setUsingFallback(false);
-          setFromCache(false);
         } else {
           setBanners(FALLBACK_BANNERS);
           setUsingFallback(true);
         }
       } catch (error) {
         console.error("Error fetching banners:", error);
-        setBanners(FALLBACK_BANNERS);
-        setUsingFallback(true);
+        if (isMounted) {
+          setBanners(FALLBACK_BANNERS);
+          setUsingFallback(true);
+        }
       } finally {
-        setLoading(false);
-        fetchingRef.current = false;
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchBanners();
-  }, []); // ✅ Empty dependency array - only runs on mount
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Listen to carousel slide events
   useEffect(() => {
@@ -155,7 +123,7 @@ const HeroCarousel = () => {
     setImageErrors((prev) => ({ ...prev, [bannerId]: true }));
   };
 
-  // ✅ If still loading and no cached data, show spinner
+  // If still loading, show spinner
   if (loading) {
     return (
       <div
@@ -173,7 +141,7 @@ const HeroCarousel = () => {
     );
   }
 
-  // ✅ If no banners and not loading, show nothing
+  // If no banners and not loading, show nothing
   if (!banners || banners.length === 0) {
     return null;
   }
@@ -215,7 +183,9 @@ const HeroCarousel = () => {
                   src={banner.imageUrl}
                   className="d-block w-100 h-100"
                   alt={banner.title || "Banner"}
-                  loading={index > 1 ? "lazy" : "eager"}
+                  loading="eager"
+                  decoding={index === 0 ? "sync" : "async"}
+                  fetchpriority={index === 0 ? "high" : "low"}
                   style={{
                     objectFit: "cover",
                     position: "absolute",

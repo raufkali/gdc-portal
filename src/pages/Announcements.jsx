@@ -17,7 +17,6 @@ const Announcements = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      console.log("📦 Announcements instant from cache");
       return cachedAnnouncements;
     }
     return [];
@@ -56,7 +55,6 @@ const Announcements = () => {
       }
 
       try {
-        console.log("📡 Fetching announcements from server");
         const data = await fetchCollection("announcements", [
           { type: "orderBy", field: "date", direction: "desc" },
         ]);
