@@ -5,6 +5,8 @@ import {
   getDocsFromCache,
   getDocsFromServer,
   getDoc,
+  getDocFromCache,
+  getDocFromServer,
   doc,
   addDoc,
   updateDoc,
@@ -208,37 +210,62 @@ export const fetchCollection = async (
   }
 };
 
-//  Fetch single document with caching
+// ============================================
+// ✅ ENHANCED fetchDocument with IndexedDB persistence
+// ============================================
 export const fetchDocument = async (collectionName, id, options = {}) => {
   const { forceRefresh = false, cacheTTL = 5 * 60 * 1000 } = options;
-
   const cacheKey = `${collectionName}_doc_${id}`;
 
+  // 1) In-memory cache
   if (!forceRefresh) {
-    const cachedData = getFromCache(cacheKey);
-    if (cachedData) {
-      return cachedData;
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      return cached;
     }
   }
 
-  try {
-    const docRef = doc(db, collectionName, id);
-    const snap = await getDoc(docRef);
+  const docRef = doc(db, collectionName, id);
 
+  // 2) IndexedDB persistent cache (fast, survives reloads)
+  if (!forceRefresh) {
+    try {
+      const cacheSnap = await getDocFromCache(docRef);
+      if (cacheSnap.exists()) {
+        const data = { id: cacheSnap.id, ...cacheSnap.data() };
+        setInCache(cacheKey, data, cacheTTL);
+
+        // Refresh in background (no await – fire and forget)
+        getDocFromServer(docRef)
+          .then((serverSnap) => {
+            if (serverSnap.exists()) {
+              const freshData = { id: serverSnap.id, ...serverSnap.data() };
+              setInCache(cacheKey, freshData, cacheTTL);
+            }
+          })
+          .catch(() => {}); // ignore background errors
+
+        return data;
+      }
+    } catch (err) {
+      // No local cache yet – fall through to network
+    }
+  }
+
+  // 3) Network fallback
+  try {
+    const snap = await getDoc(docRef);
     if (!snap.exists()) {
       return null;
     }
-
     const data = { id: snap.id, ...snap.data() };
     setInCache(cacheKey, data, cacheTTL);
-
     return data;
   } catch (error) {
     console.error(`Error fetching ${collectionName}/${id}:`, error);
-    const cachedData = memoryCache.data[cacheKey];
-    if (cachedData) {
-      return cachedData;
-    }
+    // Return stale in-memory data if available
+    const stale = memoryCache.data[cacheKey];
+    if (stale) return stale;
     throw error;
   }
 };

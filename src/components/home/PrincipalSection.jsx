@@ -1,12 +1,6 @@
 import { useSettings } from "../../contexts/SettingsContext";
 import { useState, useEffect, useRef } from "react";
-import { db } from "../../firebase/config";
-import { doc, getDoc } from "firebase/firestore";
-
-// ✅ Cache settings for 10 minutes
-let cachedSettings = null;
-let cacheTimestamp = null;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+import { fetchDocument } from "../../firebase/db"; // ✅ use the persistent cache
 
 const PrincipalSection = () => {
   const { settings: contextSettings, loading: contextLoading } = useSettings();
@@ -16,71 +10,31 @@ const PrincipalSection = () => {
   const leftColumnRef = useRef(null);
   const rightColumnRef = useRef(null);
 
-  // ✅ Initialize with cached data if available
-  const [settings, setSettings] = useState(() => {
-    if (
-      cachedSettings &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    ) {
-      return cachedSettings;
-    }
-    return null;
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return !(
-      cachedSettings &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
-  const [fromCache, setFromCache] = useState(() => {
-    return !!(
-      cachedSettings &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
+  // ✅ State initialization – will be filled by fetch
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
-      // ✅ If context settings are already loaded, use them
+      // ✅ If context settings are already loaded, use them (prefer global state)
       if (contextSettings && !contextLoading) {
         setSettings(contextSettings);
         setLoading(false);
         return;
       }
 
-      // ✅ If cache is valid, skip fetching
-      if (
-        cachedSettings &&
-        cacheTimestamp &&
-        Date.now() - cacheTimestamp < CACHE_TTL
-      ) {
-        setSettings(cachedSettings);
-        setFromCache(true);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch from Firestore
       try {
-        const docRef = doc(db, "settings", "website");
-        const docSnap = await getDoc(docRef);
+        // ✅ Use persistent caching via fetchDocument
+        const data = await fetchDocument("settings", "website", {
+          cacheTTL: 10 * 60 * 1000, // 10 minutes
+        });
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          cachedSettings = data;
-          cacheTimestamp = Date.now();
+        if (data) {
           setSettings(data);
-          setFromCache(false);
         } else {
-          // Use fallback settings
+          // Fallback if document doesn't exist
           const fallback = {
             principalName: "Dr. Muhammad Ali",
             principalDesignation: "Principal, GDC Gulabad",
@@ -93,27 +47,18 @@ const PrincipalSection = () => {
             students: "5000+",
             programs: "12+",
           };
-          cachedSettings = fallback;
-          cacheTimestamp = Date.now();
           setSettings(fallback);
-          setFromCache(false);
         }
       } catch (error) {
         console.error("Error fetching principal settings:", error);
-        // Use cached settings if available, even if expired
-        if (cachedSettings) {
-          setSettings(cachedSettings);
-          setFromCache(true);
-        } else {
-          // Ultimate fallback
-          setSettings({
-            principalName: "Dr. Muhammad Ali",
-            principalDesignation: "Principal, GDC Gulabad",
-            principalMessage: "Welcome to our college.",
-            contactEmail: "info@gdcgulabad.edu.pk",
-            contactPhone: "+92 123 4567890",
-          });
-        }
+        // Ultimate fallback if everything fails
+        setSettings({
+          principalName: "Dr. Muhammad Ali",
+          principalDesignation: "Principal, GDC Gulabad",
+          principalMessage: "Welcome to our college.",
+          contactEmail: "info@gdcgulabad.edu.pk",
+          contactPhone: "+92 123 4567890",
+        });
       } finally {
         setLoading(false);
       }
@@ -192,7 +137,9 @@ const PrincipalSection = () => {
     return (
       <section
         className="py-5"
-        style={{ backgroundColor: "var(--color-bg-alt)" }}
+        style={{
+          backgroundColor: "var(--color-bg-alt)",
+        }}
         ref={sectionRef}
       >
         <div className="container">
@@ -351,8 +298,8 @@ const PrincipalSection = () => {
                   <img
                     src={imageUrl}
                     alt={settings.principalName || "Principal"}
-                    loading="lazy"
-                    decoding="async"
+                    loading={"eager"}
+                    decoding="sync"
                     onLoad={handleImageLoad}
                     style={{
                       width: "100%",

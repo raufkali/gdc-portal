@@ -501,8 +501,8 @@ const AdminDashboard = () => {
       icon: "bi-megaphone",
     },
     { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
+    { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
     { path: "/admin/content", label: "Content", icon: "bi-folder" },
-    { path: "/admin/messages", label: "Messages", icon: "bi-envelope" }, // ✅ Added
     { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
     { path: "/", label: "Back To Home", icon: "bi-house" },
   ];
