@@ -1,29 +1,159 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { fetchCollection } from "../../firebase/db";
 
-const Navbar = () => {
+// Static data moved outside component
+const mainNavLinks = [
+  { path: "/", label: "Home" },
+  { path: "/about", label: "About" },
+  { path: "/programs", label: "Programs" },
+  { path: "/contact", label: "Contact Us" },
+];
+
+const campusLifeLinks = [
+  { path: "/activities", label: "Activities", icon: "bi-calendar-event" },
+  { path: "/gallery", label: "Gallery", icon: "bi-images" },
+  { path: "/testimonials", label: "Testimonials", icon: "bi-chat-quote" },
+];
+
+const quickLinks = [
+  {
+    path: "/eligibility-criteria",
+    label: "Eligibility Criteria",
+    icon: "bi-check-circle",
+  },
+  { path: "/exam-result", label: "Exam Results", icon: "bi-file-earmark-text" },
+  { path: "/fee-structure", label: "Fee Structure", icon: "bi-cash-stack" },
+  { path: "/faq", label: "FAQ", icon: "bi-question-circle" },
+];
+
+// Optimized Logo Component with preloading
+const Logo = memo(({ settings, loading, logoPreloaded }) => {
+  const [logoError, setLogoError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Show fallback immediately while loading or if no logo
+  const showFallback = loading || !settings?.logoUrl || logoError;
+
+  // If logo is preloaded, consider it loaded instantly
+  useEffect(() => {
+    if (logoPreloaded && settings?.logoUrl) {
+      setImageLoaded(true);
+    }
+  }, [logoPreloaded, settings?.logoUrl]);
+
+  return (
+    <Link
+      className="navbar-brand text-white fw-bold d-flex align-items-center gap-2"
+      to="/"
+      style={{
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontSize: "1.4rem",
+        letterSpacing: "-0.5px",
+        flexShrink: 0,
+      }}
+    >
+      {showFallback ? (
+        <div
+          className="logo-fallback"
+          style={{
+            height: "38px",
+            width: "38px",
+            borderRadius: "4px",
+            background: "#A51C30",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: "700",
+            fontSize: "1.1rem",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            flexShrink: 0,
+          }}
+        >
+          {settings?.brandName?.[0] || "G"}
+        </div>
+      ) : (
+        <div style={{ position: "relative", height: "42px", width: "42px" }}>
+          {/* Show fallback while image loads */}
+          {!imageLoaded && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "4px",
+                background: "#f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#999",
+                fontSize: "0.8rem",
+              }}
+            >
+              <i className="bi bi-image" style={{ fontSize: "1.2rem" }}></i>
+            </div>
+          )}
+          <img
+            src={settings.logoUrl}
+            alt={settings?.brandName || "GDC Gulabad Logo"}
+            loading="eager"
+            decoding="sync"
+            fetchpriority="high"
+            width="42"
+            height="42"
+            style={{
+              height: "42px",
+              width: "42px",
+              objectFit: "contain",
+              borderRadius: "4px",
+              opacity: imageLoaded ? 1 : 0,
+              transition: "opacity 0.3s ease",
+              position: "relative",
+              zIndex: 1,
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setLogoError(true);
+              setImageLoaded(false);
+            }}
+          />
+        </div>
+      )}
+      <span className="d-none d-sm-inline">
+        {settings?.brandName || "GDC Gulabad"}
+      </span>
+    </Link>
+  );
+});
+
+const Navbar = memo(() => {
   const [departments, setDepartments] = useState([]);
   const { user, logout } = useAuth();
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading, logoPreloaded } = useSettings();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [hidden, setHidden] = useState(false);
   const [announcementCount, setAnnouncementCount] = useState(0);
 
-  // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState(null);
   const sidebarRef = useRef(null);
+  const departmentsCache = useRef(null);
 
-  // Fetch departments from Firestore
+  // Fetch departments with caching
   useEffect(() => {
     const fetchDepartments = async () => {
+      if (departmentsCache.current) {
+        setDepartments(departmentsCache.current);
+        return;
+      }
+
       try {
         const data = await fetchCollection("departments");
+        departmentsCache.current = data;
         setDepartments(data);
       } catch (error) {
         console.error("Error fetching departments:", error);
@@ -45,19 +175,27 @@ const Navbar = () => {
     fetchAnnouncements();
   }, []);
 
-  // Handle scroll effect
+  // Optimized scroll handler with requestAnimationFrame
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > 50) setScrolled(true);
-      else setScrolled(false);
+    let ticking = false;
 
-      if (currentScrollY > lastScrollY && currentScrollY > 80) {
-        setHidden(true);
-      } else {
-        setHidden(false);
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > 50) setScrolled(true);
+          else setScrolled(false);
+
+          if (currentScrollY > lastScrollY && currentScrollY > 80) {
+            setHidden(true);
+          } else {
+            setHidden(false);
+          }
+          setLastScrollY(currentScrollY);
+          ticking = false;
+        });
+        ticking = true;
       }
-      setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -86,42 +224,10 @@ const Navbar = () => {
     document.body.style.overflow = "";
   }, [sidebarOpen]);
 
-  const closeSidebar = () => setSidebarOpen(false);
-
-  const toggleAccordion = (key) => {
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const toggleAccordion = useCallback((key) => {
     setOpenAccordion((prev) => (prev === key ? null : key));
-  };
-
-  // Main nav links - ADDED CONTACT US
-  const mainNavLinks = [
-    { path: "/", label: "Home" },
-    { path: "/about", label: "About" },
-    { path: "/programs", label: "Programs" },
-    { path: "/contact", label: "Contact Us" },
-  ];
-
-  // Campus Life dropdown
-  const campusLifeLinks = [
-    { path: "/activities", label: "Activities", icon: "bi-calendar-event" },
-    { path: "/gallery", label: "Gallery", icon: "bi-images" },
-    { path: "/testimonials", label: "Testimonials", icon: "bi-chat-quote" },
-  ];
-
-  // Quick links dropdown
-  const quickLinks = [
-    {
-      path: "/eligibility-criteria",
-      label: "Eligibility Criteria",
-      icon: "bi-check-circle",
-    },
-    {
-      path: "/exam-result",
-      label: "Exam Results",
-      icon: "bi-file-earmark-text",
-    },
-    { path: "/fee-structure", label: "Fee Structure", icon: "bi-cash-stack" },
-    { path: "/faq", label: "FAQ", icon: "bi-question-circle" },
-  ];
+  }, []);
 
   // Check active states
   const isCampusLifeActive = campusLifeLinks.some(
@@ -178,51 +284,12 @@ const Navbar = () => {
       >
         <div className="container">
           <div className="d-flex align-items-center w-100">
-            {/* Logo - LEFT */}
-            <Link
-              className="navbar-brand text-white fw-bold d-flex align-items-center gap-2"
-              to="/"
-              style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: "1.4rem",
-                letterSpacing: "-0.5px",
-                flexShrink: 0,
-              }}
-            >
-              {settings?.logoUrl ? (
-                <img
-                  src={settings.logoUrl}
-                  alt="Logo"
-                  style={{
-                    height: "42px",
-                    width: "42px",
-                    objectFit: "contain",
-                    borderRadius: "4px",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    height: "38px",
-                    width: "38px",
-                    borderRadius: "4px",
-                    background: "#A51C30",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    fontWeight: "700",
-                    fontSize: "1.1rem",
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                  }}
-                >
-                  G
-                </div>
-              )}
-              <span className="d-none d-sm-inline">
-                {settings?.brandName || "GDC Gulabad"}
-              </span>
-            </Link>
+            {/* Logo - Renders immediately with preloaded image */}
+            <Logo
+              settings={settings}
+              loading={settingsLoading}
+              logoPreloaded={logoPreloaded}
+            />
 
             {/* DESKTOP ONLY: centered nav links */}
             <div className="d-none d-lg-flex flex-grow-1">
@@ -259,6 +326,7 @@ const Navbar = () => {
                   </li>
                 ))}
 
+                {/* Rest of your nav items... (keep the same as before) */}
                 {/* Departments Dropdown */}
                 <li className="nav-item dropdown">
                   <a
@@ -613,9 +681,7 @@ const Navbar = () => {
         `}</style>
       </nav>
 
-      {/* ===================== MOBILE SIDEBAR ===================== */}
-
-      {/* Overlay */}
+      {/* Mobile Sidebar (keep the same) */}
       <div
         onClick={closeSidebar}
         aria-hidden="true"
@@ -630,7 +696,6 @@ const Navbar = () => {
         }}
       />
 
-      {/* Panel */}
       <aside
         id="mobileSidebar"
         ref={sidebarRef}
@@ -779,7 +844,7 @@ const Navbar = () => {
           })}
         </div>
 
-        {/* Sidebar footer: login/dashboard */}
+        {/* Sidebar footer */}
         <div
           style={{
             padding: "0.9rem 1rem",
@@ -843,6 +908,6 @@ const Navbar = () => {
       </aside>
     </>
   );
-};
+});
 
 export default Navbar;

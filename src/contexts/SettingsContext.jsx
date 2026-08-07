@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { db } from "../firebase/config";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
+import { fetchDocument } from "../firebase/db"; // ← Import fetchDocument
 
 const SettingsContext = createContext();
 
@@ -8,19 +9,26 @@ export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [logoPreloaded, setLogoPreloaded] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const docRef = doc(db, "settings", "website");
+        // ✅ Use fetchDocument with caching (same as HeroCarousel)
+        const data = await fetchDocument("settings", "website", {
+          cacheTTL: 5 * 60 * 1000, // 5 minutes
+        });
 
-        // Try to get the document
-        const docSnap = await getDoc(docRef);
+        if (data) {
+          setSettings(data);
+          setError(null);
 
-        if (docSnap.exists()) {
-          setSettings(docSnap.data());
+          // Preload logo if URL exists
+          if (data.logoUrl) {
+            preloadLogoImage(data.logoUrl);
+          }
         } else {
-          // Create default settings if document doesn't exist
+          // Create default settings if doesn't exist
           const defaults = {
             brandName: "GDC Gulabad",
             logoUrl: "",
@@ -47,14 +55,15 @@ export const SettingsProvider = ({ children }) => {
             whatWeOffer:
               "GDC Gulabad offers a wide range of undergraduate and graduate programs...",
           };
+
+          const docRef = doc(db, "settings", "website");
           await setDoc(docRef, defaults);
           setSettings(defaults);
         }
-        setError(null);
       } catch (err) {
         console.error("Error fetching settings:", err);
         setError(err.message);
-        // Set fallback settings on error
+        // Set fallback settings
         setSettings({
           brandName: "GDC Gulabad",
           contactPhone: "+92 123 4567890",
@@ -69,11 +78,30 @@ export const SettingsProvider = ({ children }) => {
     fetchSettings();
   }, []);
 
+  // Preload logo image function
+  const preloadLogoImage = (logoUrl) => {
+    if (!logoUrl || logoPreloaded) return;
+
+    const img = new Image();
+    img.src = logoUrl;
+    img.onload = () => {
+      setLogoPreloaded(true);
+    };
+    img.onerror = () => {
+      console.warn("Logo preload failed");
+    };
+  };
+
   const updateSettings = async (newData) => {
     try {
       const docRef = doc(db, "settings", "website");
       await setDoc(docRef, newData, { merge: true });
       setSettings((prev) => ({ ...prev, ...newData }));
+
+      if (newData.logoUrl && newData.logoUrl !== settings?.logoUrl) {
+        preloadLogoImage(newData.logoUrl);
+      }
+
       return true;
     } catch (error) {
       console.error("Error updating settings:", error);
@@ -83,7 +111,7 @@ export const SettingsProvider = ({ children }) => {
 
   return (
     <SettingsContext.Provider
-      value={{ settings, loading, error, updateSettings }}
+      value={{ settings, loading, error, updateSettings, logoPreloaded }}
     >
       {children}
     </SettingsContext.Provider>

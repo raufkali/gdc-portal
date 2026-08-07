@@ -1,4 +1,4 @@
-// ✅ Format date helper
+// Format date helper
 export const formatDate = (timestamp) => {
   if (!timestamp) return "";
   try {
@@ -14,7 +14,7 @@ export const formatDate = (timestamp) => {
   }
 };
 
-// ✅ Slugify helper
+// Slugify helper
 export const slugify = (text) => {
   if (!text) return "";
   return text
@@ -26,14 +26,14 @@ export const slugify = (text) => {
     .replace(/\-\-+/g, "-");
 };
 
-// ✅ Truncate text
+// Truncate text
 export const truncateText = (text, maxLength = 100) => {
   if (!text) return "";
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "...";
 };
 
-// ✅ Get image dimensions for responsive
+// Get image dimensions for responsive
 export const getImageDimensions = (url) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -47,7 +47,7 @@ export const getImageDimensions = (url) => {
   });
 };
 
-// ✅ Check if image URL is valid
+// Check if image URL is valid
 export const isValidImageUrl = (url) => {
   if (!url) return false;
   if (typeof url !== "string") return false;
@@ -55,14 +55,14 @@ export const isValidImageUrl = (url) => {
   return url.startsWith("http") || url.startsWith("data:image");
 };
 
-// ✅ Get file extension from URL
+// Get file extension from URL
 export const getFileExtension = (url) => {
   if (!url) return "";
   const parts = url.split(".");
   return parts[parts.length - 1].toLowerCase();
 };
 
-// ✅ Check if URL is a video
+// Check if URL is a video
 export const isVideoUrl = (url) => {
   if (!url) return false;
   const videoExtensions = ["mp4", "webm", "ogg", "mov", "avi"];
@@ -70,7 +70,7 @@ export const isVideoUrl = (url) => {
   return videoExtensions.includes(ext);
 };
 
-// ✅ Check if URL is an image
+// Check if URL is an image
 export const isImageUrl = (url) => {
   if (!url) return false;
   const imageExtensions = [

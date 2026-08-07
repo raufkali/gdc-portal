@@ -3,7 +3,7 @@ const R2_UPLOAD_TOKEN = import.meta.env.VITE_R2_UPLOAD_TOKEN;
 const R2_BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;
 const R2_PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL;
 
-// ✅ Cache configuration
+// Cache configuration
 const CACHE_CONFIG = {
   maxAge: 60 * 60 * 24 * 30, // 30 days
   cacheControl: "public, max-age=2592000, immutable",
@@ -38,7 +38,7 @@ export const uploadToR2WithProgress = (
       file.type || "application/octet-stream",
     );
 
-    // ✅ Add cache control headers on upload
+    // Add cache control headers on upload
     xhr.setRequestHeader("Cache-Control", CACHE_CONFIG.cacheControl);
 
     xhr.onload = () => {
@@ -96,7 +96,7 @@ export const getR2FileUrl = (key, options = {}) => {
   const { width, height, quality, format } = options;
   let url = `${R2_PUBLIC_URL}/${key}`;
 
-  // ✅ Add query params for image optimization
+  // Add query params for image optimization
   const params = new URLSearchParams();
   if (width) params.append("w", width);
   if (height) params.append("h", height);
@@ -115,7 +115,7 @@ export const getKeyFromUrl = (url) => {
   return url.replace(`${R2_PUBLIC_URL}/`, "");
 };
 
-// ✅ Prefetch images (load in background)
+// Prefetch images (load in background)
 export const prefetchImages = (imageUrls) => {
   if (!imageUrls || imageUrls.length === 0) return;
 
@@ -132,7 +132,7 @@ export const prefetchImages = (imageUrls) => {
   });
 };
 
-// ✅ Preload critical images
+// Preload critical images
 export const preloadImages = (imageUrls) => {
   if (!imageUrls || imageUrls.length === 0) return;
 
@@ -149,13 +149,13 @@ export const preloadImages = (imageUrls) => {
   });
 };
 
-// ✅ Get image with cache-busting (force refresh)
+// Get image with cache-busting (force refresh)
 export const getImageWithCacheBust = (url) => {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}_t=${Date.now()}`;
 };
 
-// ✅ Get optimized image URL for different sizes
+// Get optimized image URL for different sizes
 export const getResponsiveImageUrl = (key, sizes = {}) => {
   const { small, medium, large } = sizes;
 
