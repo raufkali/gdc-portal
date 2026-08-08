@@ -31,444 +31,922 @@ const About = () => {
     faculty: "150+",
   };
 
+  const accent = "#A51C30";
+  const accentDark = "#7A1523";
+
+  const stats = [
+    {
+      value: content.established,
+      label: "Established",
+      icon: "bi-calendar3",
+    },
+    {
+      value: content.students,
+      label: "Students",
+      icon: "bi-people",
+    },
+    {
+      value: content.programs,
+      label: "Programs",
+      icon: "bi-mortarboard",
+    },
+    {
+      value: content.faculty,
+      label: "Faculty Members",
+      icon: "bi-person-workspace",
+    },
+  ];
+
   return (
-    <div
+    <section
       className="py-5 mt-5"
-      style={{ backgroundColor: "var(--color-bg-alt)" }}
+      style={{
+        backgroundColor: "var(--color-bg-alt)",
+        overflow: "hidden",
+      }}
     >
       <div className="container">
-        {/* Page Header */}
-        <div className="text-center mb-5" data-aos="fade-up">
+        {/* =====================================================
+            PAGE INTRO
+        ====================================================== */}
+
+        <div
+          className="row align-items-end g-4 mb-5"
+          data-aos="fade-up"
+          data-aos-duration="900"
+          data-aos-once="false"
+        >
+          <div className="col-lg-7">
+            <div
+              className="d-flex align-items-center gap-3 mb-3"
+              style={{ color: accent }}
+            >
+              <span
+                style={{
+                  width: "42px",
+                  height: "2px",
+                  display: "block",
+                  backgroundColor: accent,
+                  borderRadius: "10px",
+                }}
+              />
+
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: "700",
+                  letterSpacing: "2.5px",
+                  textTransform: "uppercase",
+                }}
+              >
+                About Our College
+              </span>
+            </div>
+
+            <h1
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: "clamp(2.3rem, 5vw, 4rem)",
+                fontWeight: "700",
+                lineHeight: "1.03",
+                letterSpacing: "-1.8px",
+                color: "var(--color-text)",
+                margin: 0,
+              }}
+            >
+              More than education.
+              <br />
+              <span style={{ color: accent }}>A foundation for life.</span>
+            </h1>
+          </div>
+
+          <div className="col-lg-5">
+            <p
+              className="mb-0"
+              style={{
+                maxWidth: "520px",
+                marginLeft: "auto",
+                color: "var(--color-text-muted)",
+                fontSize: "clamp(0.98rem, 1.3vw, 1.08rem)",
+                lineHeight: "1.85",
+              }}
+            >
+              Discover the vision, mission, values, and educational philosophy
+              that define {content.collegeName}.
+            </p>
+          </div>
+        </div>
+
+        {/* =====================================================
+            COLLEGE IDENTITY / LOCATION
+        ====================================================== */}
+
+        <div
+          className="row g-3 mb-5"
+          data-aos="fade-up"
+          data-aos-duration="800"
+          data-aos-delay="100"
+          data-aos-once="false"
+        >
+          <div className="col-lg-8">
+            <div
+              className="h-100 d-flex align-items-center"
+              style={{
+                borderRadius: "20px",
+                padding: "clamp(22px, 4vw, 32px)",
+                backgroundColor: "var(--card-bg)",
+                border: "1px solid rgba(165, 28, 48, 0.08)",
+                boxShadow: "0 10px 35px rgba(0,0,0,0.04)",
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  style={{
+                    width: "52px",
+                    height: "52px",
+                    minWidth: "52px",
+                    borderRadius: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(165, 28, 48, 0.09)",
+                    color: accent,
+                  }}
+                >
+                  <i className="bi bi-building" style={{ fontSize: "23px" }} />
+                </div>
+
+                <div>
+                  <span
+                    style={{
+                      display: "block",
+                      color: accent,
+                      fontSize: "0.68rem",
+                      fontWeight: "700",
+                      letterSpacing: "2px",
+                      textTransform: "uppercase",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Our Institution
+                  </span>
+
+                  <h2
+                    className="mb-1"
+                    style={{
+                      fontFamily: "'Playfair Display', Georgia, serif",
+                      fontSize: "clamp(1.25rem, 2.5vw, 1.8rem)",
+                      fontWeight: "700",
+                      color: "var(--color-text)",
+                    }}
+                  >
+                    {content.collegeName}
+                  </h2>
+
+                  <p
+                    className="mb-0"
+                    style={{
+                      color: "var(--color-text-muted)",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    <i className="bi bi-geo-alt me-1" />
+                    {content.location}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-4">
+            <div
+              className="h-100 d-flex align-items-center justify-content-center text-center"
+              style={{
+                borderRadius: "20px",
+                padding: "25px",
+                background: "linear-gradient(145deg, #A51C30, #7A1523)",
+                boxShadow: "0 15px 40px rgba(165, 28, 48, 0.16)",
+                color: "#fff",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: "clamp(2rem, 4vw, 3rem)",
+                    fontWeight: "700",
+                    lineHeight: "1",
+                    marginBottom: "7px",
+                  }}
+                >
+                  2005
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "0.7rem",
+                    fontWeight: "700",
+                    letterSpacing: "2px",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.72)",
+                  }}
+                >
+                  A tradition of education
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* =====================================================
+            STATS
+        ====================================================== */}
+
+        <div
+          className="row g-3 mb-5"
+          data-aos="fade-up"
+          data-aos-duration="800"
+          data-aos-delay="150"
+          data-aos-once="false"
+        >
+          {stats.map((stat, index) => (
+            <div
+              key={stat.label}
+              className="col-6 col-lg-3"
+              data-aos="fade-up"
+              data-aos-duration="700"
+              data-aos-delay={150 + index * 80}
+              data-aos-once="false"
+            >
+              <div
+                className="h-100"
+                style={{
+                  position: "relative",
+                  borderRadius: "18px",
+                  padding: "clamp(20px, 3vw, 28px)",
+                  backgroundColor: "var(--card-bg)",
+                  border: "1px solid rgba(165, 28, 48, 0.07)",
+                  boxShadow: "0 8px 28px rgba(0,0,0,0.035)",
+                  transition:
+                    "transform .4s cubic-bezier(.22,1,.36,1), box-shadow .4s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-6px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 18px 40px rgba(0,0,0,0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 28px rgba(0,0,0,0.035)";
+                }}
+              >
+                <div className="d-flex justify-content-between align-items-start mb-3">
+                  <div
+                    style={{
+                      width: "42px",
+                      height: "42px",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(165, 28, 48, 0.08)",
+                      color: accent,
+                    }}
+                  >
+                    <i
+                      className={`bi ${stat.icon}`}
+                      style={{ fontSize: "19px" }}
+                    />
+                  </div>
+
+                  <span
+                    style={{
+                      color: accent,
+                      fontFamily: "'Playfair Display', Georgia, serif",
+                      fontSize: "0.75rem",
+                      fontWeight: "700",
+                    }}
+                  >
+                    0{index + 1}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: "clamp(1.8rem, 4vw, 2.4rem)",
+                    fontWeight: "700",
+                    lineHeight: "1",
+                    color: accent,
+                    marginBottom: "8px",
+                  }}
+                >
+                  {stat.value}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "0.72rem",
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {stat.label}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* =====================================================
+            SECTION LABEL
+        ====================================================== */}
+
+        <div
+          className="text-center mb-4"
+          data-aos="fade-up"
+          data-aos-duration="700"
+          data-aos-once="false"
+        >
           <span
             style={{
-              fontSize: "0.85rem",
-              fontWeight: "600",
-              color: "#A51C30",
-              textTransform: "uppercase",
-              letterSpacing: "2px",
               display: "inline-block",
-              background: "rgba(165, 28, 48, 0.08)",
-              padding: "0.4rem 1.5rem",
-              borderRadius: "50px",
-              marginBottom: "0.75rem",
+              color: accent,
+              fontSize: "0.7rem",
+              fontWeight: "700",
+              letterSpacing: "2.5px",
+              textTransform: "uppercase",
+              marginBottom: "8px",
             }}
           >
-            About Our College
+            What Guides Us
           </span>
-          <h1
+
+          <h2
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: "clamp(2.5rem, 4vw, 3.5rem)",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
               fontWeight: "700",
               color: "var(--color-text)",
-              marginBottom: "0.5rem",
+              margin: 0,
             }}
           >
-            Know More About{" "}
-            <span style={{ color: "#A51C30" }}>GDC Gulabad</span>
-          </h1>
+            Our Foundation
+          </h2>
+        </div>
+
+        {/* =====================================================
+            VISION + MISSION
+        ====================================================== */}
+
+        <div className="row g-4 mb-5">
+          {/* VISION */}
+
+          <div
+            className="col-lg-7"
+            data-aos="fade-right"
+            data-aos-duration="900"
+            data-aos-once="false"
+          >
+            <div
+              className="h-100"
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: "24px",
+                padding: "clamp(28px, 4vw, 50px)",
+                backgroundColor: "var(--card-bg)",
+                border: "1px solid rgba(165, 28, 48, 0.08)",
+                boxShadow: "0 15px 45px rgba(0,0,0,0.055)",
+                transition:
+                  "transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-7px)";
+                e.currentTarget.style.boxShadow =
+                  "0 25px 60px rgba(0,0,0,0.10)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 15px 45px rgba(0,0,0,0.055)";
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  right: "-20px",
+                  top: "-45px",
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: "clamp(9rem, 18vw, 15rem)",
+                  fontWeight: "700",
+                  lineHeight: "1",
+                  color: "rgba(165, 28, 48, 0.035)",
+                  userSelect: "none",
+                  pointerEvents: "none",
+                }}
+              >
+                01
+              </div>
+
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <div className="d-flex align-items-center gap-3 mb-4">
+                  <div
+                    style={{
+                      width: "58px",
+                      height: "58px",
+                      minWidth: "58px",
+                      borderRadius: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(165, 28, 48, 0.09)",
+                      color: accent,
+                    }}
+                  >
+                    <i className="bi bi-eye" style={{ fontSize: "25px" }} />
+                  </div>
+
+                  <div>
+                    <span
+                      style={{
+                        display: "block",
+                        color: accent,
+                        fontSize: "0.68rem",
+                        fontWeight: "700",
+                        letterSpacing: "2px",
+                        textTransform: "uppercase",
+                        marginBottom: "3px",
+                      }}
+                    >
+                      01 / Foundation
+                    </span>
+
+                    <h3
+                      className="mb-0"
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+                        fontWeight: "700",
+                        color: "var(--color-text)",
+                      }}
+                    >
+                      Our Vision
+                    </h3>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    width: "55px",
+                    height: "3px",
+                    backgroundColor: accent,
+                    marginBottom: "24px",
+                    borderRadius: "10px",
+                  }}
+                />
+
+                <p
+                  className="mb-0"
+                  style={{
+                    color: "var(--color-text)",
+                    fontSize: "clamp(1rem, 1.4vw, 1.12rem)",
+                    lineHeight: "1.9",
+                  }}
+                >
+                  {content.vision}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* MISSION */}
+
+          <div
+            className="col-lg-5"
+            data-aos="fade-left"
+            data-aos-duration="900"
+            data-aos-delay="100"
+            data-aos-once="false"
+          >
+            <div
+              className="h-100"
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: "24px",
+                padding: "clamp(28px, 4vw, 45px)",
+                background: "linear-gradient(145deg, #A51C30 0%, #7A1523 100%)",
+                boxShadow: "0 18px 45px rgba(165, 28, 48, 0.18)",
+                transition:
+                  "transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-7px)";
+                e.currentTarget.style.boxShadow =
+                  "0 28px 60px rgba(165, 28, 48, 0.25)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 18px 45px rgba(165, 28, 48, 0.18)";
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  width: "260px",
+                  height: "260px",
+                  borderRadius: "50%",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  right: "-120px",
+                  top: "-120px",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <div className="d-flex align-items-center gap-3 mb-4">
+                  <div
+                    style={{
+                      width: "58px",
+                      height: "58px",
+                      minWidth: "58px",
+                      borderRadius: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(255,255,255,0.14)",
+                      color: "#fff",
+                    }}
+                  >
+                    <i
+                      className="bi bi-bullseye"
+                      style={{ fontSize: "25px" }}
+                    />
+                  </div>
+
+                  <div>
+                    <span
+                      style={{
+                        display: "block",
+                        color: "rgba(255,255,255,0.7)",
+                        fontSize: "0.68rem",
+                        fontWeight: "700",
+                        letterSpacing: "2px",
+                        textTransform: "uppercase",
+                        marginBottom: "3px",
+                      }}
+                    >
+                      02 / Direction
+                    </span>
+
+                    <h3
+                      className="mb-0"
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+                        fontWeight: "700",
+                        color: "#fff",
+                      }}
+                    >
+                      Our Mission
+                    </h3>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    width: "45px",
+                    height: "3px",
+                    backgroundColor: "#fff",
+                    opacity: 0.8,
+                    marginBottom: "24px",
+                    borderRadius: "10px",
+                  }}
+                />
+
+                <p
+                  className="mb-0"
+                  style={{
+                    color: "rgba(255,255,255,0.93)",
+                    fontSize: "clamp(0.98rem, 1.3vw, 1.05rem)",
+                    lineHeight: "1.85",
+                  }}
+                >
+                  {content.mission}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* =====================================================
+            AIMS & OBJECTIVES
+        ====================================================== */}
+
+        <div
+          className="text-center mb-4"
+          data-aos="fade-up"
+          data-aos-duration="800"
+          data-aos-once="false"
+        >
+          <span
+            style={{
+              color: accent,
+              fontSize: "0.7rem",
+              fontWeight: "700",
+              letterSpacing: "2.5px",
+              textTransform: "uppercase",
+            }}
+          >
+            03 / Our Direction
+          </span>
+
+          <h2
+            className="mt-2 mb-2"
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              fontWeight: "700",
+              color: "var(--color-text)",
+            }}
+          >
+            Aims & Objectives
+          </h2>
+
           <p
+            className="mb-0"
             style={{
               color: "var(--color-text-muted)",
-              fontSize: "1.1rem",
-              maxWidth: "700px",
-              margin: "0 auto",
+              fontSize: "0.95rem",
             }}
           >
-            Discover our vision, mission, and the values that drive us toward
-            excellence in education
+            Turning our principles into meaningful action.
           </p>
         </div>
 
-        {/* College Quick Stats */}
-        <div className="row g-3 mb-5" data-aos="fade-up" data-aos-delay="50">
-          <div className="col-6 col-lg-3">
-            <div className="card border-0 shadow-sm text-center h-100">
-              <div className="card-body py-3">
+        <div className="row g-3 mb-5">
+          {content.aims.map((aim, index) => (
+            <div
+              key={index}
+              className="col-12 col-md-6 col-xl-3"
+              data-aos="fade-up"
+              data-aos-duration="700"
+              data-aos-delay={(index % 4) * 80}
+              data-aos-once="false"
+            >
+              <div
+                className="h-100 text-center"
+                style={{
+                  padding: "clamp(24px, 3vw, 30px) 22px",
+                  borderRadius: "19px",
+                  backgroundColor: "var(--card-bg)",
+                  border: "1px solid rgba(165, 28, 48, 0.08)",
+                  boxShadow: "0 8px 25px rgba(0,0,0,0.035)",
+                  transition:
+                    "transform .4s ease, box-shadow .4s ease, border-color .4s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-7px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 18px 38px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(165, 28, 48, 0.18)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 25px rgba(0,0,0,0.035)";
+                  e.currentTarget.style.borderColor = "rgba(165, 28, 48, 0.08)";
+                }}
+              >
                 <div
                   style={{
-                    fontSize: "2rem",
-                    fontWeight: "700",
-                    color: "#A51C30",
                     fontFamily: "'Playfair Display', Georgia, serif",
-                  }}
-                >
-                  {content.established}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Established
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="col-6 col-lg-3">
-            <div className="card border-0 shadow-sm text-center h-100">
-              <div className="card-body py-3">
-                <div
-                  style={{
-                    fontSize: "2rem",
+                    color: accent,
+                    fontSize: "2.2rem",
                     fontWeight: "700",
-                    color: "#A51C30",
-                    fontFamily: "'Playfair Display', Georgia, serif",
+                    lineHeight: "1",
+                    marginBottom: "18px",
+                    opacity: 0.8,
                   }}
                 >
-                  {content.students}
+                  {String(index + 1).padStart(2, "0")}
                 </div>
+
                 <div
                   style={{
-                    fontSize: "0.8rem",
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
+                    width: "32px",
+                    height: "2px",
+                    backgroundColor: accent,
+                    margin: "0 auto 18px",
+                    borderRadius: "10px",
+                  }}
+                />
+
+                <p
+                  className="mb-0"
+                  style={{
+                    color: "var(--color-text)",
+                    fontSize: "0.92rem",
+                    lineHeight: "1.7",
                   }}
                 >
-                  Students
-                </div>
+                  {aim}
+                </p>
               </div>
             </div>
-          </div>
-          <div className="col-6 col-lg-3">
-            <div className="card border-0 shadow-sm text-center h-100">
-              <div className="card-body py-3">
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: "700",
-                    color: "#A51C30",
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                  }}
-                >
-                  {content.programs}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Programs
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="col-6 col-lg-3">
-            <div className="card border-0 shadow-sm text-center h-100">
-              <div className="card-body py-3">
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: "700",
-                    color: "#A51C30",
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                  }}
-                >
-                  {content.faculty}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Faculty Members
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Vision - Full Width */}
-        <div className="mb-4" data-aos="fade-up" data-aos-delay="100">
-          <div
-            className="card border-0 shadow-lg"
-            style={{
-              borderRadius: "16px",
-              overflow: "hidden",
-              borderLeft: "6px solid #A51C30",
-            }}
-          >
-            <div className="card-body p-4 p-lg-5">
-              <div className="d-flex align-items-start gap-3">
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "12px",
-                    background: "rgba(165, 28, 48, 0.1)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <i
-                    className="bi bi-eye fs-2"
-                    style={{ color: "#A51C30" }}
-                  ></i>
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
-                      fontWeight: "700",
-                      color: "#A51C30",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    Our Vision
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "1.1rem",
-                      lineHeight: "1.8",
-                      color: "var(--color-text)",
-                      marginBottom: 0,
-                    }}
-                  >
-                    {content.vision}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* =====================================================
+            WHAT WE OFFER
+        ====================================================== */}
 
-        {/* Mission - Full Width */}
-        <div className="mb-4" data-aos="fade-up" data-aos-delay="150">
-          <div
-            className="card border-0 shadow-lg"
-            style={{
-              borderRadius: "16px",
-              overflow: "hidden",
-              borderLeft: "6px solid #A51C30",
-            }}
-          >
-            <div className="card-body p-4 p-lg-5">
-              <div className="d-flex align-items-start gap-3">
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "12px",
-                    background: "rgba(165, 28, 48, 0.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <i
-                    className="bi bi-bullseye fs-2"
-                    style={{ color: "#A51C30" }}
-                  ></i>
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
-                      fontWeight: "700",
-                      color: "#A51C30",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    Our Mission
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "1.1rem",
-                      lineHeight: "1.8",
-                      color: "var(--color-text)",
-                      marginBottom: 0,
-                    }}
-                  >
-                    {content.mission}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Aims & Objectives - Full Width with List */}
-        <div className="mb-4" data-aos="fade-up" data-aos-delay="200">
-          <div
-            className="card border-0 shadow-lg"
-            style={{
-              borderRadius: "16px",
-              overflow: "hidden",
-              borderLeft: "6px solid #A51C30",
-            }}
-          >
-            <div className="card-body p-4 p-lg-5">
-              <div className="d-flex align-items-start gap-3">
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "12px",
-                    background: "rgba(165, 28, 48, 0.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <i
-                    className="bi bi-list-check fs-2"
-                    style={{ color: "#A51C30" }}
-                  ></i>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
-                      fontWeight: "700",
-                      color: "#A51C30",
-                      marginBottom: "0.75rem",
-                    }}
-                  >
-                    Aims & Objectives
-                  </h3>
-                  <div className="row g-2">
-                    {content.aims.map((aim, index) => (
-                      <div key={index} className="col-lg-6">
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: "0.75rem",
-                            padding: "0.5rem 0",
-                          }}
-                        >
-                          <span
-                            style={{ color: "#A51C30", fontSize: "1.2rem" }}
-                          >
-                            <i className="bi bi-check-circle-fill"></i>
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "0.95rem",
-                              lineHeight: "1.6",
-                              color: "var(--color-text)",
-                            }}
-                          >
-                            {aim}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* What We Offer - Full Width with Gradient */}
-        <div className="mb-4" data-aos="fade-up" data-aos-delay="250">
-          <div
-            className="card border-0 shadow-lg"
-            style={{
-              borderRadius: "16px",
-              overflow: "hidden",
-              background: "linear-gradient(145deg, #A51C30, #7A1523)",
-              color: "#fff",
-            }}
-          >
-            <div className="card-body p-4 p-lg-5">
-              <div className="d-flex align-items-start gap-3">
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "12px",
-                    background: "rgba(255, 255, 255, 0.15)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <i className="bi bi-gift fs-2" style={{ color: "#fff" }}></i>
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "clamp(1.8rem, 2.5vw, 2.5rem)",
-                      fontWeight: "700",
-                      color: "#fff",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    What We Offer
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "1.1rem",
-                      lineHeight: "1.8",
-                      color: "rgba(255,255,255,0.95)",
-                      marginBottom: 0,
-                    }}
-                  >
-                    {content.whatWeOffer}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom CTA Section */}
         <div
-          className="text-center mt-5 pt-3"
           data-aos="fade-up"
-          data-aos-delay="300"
+          data-aos-duration="900"
+          data-aos-once="false"
+          className="mb-5"
         >
           <div
-            className="card border-0 shadow-sm"
             style={{
-              borderRadius: "16px",
-              background: "var(--color-bg)",
-              padding: "2.5rem 1rem",
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: "24px",
+              background: "linear-gradient(145deg, #A51C30 0%, #7A1523 100%)",
+              padding: "clamp(28px, 5vw, 55px)",
+              boxShadow: "0 20px 50px rgba(165, 28, 48, 0.17)",
             }}
           >
-            <h4
+            {/* Background typography */}
+
+            <div
               style={{
+                position: "absolute",
+                right: "-25px",
+                bottom: "-45px",
                 fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: "clamp(1.5rem, 2vw, 2rem)",
+                fontSize: "clamp(7rem, 15vw, 13rem)",
                 fontWeight: "700",
-                color: "var(--color-text)",
-                marginBottom: "0.5rem",
+                lineHeight: "1",
+                color: "rgba(255,255,255,0.045)",
+                userSelect: "none",
+                pointerEvents: "none",
               }}
             >
-              Ready to Join{" "}
-              <span style={{ color: "#A51C30" }}>GDC Gulabad</span>?
-            </h4>
+              GDC
+            </div>
+
+            <div
+              className="row align-items-center position-relative"
+              style={{ zIndex: 1 }}
+            >
+              <div className="col-lg-4 mb-4 mb-lg-0">
+                <div className="d-flex align-items-center gap-3 mb-4">
+                  <div
+                    style={{
+                      width: "58px",
+                      height: "58px",
+                      minWidth: "58px",
+                      borderRadius: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(255,255,255,0.14)",
+                      color: "#fff",
+                    }}
+                  >
+                    <i className="bi bi-gift" style={{ fontSize: "25px" }} />
+                  </div>
+
+                  <div>
+                    <span
+                      style={{
+                        display: "block",
+                        color: "rgba(255,255,255,0.7)",
+                        fontSize: "0.68rem",
+                        fontWeight: "700",
+                        letterSpacing: "2px",
+                        textTransform: "uppercase",
+                        marginBottom: "3px",
+                      }}
+                    >
+                      04 / Experience
+                    </span>
+
+                    <h3
+                      className="mb-0"
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+                        fontWeight: "700",
+                        color: "#fff",
+                        lineHeight: "1.15",
+                      }}
+                    >
+                      What We Offer
+                    </h3>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    width: "45px",
+                    height: "3px",
+                    backgroundColor: "#fff",
+                    opacity: 0.8,
+                    borderRadius: "10px",
+                  }}
+                />
+              </div>
+
+              <div className="col-lg-8">
+                <p
+                  className="mb-0"
+                  style={{
+                    color: "rgba(255,255,255,0.94)",
+                    fontSize: "clamp(1rem, 1.4vw, 1.13rem)",
+                    lineHeight: "1.9",
+                    maxWidth: "760px",
+                  }}
+                >
+                  {content.whatWeOffer}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* =====================================================
+            CTA
+        ====================================================== */}
+
+        <div
+          className="text-center"
+          data-aos="fade-up"
+          data-aos-duration="900"
+          data-aos-once="false"
+        >
+          <div
+            style={{
+              position: "relative",
+              borderRadius: "24px",
+              padding: "clamp(32px, 5vw, 50px) 20px",
+              backgroundColor: "var(--color-bg)",
+              border: "1px solid rgba(165, 28, 48, 0.08)",
+              boxShadow: "0 10px 35px rgba(0,0,0,0.035)",
+            }}
+          >
+            <span
+              style={{
+                color: accent,
+                fontSize: "0.7rem",
+                fontWeight: "700",
+                letterSpacing: "2.5px",
+                textTransform: "uppercase",
+              }}
+            >
+              Begin Your Journey
+            </span>
+
+            <h2
+              className="mt-2 mb-2"
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: "clamp(1.8rem, 4vw, 2.7rem)",
+                fontWeight: "700",
+                color: "var(--color-text)",
+              }}
+            >
+              Ready to join <span style={{ color: accent }}>GDC Gulabad?</span>
+            </h2>
+
             <p
               style={{
                 color: "var(--color-text-muted)",
-                fontSize: "1.05rem",
-                maxWidth: "500px",
-                margin: "0 auto 1.5rem",
+                fontSize: "clamp(0.95rem, 1.3vw, 1.05rem)",
+                maxWidth: "520px",
+                margin: "0 auto 1.7rem",
+                lineHeight: "1.7",
               }}
             >
-              Start your journey toward academic excellence today.
+              Start your journey toward academic excellence and a meaningful
+              future.
             </p>
+
             <div className="d-flex flex-wrap gap-3 justify-content-center">
               <Link
                 to="/programs"
@@ -476,56 +954,58 @@ const About = () => {
                 style={{
                   background: "linear-gradient(145deg, #A51C30, #7A1523)",
                   color: "#fff",
-                  padding: "0.7rem 2.5rem",
+                  padding: "0.72rem 2rem",
                   borderRadius: "50px",
                   fontWeight: "600",
                   textDecoration: "none",
-                  transition: "all 0.3s ease",
-                  boxShadow: "0 4px 15px rgba(165, 28, 48, 0.3)",
+                  boxShadow: "0 5px 18px rgba(165, 28, 48, 0.25)",
+                  transition: "transform .3s ease, box-shadow .3s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = "translateY(-3px)";
-                  e.target.style.boxShadow =
-                    "0 8px 30px rgba(165, 28, 48, 0.4)";
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 9px 28px rgba(165, 28, 48, 0.35)";
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = "translateY(0)";
-                  e.target.style.boxShadow =
-                    "0 4px 15px rgba(165, 28, 48, 0.3)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 5px 18px rgba(165, 28, 48, 0.25)";
                 }}
               >
-                <i className="bi bi-book me-2"></i>
+                <i className="bi bi-book me-2" />
                 Explore Programs
               </Link>
+
               <Link
                 to="/contact"
-                className="btn btn-outline-secondary"
+                className="btn"
                 style={{
-                  padding: "0.7rem 2.5rem",
+                  padding: "0.72rem 2rem",
                   borderRadius: "50px",
                   fontWeight: "600",
                   textDecoration: "none",
-                  borderColor: "var(--color-border)",
+                  border: "1px solid var(--color-border)",
                   color: "var(--color-text)",
-                  transition: "all 0.3s ease",
+                  background: "transparent",
+                  transition: "all .3s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.borderColor = "#A51C30";
-                  e.target.style.color = "#A51C30";
+                  e.currentTarget.style.borderColor = accent;
+                  e.currentTarget.style.color = accent;
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.borderColor = "var(--color-border)";
-                  e.target.style.color = "var(--color-text)";
+                  e.currentTarget.style.borderColor = "var(--color-border)";
+                  e.currentTarget.style.color = "var(--color-text)";
                 }}
               >
-                <i className="bi bi-envelope me-2"></i>
+                <i className="bi bi-envelope me-2" />
                 Contact Us
               </Link>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
