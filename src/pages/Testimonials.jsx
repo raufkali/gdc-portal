@@ -293,7 +293,6 @@ const Testimonials = () => {
                           marginBottom: "0.5rem",
                           paddingLeft: "0.5rem",
                           borderLeft: "3px solid #A51C30",
-                          paddingLeft: "1rem",
                         }}
                       >
                         "{t.content}"
