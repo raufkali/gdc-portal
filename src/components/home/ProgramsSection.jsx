@@ -54,7 +54,7 @@ const ProgramsSection = () => {
   if (!programs.length) return null;
 
   return (
-    <section className="py-5 bg-primary-dark">
+    <section className="pb-3 bg-primary-dark">
       <div className="container">
         <div className="text-center mb-5" data-aos="fade-up">
           <span

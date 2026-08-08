@@ -126,6 +126,40 @@ const DepartmentsSection = () => {
         overflow: "hidden",
       }}
     >
+      <style>{`
+      .custom-shape-divider-top-1786172948 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.custom-shape-divider-top-1786172948 svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 112px;
+}
+
+.custom-shape-divider-top-1786172948 .shape-fill {
+    fill: #7A1523;
+}
+      `}</style>
+      <div class="custom-shape-divider-top-1786172948">
+        <svg
+          data-name="Layer 1"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
+            class="shape-fill"
+          ></path>
+        </svg>
+      </div>
       {/* Subtle background decoration */}
       <div
         style={{
@@ -471,6 +505,7 @@ const DepartmentsSection = () => {
               border: "2px solid #e0e0e0",
               transition: "all 0.3s ease",
               background: "transparent",
+              marginBottom: "10vh",
             }}
           >
             View All Departments
@@ -503,7 +538,39 @@ const DepartmentsSection = () => {
             height: 36px !important;
           }
         }
+          .custom-shape-divider-bottom-1786173539 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.custom-shape-divider-bottom-1786173539 svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 64px;
+}
+
+.custom-shape-divider-bottom-1786173539 .shape-fill {
+    fill: #7A1523;
+}
       `}</style>
+      <div class="custom-shape-divider-bottom-1786173539">
+        <svg
+          data-name="Layer 1"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M649.97 0L599.91 54.12 550.03 0 0 0 0 120 1200 120 1200 0 649.97 0z"
+            class="shape-fill"
+          ></path>
+        </svg>
+      </div>
     </section>
   );
 };

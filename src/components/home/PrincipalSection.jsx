@@ -1,16 +1,16 @@
 import { useSettings } from "../../contexts/SettingsContext";
 import { useState, useEffect, useRef } from "react";
-import { fetchDocument } from "../../firebase/db"; // ✅ use the persistent cache
+import { fetchDocument } from "../../firebase/db"; //  use the persistent cache
 
 const PrincipalSection = () => {
   const { settings: contextSettings, loading: contextLoading } = useSettings();
 
-  // ✅ Add refs for AOS elements
+  //  Add refs for AOS elements
   const sectionRef = useRef(null);
   const leftColumnRef = useRef(null);
   const rightColumnRef = useRef(null);
 
-  // ✅ State initialization – will be filled by fetch
+  //  State initialization – will be filled by fetch
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -18,7 +18,7 @@ const PrincipalSection = () => {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      // ✅ If context settings are already loaded, use them (prefer global state)
+      //  If context settings are already loaded, use them (prefer global state)
       if (contextSettings && !contextLoading) {
         setSettings(contextSettings);
         setLoading(false);
@@ -26,7 +26,7 @@ const PrincipalSection = () => {
       }
 
       try {
-        // ✅ Use persistent caching via fetchDocument
+        //  Use persistent caching via fetchDocument
         const data = await fetchDocument("settings", "website", {
           cacheTTL: 10 * 60 * 1000, // 10 minutes
         });
@@ -67,7 +67,7 @@ const PrincipalSection = () => {
     fetchSettings();
   }, [contextSettings, contextLoading]);
 
-  // ✅ Intersection Observer for manual animation control
+  //  Intersection Observer for manual animation control
   useEffect(() => {
     if (!loading && settings) {
       const observer = new IntersectionObserver(
@@ -105,7 +105,7 @@ const PrincipalSection = () => {
     }
   }, [loading, settings]);
 
-  // ✅ Handle image load
+  //  Handle image load
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
@@ -174,12 +174,13 @@ const PrincipalSection = () => {
 
   return (
     <section
-      className="py-5"
+      className="pt-5"
       style={{
         backgroundColor: "var(--color-bg-alt)",
         position: "relative",
         overflow: "hidden",
-        minHeight: "400px", // ✅ Prevent layout shift
+        minHeight: "400px",
+        paddingBottom: "30vh",
       }}
       ref={sectionRef}
     >
@@ -332,7 +333,7 @@ const PrincipalSection = () => {
                               justify-content: center;
                               margin: 0 auto 1rem;
                             ">
-                              <i class="bi bi-person display-4" style="color: #A51C30;"></i>
+                              <i className="bi bi-person display-4" style="color: #A51C30;"></i>
                             </div>
                             <h4 style="color: #fff; font-family: 'Playfair Display', Georgia, serif; font-size: 1.2rem;">
                               ${settings.principalName || "Principal"}
@@ -624,7 +625,47 @@ const PrincipalSection = () => {
             background-position: 200% 0;
           }
         }
+          .custom-shape-divider-bottom-1786172158 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+.custom-shape-divider-bottom-1786172763 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.custom-shape-divider-bottom-1786172763 svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 109px;
+}
+
+.custom-shape-divider-bottom-1786172763 .shape-fill {
+    fill: #7A1523;
+}
       `}</style>
+      <div class="custom-shape-divider-bottom-1786172763">
+        <svg
+          data-name="Layer 1"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z"
+            class="shape-fill"
+          ></path>
+        </svg>
+      </div>
     </section>
   );
 };
