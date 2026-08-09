@@ -139,10 +139,10 @@ const ActivitiesSection = () => {
         </div>
 
         <div className="row g-4">
-          {displayActivities.map((activity) => (
+          {displayActivities.map((activity, indx) => (
             <div key={activity.id} className="col-md-4">
               <div
-                data-aos="fade-right"
+                data-aos={`${indx % 2 == 0 ? "fade-left" : "fade-right"}`}
                 data-aos-duration="600"
                 data-aos-once="false"
                 data-aos-delay="100"

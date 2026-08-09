@@ -281,7 +281,7 @@ const Departments = () => {
                               color: rgba(255,255,255,0.1);
                               font-size: 3rem;
                             ">
-                              <i class="bi bi-building"></i>
+                              <i className="bi bi-building"></i>
                             </div>
                           `;
                         }}

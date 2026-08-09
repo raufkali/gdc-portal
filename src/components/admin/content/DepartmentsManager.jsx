@@ -312,8 +312,8 @@ const DepartmentsManager = () => {
                         e.target.style.display = "none";
                         e.target.parentElement.innerHTML = `
                           <div style="height:150px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.9rem;">
-                            <div class="text-center">
-                              <i class="bi bi-image fs-2 d-block mb-1"></i>
+                            <div className="text-center">
+                              <i className="bi bi-image fs-2 d-block mb-1"></i>
                               <span>No Image</span>
                             </div>
                           </div>

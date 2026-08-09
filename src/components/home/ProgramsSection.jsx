@@ -103,7 +103,7 @@ const ProgramsSection = () => {
               key={program.id}
               className="col-md-3 col-sm-6"
               style={{ display: "flex" }}
-              data-aos="fade-right"
+              data-aos={`${index % 2 == 0 ? "fade-right" : "fade-left"}`}
               data-aos-duration="400"
               data-aos-once="false"
               data-aos-delay={index * 100}

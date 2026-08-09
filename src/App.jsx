@@ -132,7 +132,7 @@ function App() {
 
                 {/* ===== Protected Admin Area with nested routes ===== */}
                 <Route
-                  path="/admin"
+                  path="/admin/*"
                   element={
                     <ProtectedRoute>
                       <AdminDashboard />
