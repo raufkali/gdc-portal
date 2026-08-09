@@ -206,6 +206,7 @@ const DepartmentsSection = () => {
               padding: "0.3rem 1.2rem",
               borderRadius: "50px",
               marginBottom: "0.75rem",
+              marginTop: "10vh",
             }}
           >
             Academic Excellence
