@@ -10,7 +10,6 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
-import ImageUpload from "./Shared/ImageUpload";
 
 const BannersManager = () => {
   const [items, setItems] = useState([]);
@@ -21,12 +20,23 @@ const BannersManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
+  // Fetch banners
   const fetchItems = async () => {
     setLoading(true);
+
     try {
       const snap = await getDocs(collection(db, "banners"));
-      setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+      setItems(
+        snap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })),
+      );
     } catch (error) {
       console.error("Error fetching banners:", error);
     } finally {
@@ -38,12 +48,36 @@ const BannersManager = () => {
     fetchItems();
   }, []);
 
+  // Upload banner image to R2
   const handleFileUpload = async (file) => {
+    if (!file) return null;
+
     setUploading(true);
+    setUploadProgress(0);
+
     try {
-      const result = await uploadToR2WithProgress(file, "banners/");
-      return result.url;
+      const result = await uploadToR2WithProgress(
+        file,
+        "banners/",
+        (progress) => {
+          setUploadProgress(progress);
+        },
+      );
+
+      if (result && result.url) {
+        setPreviewImage(result.url);
+        setUploadProgress(100);
+
+        setTimeout(() => {
+          setUploadProgress(0);
+        }, 1000);
+
+        return result.url;
+      }
+
+      return null;
     } catch (error) {
+      console.error("Upload error:", error);
       alert("Upload failed: " + error.message);
       return null;
     } finally {
@@ -51,42 +85,145 @@ const BannersManager = () => {
     }
   };
 
+  // Handle image selection
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    // Maximum 20MB
+    if (file.size > 20 * 1024 * 1024) {
+      alert("File is too large. Please upload a file smaller than 20MB.");
+      e.target.value = "";
+      return;
+    }
+
+    // Allowed image types
+    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
+      e.target.value = "";
+      return;
+    }
+
+    const url = await handleFileUpload(file);
+
+    if (url) {
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: url,
+      }));
+    }
+
+    // Allow selecting the same file again
+    e.target.value = "";
+  };
+
+  // Remove image
+  const removeImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      imageUrl: "",
+    }));
+
+    setPreviewImage(null);
+    setUploadProgress(0);
+  };
+
+  // Submit banner
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions
+    if (submitting || uploading) return;
+
+    setSubmitting(true);
+
     try {
       if (editing) {
         await updateDoc(doc(db, "banners", editing.id), formData);
+
+        alert("Banner updated successfully!");
       } else {
         await addDoc(collection(db, "banners"), formData);
+
+        alert("Banner added successfully!");
       }
+
       setShowModal(false);
-      fetchItems();
+      setFormData({});
+      setPreviewImage(null);
+      setUploadProgress(0);
+      setEditing(null);
+
+      await fetchItems();
     } catch (error) {
+      console.error("Error saving banner:", error);
       alert("Error saving: " + error.message);
+    } finally {
+      // Re-enable only after everything is finished
+      setSubmitting(false);
     }
   };
 
+  // Delete banner
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "banners", deletingId));
+
+      alert("Banner deleted successfully!");
+
       setShowDeleteModal(false);
-      fetchItems();
+      setDeletingId(null);
+
+      await fetchItems();
     } catch (error) {
+      console.error("Error deleting banner:", error);
       alert("Error deleting: " + error.message);
     }
   };
 
+  // Banner fields
   const fields = [
-    { key: "title", label: "Title", type: "text", required: true },
-    { key: "subtitle", label: "Subtitle", type: "text", required: false },
-    { key: "order", label: "Order Number", type: "number", required: false },
-    { key: "active", label: "Active", type: "checkbox", required: false },
+    {
+      key: "title",
+      label: "Title",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "subtitle",
+      label: "Subtitle",
+      type: "text",
+      required: false,
+    },
+    {
+      key: "order",
+      label: "Order Number",
+      type: "number",
+      required: false,
+    },
+    {
+      key: "active",
+      label: "Active",
+      type: "checkbox",
+      required: false,
+    },
   ];
 
+  // Render form field
   const renderField = (field) => {
     const value = formData[field.key] || "";
-    const onChange = (val) => setFormData({ ...formData, [field.key]: val });
 
+    const onChange = (val) => {
+      setFormData((prev) => ({
+        ...prev,
+        [field.key]: val,
+      }));
+    };
+
+    // Checkbox
     if (field.type === "checkbox") {
       return (
         <div className="form-check">
@@ -96,10 +233,13 @@ const BannersManager = () => {
             checked={value === true || value === "true"}
             onChange={(e) => onChange(e.target.checked)}
           />
+
           <label className="form-check-label">Yes</label>
         </div>
       );
     }
+
+    // Number
     if (field.type === "number") {
       return (
         <input
@@ -108,9 +248,14 @@ const BannersManager = () => {
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value) || 0)}
           required={field.required}
+          style={{
+            borderRadius: "10px",
+          }}
         />
       );
     }
+
+    // Text
     return (
       <input
         type={field.type || "text"}
@@ -118,19 +263,24 @@ const BannersManager = () => {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
+        style={{
+          borderRadius: "10px",
+        }}
       />
     );
   };
 
   return (
     <div>
-      {/* Header - Only Add Banner button, no title */}
+      {/* Header */}
       <div className="d-flex justify-content-end mb-3">
         <button
           className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
+            setPreviewImage(null);
+            setUploadProgress(0);
             setShowModal(true);
           }}
           style={{
@@ -147,30 +297,37 @@ const BannersManager = () => {
             e.target.style.background = "#A51C30";
           }}
         >
-          <i className="bi bi-plus-circle me-1"></i> Add Banner
+          <i className="bi bi-plus-circle me-1"></i>
+          Add Banner
         </button>
       </div>
 
+      {/* Loading */}
       {loading ? (
         <div className="text-center py-5">
           <div
             className="spinner-border"
             role="status"
-            style={{ color: "#A51C30" }}
+            style={{
+              color: "#A51C30",
+            }}
           >
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
       ) : items.length === 0 ? (
+        /* Empty state */
         <div className="text-center py-5">
           <div className="display-4 text-muted mb-3">
             <i className="bi bi-images"></i>
           </div>
+
           <p className="text-muted">
             No banners found. Click "Add Banner" to create one.
           </p>
         </div>
       ) : (
+        /* Banner cards */
         <div className="row g-3">
           {items.map((item) => (
             <div key={item.id} className="col-md-6 col-lg-4">
@@ -181,27 +338,37 @@ const BannersManager = () => {
                   backgroundColor: "var(--card-bg)",
                 }}
               >
+                {/* Image */}
                 {item.imageUrl && (
                   <img
                     src={item.imageUrl}
                     className="card-img-top"
                     alt={item.title}
-                    style={{ height: "150px", objectFit: "cover" }}
+                    style={{
+                      height: "150px",
+                      objectFit: "cover",
+                    }}
                     onError={(e) => {
                       e.target.style.display = "none";
                     }}
                   />
                 )}
+
+                {/* Card body */}
                 <div className="card-body">
                   <h6
                     className="fw-bold"
-                    style={{ color: "var(--color-text)" }}
+                    style={{
+                      color: "var(--color-text)",
+                    }}
                   >
                     {item.title}
                   </h6>
+
                   {item.subtitle && (
                     <p className="small text-muted">{item.subtitle}</p>
                   )}
+
                   <span
                     className="badge"
                     style={{
@@ -218,8 +385,11 @@ const BannersManager = () => {
                     {item.active ? "Active" : "Inactive"}
                   </span>
                 </div>
+
+                {/* Card footer */}
                 <div className="card-footer bg-transparent border-0 pt-0">
                   <div className="d-flex gap-2">
+                    {/* Edit */}
                     <button
                       className="btn btn-sm flex-grow-1"
                       style={{
@@ -233,7 +403,11 @@ const BannersManager = () => {
                       }}
                       onClick={() => {
                         setEditing(item);
-                        setFormData(item);
+                        setFormData({
+                          ...item,
+                        });
+                        setPreviewImage(item.imageUrl || null);
+                        setUploadProgress(0);
                         setShowModal(true);
                       }}
                       onMouseEnter={(e) => {
@@ -245,8 +419,11 @@ const BannersManager = () => {
                         e.target.style.color = "#A51C30";
                       }}
                     >
-                      <i className="bi bi-pencil me-1"></i> Edit
+                      <i className="bi bi-pencil me-1"></i>
+                      Edit
                     </button>
+
+                    {/* Delete */}
                     <button
                       className="btn btn-sm"
                       style={{
@@ -294,36 +471,114 @@ const BannersManager = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div
               className="modal-content shadow-lg border-0"
-              style={{ borderRadius: "16px" }}
+              style={{
+                borderRadius: "16px",
+              }}
             >
+              {/* Modal header */}
               <div className="modal-header border-0">
                 <h5 className="modal-title fw-bold">
                   {editing ? "Edit" : "Add"} Banner
                 </h5>
+
                 <button
                   type="button"
                   className="btn-close"
                   onClick={() => setShowModal(false)}
                 ></button>
               </div>
+
+              {/* Modal body */}
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  <ImageUpload
-                    onUpload={handleFileUpload}
-                    existingImage={formData.imageUrl}
-                    folder="banners"
-                  />
+                  {/* Banner Image Upload */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      Banner Image
+                    </label>
+
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleFileSelect}
+                      disabled={uploading}
+                      style={{
+                        borderRadius: "10px",
+                      }}
+                    />
+
+                    {/* Upload progress */}
+                    {uploading && (
+                      <div className="mt-1">
+                        <div
+                          className="progress"
+                          style={{
+                            height: "4px",
+                          }}
+                        >
+                          <div
+                            className="progress-bar progress-bar-striped progress-bar-animated"
+                            style={{
+                              width: `${uploadProgress}%`,
+                              backgroundColor: "#A51C30",
+                            }}
+                          ></div>
+                        </div>
+
+                        <small className="text-muted">
+                          {uploadProgress}% uploaded
+                        </small>
+                      </div>
+                    )}
+
+                    {/* Image preview */}
+                    {(previewImage || formData.imageUrl) && (
+                      <div className="mt-2">
+                        <img
+                          src={previewImage || formData.imageUrl}
+                          alt="Banner preview"
+                          style={{
+                            width: "100%",
+                            maxHeight: "180px",
+                            objectFit: "cover",
+                            borderRadius: "10px",
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm mt-2 rounded-pill"
+                          onClick={removeImage}
+                          style={{
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          <i className="bi bi-x"></i> Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Other fields */}
                   {fields.map((field) => (
                     <div className="mb-3" key={field.key}>
                       <label className="form-label fw-semibold">
                         {field.label}
+
                         {field.required && (
                           <span className="text-danger ms-1">*</span>
                         )}
                       </label>
+
                       {renderField(field)}
                     </div>
                   ))}
+
+                  {/* Buttons */}
                   <div className="d-flex gap-2 mt-4">
                     <button
                       type="submit"
@@ -336,7 +591,9 @@ const BannersManager = () => {
                         transition: "all 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.background = "#7A1523";
+                        if (!uploading) {
+                          e.target.style.background = "#7A1523";
+                        }
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.background = "#A51C30";
@@ -354,10 +611,15 @@ const BannersManager = () => {
                         </>
                       )}
                     </button>
+
                     <button
                       type="button"
                       className="btn btn-outline-secondary rounded-pill"
-                      onClick={() => setShowModal(false)}
+                      onClick={() => {
+                        setShowModal(false);
+                        setPreviewImage(null);
+                        setUploadProgress(0);
+                      }}
                     >
                       Cancel
                     </button>
@@ -369,6 +631,7 @@ const BannersManager = () => {
         </div>
       )}
 
+      {/* Delete modal */}
       <DeleteModal
         show={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
