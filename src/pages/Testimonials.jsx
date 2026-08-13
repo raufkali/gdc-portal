@@ -153,9 +153,7 @@ const Testimonials = () => {
                 display: "inline-block",
                 marginTop: "0.5rem",
               }}
-            >
-              ⚡ Cached
-            </span>
+            ></span>
           )}
         </div>
 

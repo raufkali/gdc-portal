@@ -211,9 +211,7 @@ const Gallery = () => {
                 display: "inline-block",
                 marginTop: "0.5rem",
               }}
-            >
-              ⚡ Cached
-            </span>
+            ></span>
           )}
         </div>
 
@@ -251,17 +249,16 @@ const Gallery = () => {
                     cursor: "pointer",
                     backgroundColor: "var(--card-bg)",
                     position: "relative",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+                    boxShadow:
+                      hoveredIndex === index
+                        ? "0 20px 40px rgba(165, 28, 48, 0.15)"
+                        : "0 2px 10px rgba(0,0,0,0.06)",
                     transition:
                       "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s ease",
                     transform:
                       hoveredIndex === index
                         ? "translateY(-8px)"
                         : "translateY(0)",
-                    boxShadow:
-                      hoveredIndex === index
-                        ? "0 20px 40px rgba(165, 28, 48, 0.15)"
-                        : "0 2px 10px rgba(0,0,0,0.06)",
                   }}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}

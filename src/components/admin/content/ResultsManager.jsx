@@ -147,7 +147,8 @@ const ResultsManager = () => {
           required={field.required}
           style={{ borderRadius: "10px" }}
         >
-          <option value="">Select Department</option>
+          <option value="All Departments">All Departments</option>
+
           {departments.map((dept) => (
             <option key={dept.id} value={dept.name}>
               {dept.name}

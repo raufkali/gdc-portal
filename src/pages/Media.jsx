@@ -89,9 +89,7 @@ const Media = () => {
               borderRadius: "50px",
               display: "inline-block",
             }}
-          >
-            ⚡ Cached
-          </span>
+          ></span>
         </div>
       )}
       <div className="row">
