@@ -23,7 +23,7 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 
-// ✅ Enable offline persistence (FREE)
+//  Enable offline persistence (FREE)
 enableIndexedDbPersistence(db, {
   cacheSizeBytes: CACHE_SIZE_UNLIMITED,
 })

@@ -85,10 +85,10 @@ const AnnouncementsManager = () => {
 
       if (editing) {
         await updateDoc(doc(db, "announcements", editing.id), data);
-        alert("✅ Announcement updated successfully!");
+        alert(" Announcement updated successfully!");
       } else {
         await addDoc(collection(db, "announcements"), data);
-        alert("✅ Announcement added successfully!");
+        alert(" Announcement added successfully!");
       }
       setShowModal(false);
       setFormData({});
@@ -102,7 +102,7 @@ const AnnouncementsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "announcements", deletingId));
-      alert("✅ Announcement deleted successfully!");
+      alert(" Announcement deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       fetchItems();

@@ -4,13 +4,13 @@ import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for announcements
+//  Cache for announcements
 let cachedAnnouncements = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const Announcements = () => {
-  // ✅ Initialize with cached data if available
+  //  Initialize with cached data if available
   const [announcements, setAnnouncements] = useState(() => {
     if (
       cachedAnnouncements &&
@@ -42,7 +42,7 @@ const Announcements = () => {
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      // ✅ If cache is valid, skip fetching
+      //  If cache is valid, skip fetching
       if (
         cachedAnnouncements &&
         cacheTimestamp &&

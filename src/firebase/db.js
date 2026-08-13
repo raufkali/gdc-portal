@@ -211,7 +211,7 @@ export const fetchCollection = async (
 };
 
 // ============================================
-// ✅ ENHANCED fetchDocument with IndexedDB persistence
+//  ENHANCED fetchDocument with IndexedDB persistence
 // ============================================
 export const fetchDocument = async (collectionName, id, options = {}) => {
   const { forceRefresh = false, cacheTTL = 5 * 60 * 1000 } = options;

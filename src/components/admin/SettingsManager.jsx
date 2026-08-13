@@ -28,7 +28,7 @@ const SettingsManager = () => {
     setUploadError(null);
     try {
       await updateSettings(form);
-      alert("✅ Settings updated successfully!");
+      alert(" Settings updated successfully!");
     } catch (error) {
       alert("❌ Error updating settings: " + error.message);
     } finally {
@@ -60,7 +60,7 @@ const SettingsManager = () => {
         },
       );
 
-      console.log("✅ Upload successful:", result);
+      console.log(" Upload successful:", result);
 
       if (result && result.url) {
         setForm({ ...form, [field]: result.url });
@@ -184,7 +184,13 @@ const SettingsManager = () => {
       </div>
 
       {/* Section Tabs - ALL CRIMSON */}
-      <div className="d-none d-md-flex flex-wrap gap-1 mb-4">
+      <div
+        className="d-none d-md-flex flex-wrap gap-1 mb-4"
+        style={{
+          border: "2px solid #A51C30",
+          borderRadius: "20px",
+        }}
+      >
         {sections.map((section) => (
           <button
             key={section.id}
@@ -203,6 +209,8 @@ const SettingsManager = () => {
               color:
                 activeSection === section.id ? "#fff" : "var(--color-text)",
               transition: "all 0.2s ease",
+              transform:
+                activeSection === section.id ? "scale(1,1.2)" : "scale(1,1)",
             }}
             onMouseEnter={(e) => {
               if (activeSection !== section.id) {

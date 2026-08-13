@@ -18,6 +18,7 @@ const FAQsManager = () => {
   const [editing, setEditing] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -37,6 +38,10 @@ const FAQsManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) {
+      return;
+    }
+    setSubmitting(true);
     try {
       if (editing) {
         await updateDoc(doc(db, "faqs", editing.id), formData);
@@ -47,6 +52,8 @@ const FAQsManager = () => {
       fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 

@@ -104,10 +104,10 @@ const DepartmentsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "departments", editing.id), formData);
-        alert("✅ Department updated successfully!");
+        alert(" Department updated successfully!");
       } else {
         await addDoc(collection(db, "departments"), formData);
-        alert("✅ Department added successfully!");
+        alert(" Department added successfully!");
       }
 
       setShowModal(false);
@@ -124,7 +124,7 @@ const DepartmentsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "departments", deletingId));
-      alert("✅ Department deleted successfully!");
+      alert(" Department deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
 

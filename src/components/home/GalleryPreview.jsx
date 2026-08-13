@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// ✅ Cache for gallery
+//  Cache for gallery
 let cachedGallery = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000;
@@ -153,7 +153,11 @@ const GalleryPreview = () => {
             <div key={img.id} className="col-md-4 col-sm-6">
               <div
                 className="card border-0 shadow-sm overflow-hidden"
-                style={{ borderRadius: "10px" }}
+                style={{
+                  borderRadius: "10px",
+                  position: "relative",
+                  cursor: "pointer",
+                }}
               >
                 <img
                   src={img.imageUrl}
@@ -164,16 +168,49 @@ const GalleryPreview = () => {
                   style={{
                     height: "200px",
                     objectFit: "cover",
-                    transition: "transform 0.3s ease",
+                    transition: "transform 0.5s ease",
+                    display: "block",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.target.style.transform = "scale(1.03)")
-                  }
-                  onMouseLeave={(e) => (e.target.style.transform = "scale(1)")}
                   onError={(e) => {
                     e.target.style.display = "none";
                   }}
                 />
+
+                {/* Overlay with caption - shows on hover only */}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)",
+                    padding: "2rem 1rem 1rem 1rem",
+                    opacity: 0,
+                    transition: "opacity 0.4s ease, transform 0.4s ease",
+                    transform: "translateY(10px)",
+                  }}
+                  className="image-overlay"
+                  onMouseEnter={(e) => {
+                    e.target.style.opacity = "1";
+                    e.target.style.transform = "translateY(0)";
+                    // Scale image on hover
+                    const img = e.target.previousElementSibling;
+                    if (img) {
+                      img.style.transform = "scale(1.05)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.opacity = "0";
+                    e.target.style.transform = "translateY(10px)";
+                    const img = e.target.previousElementSibling;
+                    if (img) {
+                      img.style.transform = "scale(1)";
+                    }
+                  }}
+                >
+                  {/* ... rest of the content ... */}
+                </div>
               </div>
             </div>
           ))}

@@ -22,7 +22,7 @@ const TestimonialsManager = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
-
+  const [submitting, setSubmitting] = useState(false);
   const fetchItems = async () => {
     setLoading(true);
     try {
@@ -101,13 +101,15 @@ const TestimonialsManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting || uploading) return;
+    setSubmitting(true);
     try {
       if (editing) {
         await updateDoc(doc(db, "testimonials", editing.id), formData);
-        alert("✅ Testimonial updated successfully!");
+        alert(" Testimonial updated successfully!");
       } else {
         await addDoc(collection(db, "testimonials"), formData);
-        alert("✅ Testimonial added successfully!");
+        alert(" Testimonial added successfully!");
       }
 
       setShowModal(false);
@@ -118,13 +120,15 @@ const TestimonialsManager = () => {
       await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "testimonials", deletingId));
-      alert("✅ Testimonial deleted successfully!");
+      alert(" Testimonial deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
 
@@ -526,7 +530,7 @@ const TestimonialsManager = () => {
                     <button
                       type="submit"
                       className="btn px-4 rounded-pill"
-                      disabled={uploading}
+                      disabled={uploading || submitting}
                       style={{
                         background: "#A51C30",
                         color: "#fff",
@@ -544,6 +548,11 @@ const TestimonialsManager = () => {
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
                           Uploading...
+                        </>
+                      ) : submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Saving...
                         </>
                       ) : (
                         <>

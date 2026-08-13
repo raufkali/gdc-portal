@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for testimonials
+//  Cache for testimonials
 let cachedTestimonials = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -27,7 +27,7 @@ const StarRating = ({ rating }) => {
 };
 
 const Testimonials = () => {
-  // ✅ Initialize with cached data if available
+  //  Initialize with cached data if available
   const [testimonials, setTestimonials] = useState(() => {
     if (
       cachedTestimonials &&
@@ -57,7 +57,7 @@ const Testimonials = () => {
 
   useEffect(() => {
     const fetchTestimonials = async () => {
-      // ✅ If cache is valid, skip fetching
+      //  If cache is valid, skip fetching
       if (
         cachedTestimonials &&
         cacheTimestamp &&

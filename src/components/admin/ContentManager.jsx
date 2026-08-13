@@ -59,7 +59,13 @@ const ContentManager = () => {
       </div>
 
       {/* Desktop Tabs - All crimson theme */}
-      <div className="d-none d-md-flex flex-wrap gap-1 mb-4">
+      <div
+        className="d-none  d-md-flex flex-wrap gap-1 mb-4"
+        style={{
+          border: "2px solid #A51C30",
+          borderRadius: "20px",
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -73,6 +79,7 @@ const ContentManager = () => {
               borderColor:
                 activeTab === tab.id ? "#A51C30" : "var(--color-border)",
               color: activeTab === tab.id ? "#fff" : "var(--color-text)",
+              transform: activeTab === tab.id ? "scale(1,1.2)" : "scale(1,1)",
               transition: "all 0.2s ease",
             }}
             onMouseEnter={(e) => {

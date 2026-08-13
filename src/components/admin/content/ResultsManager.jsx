@@ -21,6 +21,7 @@ const ResultsManager = () => {
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -67,6 +68,8 @@ const ResultsManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting || uploading) return;
+    setSubmitting(true);
     try {
       if (editing) {
         await updateDoc(doc(db, "examResults", editing.id), formData);
@@ -77,6 +80,8 @@ const ResultsManager = () => {
       fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -499,7 +504,7 @@ const ResultsManager = () => {
                     <button
                       type="submit"
                       className="btn px-4 rounded-pill"
-                      disabled={uploading}
+                      disabled={uploading || submitting}
                       style={{
                         background: "#A51C30",
                         color: "#fff",
@@ -507,7 +512,9 @@ const ResultsManager = () => {
                         transition: "all 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.background = "#7A1523";
+                        if (!uploading && !submitting) {
+                          e.target.style.background = "#7A1523";
+                        }
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.background = "#A51C30";
@@ -517,6 +524,11 @@ const ResultsManager = () => {
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
                           Uploading...
+                        </>
+                      ) : submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Saving...
                         </>
                       ) : (
                         <>

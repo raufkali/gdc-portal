@@ -61,7 +61,7 @@ const MessagesManager = () => {
       setShowDeleteModal(false);
       setDeletingId(null);
       fetchMessages();
-      alert("✅ Message deleted successfully!");
+      alert(" Message deleted successfully!");
     } catch (error) {
       alert("Error deleting: " + error.message);
     }

@@ -104,10 +104,10 @@ const ActivitiesManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "activities", editing.id), formData);
-        alert("✅ Activity updated successfully!");
+        alert(" Activity updated successfully!");
       } else {
         await addDoc(collection(db, "activities"), formData);
-        alert("✅ Activity added successfully!");
+        alert(" Activity added successfully!");
       }
 
       setShowModal(false);
@@ -124,7 +124,7 @@ const ActivitiesManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "activities", deletingId));
-      alert("✅ Activity deleted successfully!");
+      alert(" Activity deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
 

@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-//  Cache for department detail (by slug/id)
+// Cache for department detail (by slug/id)
 const cachedDepartments = {};
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -13,10 +13,12 @@ const DepartmentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [departmentResults, setDepartmentResults] = useState([]);
+  const [resultsLoading, setResultsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDepartment = async () => {
-      //  Check cache for this specific department
+      // Check cache for this specific department
       const cacheKey = slug;
       if (
         cachedDepartments[cacheKey] &&
@@ -34,7 +36,7 @@ const DepartmentDetail = () => {
         const found = data.find((d) => d.slug === slug || d.id === slug);
 
         if (found) {
-          //  Cache the found department
+          // Cache the found department
           cachedDepartments[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -46,7 +48,7 @@ const DepartmentDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching department:", error);
-        //  Try to use stale cache if available
+        // Try to use stale cache if available
         if (cachedDepartments[cacheKey]) {
           setDept(cachedDepartments[cacheKey].data);
           setFromCache(true);
@@ -58,6 +60,42 @@ const DepartmentDetail = () => {
 
     fetchDepartment();
   }, [slug]);
+
+  // Fetch department-specific results
+  useEffect(() => {
+    const fetchDepartmentResults = async () => {
+      if (!dept) return;
+
+      setResultsLoading(true);
+      try {
+        // Fetch all exam results
+        const allResults = await fetchCollection("examResults", [
+          { type: "orderBy", field: "year", direction: "desc" },
+        ]);
+
+        // Filter results for this specific department
+        const filtered = allResults.filter(
+          (result) => result.department === dept.name,
+        );
+
+        // Sort by year (newest first) and limit to 5
+        const sorted = filtered
+          .sort((a, b) => parseInt(b.year) - parseInt(a.year))
+          .slice(0, 5);
+
+        setDepartmentResults(sorted);
+      } catch (error) {
+        console.error("Error fetching department results:", error);
+        setDepartmentResults([]);
+      } finally {
+        setResultsLoading(false);
+      }
+    };
+
+    if (dept) {
+      fetchDepartmentResults();
+    }
+  }, [dept]);
 
   // Get images array (single imageUrl or multiple images)
   const getImages = () => {
@@ -450,6 +488,183 @@ const DepartmentDetail = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Recent Results Section */}
+            <div className="mt-5 pt-4 border-top">
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4
+                  className="fw-bold mb-0"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: "clamp(1.2rem, 2vw, 1.8rem)",
+                  }}
+                >
+                  <i
+                    className="bi bi-file-earmark-pdf me-2"
+                    style={{ color: "#A51C30" }}
+                  ></i>
+                  Recent Results
+                </h4>
+                <Link
+                  to="/exam-result"
+                  className="btn btn-sm"
+                  style={{
+                    color: "#A51C30",
+                    fontSize: "0.85rem",
+                    textDecoration: "none",
+                    fontWeight: "500",
+                  }}
+                >
+                  View All <i className="bi bi-arrow-right ms-1"></i>
+                </Link>
+              </div>
+
+              {resultsLoading ? (
+                <div className="text-center py-4">
+                  <div
+                    className="spinner-border spinner-border-sm"
+                    style={{ color: "#A51C30" }}
+                  ></div>
+                  <span className="ms-2 text-muted">Loading results...</span>
+                </div>
+              ) : departmentResults.length === 0 ? (
+                <div className="text-center py-4">
+                  <div className="text-muted">
+                    <i className="bi bi-inbox fs-3 d-block mb-2"></i>
+                    <p className="mb-0">
+                      No exam results available for {dept.name} yet.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="row g-3">
+                  {departmentResults.map((result) => (
+                    <div key={result.id} className="col-md-6 col-lg-4">
+                      <div
+                        className="card border-0 shadow-sm h-100"
+                        style={{
+                          borderRadius: "12px",
+                          transition:
+                            "transform 0.3s ease, box-shadow 0.3s ease",
+                          backgroundColor: "var(--card-bg)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-4px)";
+                          e.currentTarget.style.boxShadow =
+                            "0 12px 30px rgba(0,0,0,0.1)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow =
+                            "0 4px 15px rgba(0,0,0,0.05)";
+                        }}
+                      >
+                        <div className="card-body p-3">
+                          <div className="d-flex align-items-start gap-2">
+                            <div
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "8px",
+                                background: "rgba(220, 53, 69, 0.1)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <i
+                                className="bi bi-file-earmark-pdf"
+                                style={{ color: "#dc3545", fontSize: "1.2rem" }}
+                              ></i>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <h6
+                                className="fw-bold mb-1"
+                                style={{
+                                  fontSize: "0.85rem",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                                title={result.title}
+                              >
+                                {result.title}
+                              </h6>
+                              <div className="d-flex flex-wrap gap-1">
+                                {result.year && (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      background: "rgba(220, 53, 69, 0.1)",
+                                      color: "#A51C30",
+                                      fontSize: "0.6rem",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    <i className="bi bi-calendar me-1"></i>
+                                    {result.year}
+                                  </span>
+                                )}
+                                {result.semester && (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      background: "rgba(220, 53, 69, 0.1)",
+                                      color: "#A51C30",
+                                      fontSize: "0.6rem",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    <i className="bi bi-book me-1"></i>
+                                    {result.semester}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="card-footer bg-transparent border-0 pt-0 pb-2 px-3">
+                          <a
+                            href={result.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn w-100"
+                            style={{
+                              background:
+                                "linear-gradient(145deg, #A51C30, #7A1523)",
+                              color: "#fff",
+                              borderRadius: "50px",
+                              padding: "0.25rem 0.5rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              textDecoration: "none",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "0.5rem",
+                              transition: "all 0.3s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = "translateY(-2px)";
+                              e.target.style.boxShadow =
+                                "0 8px 20px rgba(165, 28, 48, 0.3)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = "translateY(0)";
+                              e.target.style.boxShadow = "none";
+                            }}
+                          >
+                            <i className="bi bi-download"></i>
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

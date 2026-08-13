@@ -10,7 +10,7 @@ import ContentManager from "./ContentManager";
 import SettingsManager from "./SettingsManager";
 import AnnouncementsManager from "./content/AnnouncementsManager";
 import ResultsManager from "./content/ResultsManager";
-import MessagesManager from "./content/MessagesManager"; // ✅ Added import
+import MessagesManager from "./content/MessagesManager"; //  Added import
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
@@ -727,7 +727,7 @@ const AdminDashboard = () => {
           <Route path="/announcements" element={<AnnouncementsManager />} />
           <Route path="/results" element={<ResultsManager />} />
           <Route path="/messages" element={<MessagesManager />} />{" "}
-          {/* ✅ Added route */}
+          {/*  Added route */}
           <Route path="/settings" element={<SettingsManager />} />
           <Route
             path="/settings/principal"

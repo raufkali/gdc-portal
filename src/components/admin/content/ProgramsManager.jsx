@@ -22,6 +22,7 @@ const ProgramsManager = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -103,36 +104,40 @@ const ProgramsManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting || uploading) return;
+    setSubmitting(true);
     try {
       if (editing) {
         await updateDoc(doc(db, "programs", editing.id), formData);
-        alert("✅ Program updated successfully!");
+        alert(" Program updated successfully!");
       } else {
         await addDoc(collection(db, "programs"), formData);
-        alert("✅ Program added successfully!");
+        alert(" Program added successfully!");
       }
 
-      // ✅ Close modal FIRST
+      //  Close modal FIRST
       setShowModal(false);
       setFormData({});
       setPreviewImage(null);
       setEditing(null);
 
-      // ✅ THEN fetch fresh data
+      //  THEN fetch fresh data
       await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "programs", deletingId));
-      alert("✅ Program deleted successfully!");
+      alert(" Program deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
 
-      // ✅ Fetch fresh data after delete
+      //  Fetch fresh data after delete
       await fetchItems();
     } catch (error) {
       alert("Error deleting: " + error.message);
@@ -536,7 +541,7 @@ const ProgramsManager = () => {
                     <button
                       type="submit"
                       className="btn px-4 rounded-pill"
-                      disabled={uploading}
+                      disabled={uploading || submitting}
                       style={{
                         background: "#A51C30",
                         color: "#fff",
@@ -544,7 +549,9 @@ const ProgramsManager = () => {
                         transition: "all 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.background = "#7A1523";
+                        if (!uploading && !submitting) {
+                          e.target.style.background = "#7A1523";
+                        }
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.background = "#A51C30";
@@ -554,6 +561,11 @@ const ProgramsManager = () => {
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
                           Uploading...
+                        </>
+                      ) : submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Saving...
                         </>
                       ) : (
                         <>

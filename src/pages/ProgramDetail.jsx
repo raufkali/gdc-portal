@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// ✅ Cache for program detail (by slug/id)
+//  Cache for program detail (by slug/id)
 const cachedPrograms = {};
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -15,7 +15,7 @@ const ProgramDetail = () => {
 
   useEffect(() => {
     const fetchProgram = async () => {
-      // ✅ Check cache for this specific program
+      //  Check cache for this specific program
       const cacheKey = slug;
       if (
         cachedPrograms[cacheKey] &&
@@ -33,7 +33,7 @@ const ProgramDetail = () => {
         const found = data.find((p) => p.slug === slug || p.id === slug);
 
         if (found) {
-          // ✅ Cache the found program
+          //  Cache the found program
           cachedPrograms[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -45,7 +45,7 @@ const ProgramDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching program:", error);
-        // ✅ Try to use stale cache if available
+        //  Try to use stale cache if available
         if (cachedPrograms[cacheKey]) {
           setProgram(cachedPrograms[cacheKey].data);
           setFromCache(true);

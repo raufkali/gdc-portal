@@ -14,7 +14,7 @@ export const SettingsProvider = ({ children }) => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // ✅ Use fetchDocument with caching (same as HeroCarousel)
+        //  Use fetchDocument with caching (same as HeroCarousel)
         const data = await fetchDocument("settings", "website", {
           cacheTTL: 5 * 60 * 1000, // 5 minutes
         });

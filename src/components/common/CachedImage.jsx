@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 
-// ✅ Memory cache for images with LRU-like behavior
+//  Memory cache for images with LRU-like behavior
 const imageCache = new Map();
 const MAX_CACHE_SIZE = 100; // Maximum images to cache in memory
 
-// ✅ Track loading promises to prevent duplicate loads
+//  Track loading promises to prevent duplicate loads
 const loadingPromises = new Map();
 
 const CachedImage = ({

@@ -11,7 +11,7 @@ export const usePrefetch = (options = {}) => {
   useEffect(() => {
     // Prefetch home data
     prefetchHomeData().then(() => {
-      console.log("✅ Home data prefetched");
+      console.log(" Home data prefetched");
     });
 
     // Prefetch images on hover
