@@ -80,7 +80,6 @@ const getLowResImageUrl = (url) => {
 const getHighResImageUrl = (url) => {
   if (!url) return null;
 
-  // Only transform Cloudinary URLs
   if (!url.includes("res.cloudinary.com")) {
     return url;
   }
@@ -111,9 +110,7 @@ const getHighResImageUrl = (url) => {
       parts.shift();
     }
 
-    return `${before}w_1600,h_2200,c_fill,q_auto:best,f_auto/${parts.join(
-      "/",
-    )}`;
+    return `${before}w_800,h_1100,c_fill,q_auto,f_auto/${parts.join("/")}`;
   } catch (error) {
     console.warn("Could not create high-res image URL:", error);
     return url;
