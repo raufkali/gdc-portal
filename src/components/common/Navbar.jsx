@@ -180,19 +180,24 @@ const Navbar = memo(() => {
   const location = useLocation();
 
   /* -------------------------------------------------------
+     HOME PAGE CHECK
+
+     IMPORTANT:
+     Transparency is ONLY allowed on "/".
+  ------------------------------------------------------- */
+
+  const isHomePage = location.pathname === "/";
+
+  /* -------------------------------------------------------
      NAVBAR STATE
   ------------------------------------------------------- */
 
-  const [scrolled, setScrolled] = useState(() => window.scrollY > 20);
+  const [scrolled, setScrolled] = useState(() => {
+    return typeof window !== "undefined" && window.scrollY > 20;
+  });
 
   const [hidden, setHidden] = useState(false);
 
-  /*
-   * IMPORTANT:
-   * We use a ref instead of state for the previous
-   * scroll position. This prevents the scroll listener
-   * from being recreated on every scroll event.
-   */
   const lastScrollYRef = useRef(
     typeof window !== "undefined" ? window.scrollY : 0,
   );
@@ -202,7 +207,6 @@ const Navbar = memo(() => {
   ------------------------------------------------------- */
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [openAccordion, setOpenAccordion] = useState(null);
 
   const sidebarRef = useRef(null);
@@ -258,21 +262,17 @@ const Navbar = memo(() => {
 
   /* =======================================================
      SCROLL HANDLER
-     
-     TOP:
-       transparent navbar
 
-     SCROLLING:
-       solid navbar
+     HOME PAGE:
+       TOP      -> transparent
+       SCROLL   -> solid
+       DOWN     -> hide
+       UP       -> show
 
-     DOWN:
-       hide navbar
-
-     UP:
-       show navbar
-
-     TOP AGAIN:
-       show transparent navbar
+     OTHER PAGES:
+       ALWAYS SOLID
+       DOWN     -> hide
+       UP       -> show
   ======================================================= */
 
   useEffect(() => {
@@ -288,8 +288,10 @@ const Navbar = memo(() => {
         const previousScrollY = lastScrollYRef.current;
 
         /*
-         * Navbar becomes solid once we move away
-         * from the very top.
+         * Keep scroll state updated.
+         *
+         * On the homepage this controls transparency.
+         * On other pages the navbar remains solid anyway.
          */
         setScrolled(currentScrollY > 20);
 
@@ -321,17 +323,42 @@ const Navbar = memo(() => {
       });
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
 
-    /*
-     * Set correct initial state.
-     */
     handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  /* =======================================================
+     ROUTE CHANGE
+
+     If navigating from another page to Home while already
+     at the top, the navbar immediately becomes transparent.
+
+     If navigating to another page, it becomes solid.
+  ======================================================= */
+
+  useEffect(() => {
+    /*
+     * Recalculate scroll state whenever route changes.
+     */
+    setScrolled(window.scrollY > 20);
+
+    /*
+     * Always show navbar after navigation.
+     */
+    setHidden(false);
+
+    /*
+     * Reset previous scroll position.
+     */
+    lastScrollYRef.current = window.scrollY;
+  }, [location.pathname]);
 
   /* =======================================================
      CLOSE SIDEBAR WHEN ROUTE CHANGES
@@ -412,6 +439,7 @@ const Navbar = memo(() => {
           label: "All Departments",
           icon: "bi-building",
         },
+
         ...departments.map((department) => ({
           path: `/departments/${department.slug || department.id}`,
           label: department.name,
@@ -437,15 +465,28 @@ const Navbar = memo(() => {
 
   /* =======================================================
      NAVBAR BACKGROUND
+
+     THIS IS THE IMPORTANT FIX.
+
+     Homepage:
+       Top       -> transparent
+       Scrolled  -> solid
+
+     Other pages:
+       Always -> solid
   ======================================================= */
 
-  const navbarBackground = scrolled
-    ? "rgba(18, 18, 18, 0.98)"
-    : "rgba(18, 18, 18, 0.18)";
+  const navbarIsTransparent = isHomePage && !scrolled;
 
-  const navbarShadow = scrolled
-    ? "0 8px 30px rgba(0,0,0,0.28)"
-    : "0 2px 15px rgba(0,0,0,0.08)";
+  const navbarBackground = navbarIsTransparent
+    ? "rgba(18, 18, 18, 0.18)"
+    : "rgba(18, 18, 18, 0.98)";
+
+  const navbarShadow = navbarIsTransparent
+    ? "0 2px 15px rgba(0,0,0,0.08)"
+    : "0 8px 30px rgba(0,0,0,0.28)";
+
+  const navbarBlur = navbarIsTransparent ? "blur(5px)" : "blur(14px)";
 
   /* =======================================================
      RENDER
@@ -465,26 +506,25 @@ const Navbar = memo(() => {
           padding: scrolled ? "0.4rem 0" : "0.7rem 0",
 
           /*
-           * Transparent at top.
-           * Dark after scrolling.
+           * TRANSPARENT ONLY ON HOME PAGE AT TOP.
            */
           background: navbarBackground,
 
           /*
            * Glass effect.
            */
-          backdropFilter: scrolled ? "blur(14px)" : "blur(5px)",
+          backdropFilter: navbarBlur,
 
-          WebkitBackdropFilter: scrolled ? "blur(14px)" : "blur(5px)",
+          WebkitBackdropFilter: navbarBlur,
 
           zIndex: 1050,
 
           transition:
             "transform 0.3s ease, padding 0.3s ease, background 0.35s ease, backdrop-filter 0.35s ease, box-shadow 0.35s ease",
 
-          borderBottom: scrolled
-            ? "1px solid rgba(255,255,255,0.06)"
-            : "1px solid rgba(255,255,255,0.08)",
+          borderBottom: navbarIsTransparent
+            ? "1px solid rgba(255,255,255,0.08)"
+            : "1px solid rgba(255,255,255,0.06)",
 
           boxShadow: navbarShadow,
 
@@ -510,6 +550,7 @@ const Navbar = memo(() => {
             <div className="d-none d-lg-flex flex-grow-1">
               <ul className="navbar-nav mx-auto align-items-lg-center">
                 {/* MAIN LINKS */}
+
                 {mainNavLinks.map((link) => (
                   <li className="nav-item" key={link.path}>
                     <Link
@@ -1134,9 +1175,7 @@ const Navbar = memo(() => {
                     className="bi bi-chevron-down"
                     style={{
                       transition: "transform 0.25s ease",
-
                       transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-
                       fontSize: "0.8rem",
                     }}
                   />
