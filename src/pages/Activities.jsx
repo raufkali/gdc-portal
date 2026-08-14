@@ -309,38 +309,79 @@ const Activities = () => {
                       >
                         {activity.content}
                       </p>
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        {/* Read More */}
+                        <Link
+                          to={`/activities/${activity.slug || activity.id}`}
+                          className="btn"
+                          style={{
+                            background: "#A51C30",
+                            color: "#fff",
+                            border: "1px solid #A51C30",
+                            borderRadius: "50px",
+                            padding: "0.45rem 1.3rem",
+                            fontSize: "0.8rem",
+                            fontWeight: "600",
+                            transition: "all 0.3s ease",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.45rem",
+                            textDecoration: "none",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#7A1523";
+                            e.currentTarget.style.borderColor = "#7A1523";
+                            e.currentTarget.style.transform =
+                              "translateY(-2px)";
+                            e.currentTarget.style.boxShadow =
+                              "0 6px 15px rgba(165, 28, 48, 0.25)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#A51C30";
+                            e.currentTarget.style.borderColor = "#A51C30";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                        >
+                          Read More
+                          <i className="bi bi-arrow-right"></i>
+                        </Link>
 
-                      {/* Share Button */}
-                      <button
-                        onClick={() => handleShare(activity)}
-                        className="btn"
-                        style={{
-                          background: "transparent",
-                          color: "var(--color-text-muted)",
-                          border: "1px solid var(--color-border)",
-                          borderRadius: "50px",
-                          padding: "0.3rem 1.2rem",
-                          fontSize: "0.8rem",
-                          fontWeight: "500",
-                          transition: "all 0.3s ease",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.borderColor = "#A51C30";
-                          e.target.style.color = "#A51C30";
-                          e.target.style.background = "rgba(165, 28, 48, 0.05)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.borderColor = "var(--color-border)";
-                          e.target.style.color = "var(--color-text-muted)";
-                          e.target.style.background = "transparent";
-                        }}
-                      >
-                        <i className="bi bi-share"></i>
-                        Share
-                      </button>
+                        {/* Share */}
+                        <button
+                          onClick={() => handleShare(activity)}
+                          className="btn"
+                          style={{
+                            background: "transparent",
+                            color: "var(--color-text-muted)",
+                            border: "1px solid var(--color-border)",
+                            borderRadius: "50px",
+                            padding: "0.45rem 1.2rem",
+                            fontSize: "0.8rem",
+                            fontWeight: "500",
+                            transition: "all 0.3s ease",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = "#A51C30";
+                            e.currentTarget.style.color = "#A51C30";
+                            e.currentTarget.style.background =
+                              "rgba(165, 28, 48, 0.05)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor =
+                              "var(--color-border)";
+                            e.currentTarget.style.color =
+                              "var(--color-text-muted)";
+                            e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <i className="bi bi-share"></i>
+                          Share
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

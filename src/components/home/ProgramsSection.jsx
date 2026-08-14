@@ -2,14 +2,32 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// NOTE: no more module-level cachedPrograms/cacheTimestamp here.
-// This now shares the same cache as Programs.jsx via fetchCollection()
-// in firebase/db.js, so visiting Home then /programs (or vice versa)
-// doesn't trigger a second Firestore read for identical data.
+// Module-level cache specifically for programs preview
+let cachedPrograms = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const ProgramsSection = () => {
-  const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [programs, setPrograms] = useState(() => {
+    // Initialize from cache if available
+    if (
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    ) {
+      return cachedPrograms;
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    // Only loading if cache is invalid or doesn't exist
+    return !(
+      cachedPrograms &&
+      cacheTimestamp &&
+      Date.now() - cacheTimestamp < CACHE_TTL
+    );
+  });
 
   const displayPrograms = useMemo(() => programs.slice(0, 4), [programs]);
 
@@ -17,13 +35,42 @@ const ProgramsSection = () => {
     let isMounted = true;
 
     const fetchPrograms = async () => {
+      // Check cache first
+      if (
+        cachedPrograms &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        if (isMounted) {
+          setPrograms(cachedPrograms);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        const data = await fetchCollection("programs");
-        if (isMounted) setPrograms(data);
+        // Use fetchCollection with cache options
+        const data = await fetchCollection("programs", [], {
+          cacheTTL: CACHE_TTL,
+          forceRefresh: false,
+        });
+
+        if (isMounted) {
+          // Store in module-level cache
+          cachedPrograms = data;
+          cacheTimestamp = Date.now();
+          setPrograms(data);
+          setLoading(false);
+        }
       } catch (error) {
         console.error("Error fetching programs:", error);
-      } finally {
-        if (isMounted) setLoading(false);
+        // If we have stale cache, use it
+        if (cachedPrograms && isMounted) {
+          setPrograms(cachedPrograms);
+          setLoading(false);
+        } else if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 

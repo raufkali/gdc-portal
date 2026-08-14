@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchCollection } from "../../firebase/db";
 import { Link } from "react-router-dom";
 
@@ -35,6 +35,8 @@ const FALLBACK_BANNERS = [
 ];
 
 const CACHE_TTL = 5 * 60 * 1000;
+const AUTOPLAY_INTERVAL = 5000;
+const SWIPE_THRESHOLD = 50;
 
 // ============================================================
 // COMPONENT
@@ -46,12 +48,22 @@ const HeroCarousel = () => {
   const [usingFallback, setUsingFallback] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
 
-  const carouselRef = useRef(null);
-  const contentRefs = useRef([]);
-  const imageRefs = useRef([]);
-  const progressRef = useRef(null);
+  // Interaction state
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // ==========================================================
+  // REFS
+  // ==========================================================
+
+  const heroRef = useRef(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const mouseStartX = useRef(0);
+  const dragOffset = useRef(0);
+  const didSwipe = useRef(false);
+  const autoplayRef = useRef(null);
 
   // ==========================================================
   // FETCH BANNERS
@@ -112,99 +124,302 @@ const HeroCarousel = () => {
   }, []);
 
   // ==========================================================
-  // SLIDE EVENT LISTENER
+  // IMAGE ERROR
   // ==========================================================
 
-  useEffect(() => {
-    const carouselElement = document.getElementById("heroCarousel");
-
-    if (!carouselElement) return;
-
-    const handleSlide = (event) => {
-      const newIndex = event.to;
-
-      setActiveIndex(newIndex);
-
-      // Reset progress animation
-      if (progressRef.current) {
-        progressRef.current.style.animation = "none";
-
-        // Force browser reflow
-        void progressRef.current.offsetHeight;
-
-        if (!isPaused) {
-          progressRef.current.style.animation =
-            "heroProgress 5s linear forwards";
-        }
-      }
-    };
-
-    carouselElement.addEventListener("slid.bs.carousel", handleSlide);
-
-    return () => {
-      carouselElement.removeEventListener("slid.bs.carousel", handleSlide);
-    };
-  }, [isPaused]);
-
-  // ==========================================================
-  // HANDLE IMAGE ERRORS
-  // ==========================================================
-
-  const handleImageError = (bannerId) => {
+  const handleImageError = useCallback((bannerId) => {
     setImageErrors((prev) => ({
       ...prev,
       [bannerId]: true,
     }));
+  }, []);
+
+  // ==========================================================
+  // SLIDE HELPERS
+  // ==========================================================
+
+  const goToSlide = useCallback(
+    (index) => {
+      if (!banners.length) return;
+
+      const total = banners.length;
+
+      let nextIndex = index;
+
+      if (index < 0) {
+        nextIndex = total - 1;
+      }
+
+      if (index >= total) {
+        nextIndex = 0;
+      }
+
+      setActiveIndex(nextIndex);
+    },
+    [banners.length],
+  );
+
+  const nextSlide = useCallback(() => {
+    if (banners.length <= 1) return;
+
+    setActiveIndex((current) => (current + 1) % banners.length);
+  }, [banners.length]);
+
+  const previousSlide = useCallback(() => {
+    if (banners.length <= 1) return;
+
+    setActiveIndex((current) =>
+      current === 0 ? banners.length - 1 : current - 1,
+    );
+  }, [banners.length]);
+
+  // ==========================================================
+  // AUTOPLAY
+  // ==========================================================
+
+  const startAutoplay = useCallback(() => {
+    if (banners.length <= 1) return;
+
+    clearInterval(autoplayRef.current);
+
+    autoplayRef.current = setInterval(() => {
+      if (!document.hidden) {
+        nextSlide();
+      }
+    }, AUTOPLAY_INTERVAL);
+  }, [banners.length, nextSlide]);
+
+  const stopAutoplay = useCallback(() => {
+    clearInterval(autoplayRef.current);
+    autoplayRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (loading || banners.length <= 1 || isInteracting || isDragging) {
+      stopAutoplay();
+      return;
+    }
+
+    startAutoplay();
+
+    return () => {
+      stopAutoplay();
+    };
+  }, [
+    loading,
+    banners.length,
+    isInteracting,
+    isDragging,
+    startAutoplay,
+    stopAutoplay,
+  ]);
+
+  // ==========================================================
+  // CLEANUP
+  // ==========================================================
+
+  useEffect(() => {
+    return () => {
+      clearInterval(autoplayRef.current);
+    };
+  }, []);
+
+  // ==========================================================
+  // TOUCH START
+  // ==========================================================
+
+  const handleTouchStart = (event) => {
+    if (banners.length <= 1) return;
+
+    const touch = event.touches[0];
+
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+
+    dragOffset.current = 0;
+    didSwipe.current = false;
+
+    setIsInteracting(true);
   };
 
   // ==========================================================
-  // PAUSE / RESUME
+  // TOUCH MOVE
   // ==========================================================
 
-  const handleMouseEnter = () => {
-    setIsPaused(true);
+  const handleTouchMove = (event) => {
+    if (banners.length <= 1) return;
 
-    if (progressRef.current) {
-      progressRef.current.style.animationPlayState = "paused";
+    const touch = event.touches[0];
+
+    const diffX = touch.clientX - touchStartX.current;
+    const diffY = touch.clientY - touchStartY.current;
+
+    /*
+      If the user is primarily scrolling vertically,
+      don't interfere with the page.
+    */
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      return;
     }
+
+    dragOffset.current = diffX;
+
+    if (Math.abs(diffX) > 10) {
+      didSwipe.current = true;
+    }
+  };
+
+  // ==========================================================
+  // TOUCH END
+  // ==========================================================
+
+  const handleTouchEnd = () => {
+    if (banners.length <= 1) {
+      setIsInteracting(false);
+      return;
+    }
+
+    const distance = dragOffset.current;
+
+    if (Math.abs(distance) >= SWIPE_THRESHOLD) {
+      if (distance < 0) {
+        nextSlide();
+      } else {
+        previousSlide();
+      }
+    }
+
+    dragOffset.current = 0;
+
+    /*
+      Give React/browser a moment before allowing clicks.
+      This prevents a swipe from accidentally clicking the CTA.
+    */
+    setTimeout(() => {
+      didSwipe.current = false;
+    }, 80);
+
+    setIsInteracting(false);
+  };
+
+  // ==========================================================
+  // MOUSE DRAG
+  // ==========================================================
+
+  const handleMouseDown = (event) => {
+    if (banners.length <= 1) return;
+
+    /*
+      Only left mouse button.
+    */
+    if (event.button !== 0) return;
+
+    mouseStartX.current = event.clientX;
+    dragOffset.current = 0;
+    didSwipe.current = false;
+
+    setIsDragging(true);
+    setIsInteracting(true);
+  };
+
+  const handleMouseMove = (event) => {
+    if (!isDragging) return;
+
+    const diffX = event.clientX - mouseStartX.current;
+
+    dragOffset.current = diffX;
+
+    if (Math.abs(diffX) > 10) {
+      didSwipe.current = true;
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+
+    const distance = dragOffset.current;
+
+    if (Math.abs(distance) >= SWIPE_THRESHOLD) {
+      if (distance < 0) {
+        nextSlide();
+      } else {
+        previousSlide();
+      }
+    }
+
+    setIsDragging(false);
+    setIsInteracting(false);
+
+    dragOffset.current = 0;
+
+    setTimeout(() => {
+      didSwipe.current = false;
+    }, 80);
   };
 
   const handleMouseLeave = () => {
-    setIsPaused(false);
+    if (!isDragging) return;
 
-    if (progressRef.current) {
-      progressRef.current.style.animationPlayState = "running";
+    const distance = dragOffset.current;
+
+    if (Math.abs(distance) >= SWIPE_THRESHOLD) {
+      if (distance < 0) {
+        nextSlide();
+      } else {
+        previousSlide();
+      }
     }
+
+    setIsDragging(false);
+    setIsInteracting(false);
+
+    dragOffset.current = 0;
+
+    setTimeout(() => {
+      didSwipe.current = false;
+    }, 80);
   };
 
   // ==========================================================
-  // KEYBOARD NAVIGATION
+  // KEYBOARD
   // ==========================================================
 
   const handleKeyDown = (event) => {
-    if (!carouselRef.current || banners.length <= 1) return;
-
-    const carousel = window.bootstrap?.Carousel;
-
-    if (!carousel) return;
-
-    const instance =
-      carousel.getInstance(carouselRef.current) ||
-      new carousel(carouselRef.current);
+    if (banners.length <= 1) return;
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      instance.prev();
+      previousSlide();
     }
 
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      instance.next();
+      nextSlide();
     }
   };
 
   // ==========================================================
-  // LOADING STATE
+  // PAUSE WHEN TAB IS HIDDEN
+  // ==========================================================
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAutoplay();
+      } else if (!isInteracting && !isDragging) {
+        startAutoplay();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isInteracting, isDragging, startAutoplay, stopAutoplay]);
+
+  // ==========================================================
+  // LOADING
   // ==========================================================
 
   if (loading) {
@@ -212,9 +427,8 @@ const HeroCarousel = () => {
       <>
         <style>{`
           .hero-loading {
-            height: 85vh;
-            min-height: 500px;
-            max-height: 800px;
+            height: 100vh;
+
             background:
               radial-gradient(
                 circle at 30% 50%,
@@ -222,30 +436,54 @@ const HeroCarousel = () => {
                 transparent 45%
               ),
               #101010;
+
             display: flex;
             align-items: center;
             justify-content: center;
+
             position: relative;
             overflow: hidden;
           }
 
           .hero-loading::before {
             content: "";
+
             position: absolute;
+
             width: 500px;
             height: 500px;
+
             border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.08);
-            animation: loadingPulse 2s ease-in-out infinite;
+
+            border:
+              1px solid
+              rgba(255,255,255,0.08);
+
+            animation:
+              loadingPulse
+              2s
+              ease-in-out
+              infinite;
           }
 
           .hero-loader {
             width: 52px;
             height: 52px;
+
             border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.12);
+
+            border:
+              2px solid
+              rgba(255,255,255,0.12);
+
             border-top-color: #A51C30;
-            animation: heroSpin 0.9s linear infinite;
+
+            animation:
+              heroSpin
+              0.9s
+              linear
+              infinite;
+
             position: relative;
             z-index: 2;
           }
@@ -277,7 +515,7 @@ const HeroCarousel = () => {
   }
 
   // ==========================================================
-  // EMPTY STATE
+  // EMPTY
   // ==========================================================
 
   if (!banners || banners.length === 0) {
@@ -292,48 +530,120 @@ const HeroCarousel = () => {
     <>
       <style>{`
 
-        /* ====================================================
-           HERO ROOT
-        ==================================================== */
+        /* =====================================================
+           HERO
+        ===================================================== */
 
         .gdc-hero {
           --hero-red: #A51C30;
           --hero-red-dark: #7A1523;
 
-          height: 85vh;
-          min-height: 560px;
-          max-height: 850px;
+          height: 100vh;
 
           position: relative;
+
           overflow: hidden;
 
           background: #111;
 
           isolation: isolate;
+
+          /*
+            IMPORTANT:
+            Allows horizontal touch gestures while still
+            allowing normal vertical page scrolling.
+          */
+          touch-action: pan-y;
+
+          user-select: none;
+
+          cursor: grab;
         }
 
-        /* ====================================================
-           SLIDES
-        ==================================================== */
-
-        .gdc-hero .carousel-inner,
-        .gdc-hero .carousel-item {
-          height: 100%;
-          width: 100%;
+        .gdc-hero.is-dragging {
+          cursor: grabbing;
         }
 
-        .gdc-hero .carousel-item {
+        /* =====================================================
+           TRACK
+        ===================================================== */
+
+        .gdc-hero-track {
           position: relative;
+
+          width: 100%;
+          height: 100%;
+
           overflow: hidden;
+        }
+
+        /* =====================================================
+           SLIDE
+        ===================================================== */
+
+        .gdc-hero-slide {
+          position: absolute;
+
+          inset: 0;
+
+          width: 100%;
+          height: 100%;
+
+          opacity: 0;
+
+          visibility: hidden;
+
+          transform: translateX(35px) scale(1.01);
+
+          transition:
+            opacity 0.7s ease,
+            transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+            visibility 0.7s ease;
+
+          pointer-events: none;
+
+          overflow: hidden;
+
           background: #111;
         }
 
-        /* ====================================================
+        .gdc-hero-slide.active {
+          opacity: 1;
+
+          visibility: visible;
+
+          transform:
+            translateX(0)
+            scale(1);
+
+          pointer-events: auto;
+
+          z-index: 2;
+        }
+
+        /*
+          Previous slide leaves toward the left.
+        */
+
+        .gdc-hero-slide.leaving {
+          opacity: 0;
+
+          transform:
+            translateX(-35px)
+            scale(0.99);
+
+          visibility: visible;
+
+          z-index: 1;
+        }
+
+        /* =====================================================
            IMAGE
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-image {
           position: absolute;
+
           inset: -3%;
 
           width: 106%;
@@ -348,37 +658,46 @@ const HeroCarousel = () => {
             filter 0.8s ease;
 
           filter: saturate(0.95);
+
+          pointer-events: none;
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-image {
+        .gdc-hero-slide.active .gdc-hero-image {
           transform: scale(1.11);
         }
 
-        /* ====================================================
-           IMAGE FALLBACK
-        ==================================================== */
+        /* =====================================================
+           FALLBACK
+        ===================================================== */
 
         .gdc-hero-fallback {
           position: absolute;
+
           inset: 0;
 
           transform: scale(1.02);
 
           transition:
-            transform 8s cubic-bezier(0.16, 1, 0.3, 1);
+            transform 8s
+            cubic-bezier(0.16, 1, 0.3, 1);
+
+          pointer-events: none;
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-fallback {
+        .gdc-hero-slide.active
+          .gdc-hero-fallback {
           transform: scale(1.09);
         }
 
-        /* ====================================================
-           OVERLAYS
-        ==================================================== */
+        /* =====================================================
+           OVERLAY
+        ===================================================== */
 
         .gdc-hero-overlay {
           position: absolute;
+
           inset: 0;
+
           z-index: 1;
 
           background:
@@ -397,6 +716,7 @@ const HeroCarousel = () => {
           content: "";
 
           position: absolute;
+
           inset: 0;
 
           background:
@@ -409,9 +729,9 @@ const HeroCarousel = () => {
             );
         }
 
-        /* ====================================================
-           DECORATIVE LIGHT
-        ==================================================== */
+        /* =====================================================
+           RED GLOW
+        ===================================================== */
 
         .gdc-hero-glow {
           position: absolute;
@@ -422,14 +742,16 @@ const HeroCarousel = () => {
           left: -260px;
           top: 50%;
 
-          transform: translateY(-50%);
+          transform:
+            translateY(-50%);
 
-          background: radial-gradient(
-            circle,
-            rgba(165, 28, 48, 0.20) 0%,
-            rgba(165, 28, 48, 0.08) 35%,
-            transparent 70%
-          );
+          background:
+            radial-gradient(
+              circle,
+              rgba(165, 28, 48, 0.20) 0%,
+              rgba(165, 28, 48, 0.08) 35%,
+              transparent 70%
+            );
 
           filter: blur(20px);
 
@@ -438,9 +760,9 @@ const HeroCarousel = () => {
           pointer-events: none;
         }
 
-        /* ====================================================
-           CONTENT WRAPPER
-        ==================================================== */
+        /* =====================================================
+           CONTENT
+        ===================================================== */
 
         .gdc-hero-content {
           position: absolute;
@@ -449,8 +771,9 @@ const HeroCarousel = () => {
           top: 50%;
 
           width: 100%;
-
-          transform: translateY(-50%);
+        
+          transform:
+            translateY(-50%);
 
           z-index: 3;
 
@@ -458,7 +781,8 @@ const HeroCarousel = () => {
         }
 
         .gdc-hero-container {
-          width: min(1200px, 100%);
+          width:
+            min(1200px, 100%);
 
           margin: 0 auto;
 
@@ -472,31 +796,41 @@ const HeroCarousel = () => {
           pointer-events: auto;
         }
 
-        /* ====================================================
+        /* =====================================================
            EYEBROW
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-eyebrow {
           display: inline-flex;
+
           align-items: center;
+
           gap: 10px;
 
           margin-bottom: 20px;
 
           font-size: 0.78rem;
+
           font-weight: 700;
 
           letter-spacing: 0.22em;
+
           text-transform: uppercase;
 
-          color: rgba(255,255,255,0.88);
+          color:
+            rgba(255,255,255,0.88);
 
           opacity: 0;
-          transform: translateY(25px);
+
+          transform:
+            translateY(25px);
 
           transition:
             opacity 0.7s ease 0.1s,
-            transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+            transform
+              0.8s
+              cubic-bezier(0.16, 1, 0.3, 1)
+              0.1s;
         }
 
         .gdc-hero-eyebrow::before {
@@ -505,23 +839,29 @@ const HeroCarousel = () => {
           width: 36px;
           height: 2px;
 
-          background: var(--hero-red);
+          background:
+            var(--hero-red);
 
           box-shadow:
-            0 0 12px rgba(165,28,48,0.8);
+            0 0 12px
+            rgba(165,28,48,0.8);
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-eyebrow {
+        .gdc-hero-slide.active
+          .gdc-hero-eyebrow {
           opacity: 1;
-          transform: translateY(0);
+
+          transform:
+            translateY(0);
         }
 
-        /* ====================================================
+        /* =====================================================
            TITLE
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-title {
-          margin: 0 0 22px;
+          margin:
+            0 0 22px;
 
           max-width: 760px;
 
@@ -533,22 +873,12 @@ const HeroCarousel = () => {
             "Times New Roman",
             serif;
 
-          /*
-            Clamp is intentionally controlled.
-
-            Previously:
-            clamp(2rem, 5vw, 4rem)
-
-            This can become uncomfortable with long titles.
-
-            This version has a lower responsive growth rate.
-          */
-
-          font-size: clamp(
-            2.15rem,
-            4.4vw,
-            4.25rem
-          );
+          font-size:
+            clamp(
+              2.15rem,
+              4.4vw,
+              4.25rem
+            );
 
           line-height: 1.04;
 
@@ -563,7 +893,8 @@ const HeroCarousel = () => {
           hyphens: auto;
 
           text-shadow:
-            0 3px 25px rgba(0,0,0,0.5);
+            0 3px 25px
+            rgba(0,0,0,0.5);
 
           opacity: 0;
 
@@ -575,11 +906,15 @@ const HeroCarousel = () => {
 
           transition:
             opacity 0.85s ease 0.18s,
-            transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.18s,
+            transform
+              1s
+              cubic-bezier(0.16, 1, 0.3, 1)
+              0.18s,
             filter 0.85s ease 0.18s;
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-title {
+        .gdc-hero-slide.active
+          .gdc-hero-title {
           opacity: 1;
 
           transform:
@@ -589,22 +924,25 @@ const HeroCarousel = () => {
           filter: blur(0);
         }
 
-        /* ====================================================
+        /* =====================================================
            SUBTITLE
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-subtitle {
           max-width: 620px;
 
-          margin: 0 0 30px;
+          margin:
+            0 0 30px;
 
-          color: rgba(255,255,255,0.88);
+          color:
+            rgba(255,255,255,0.88);
 
-          font-size: clamp(
-            1rem,
-            1.45vw,
-            1.25rem
-          );
+          font-size:
+            clamp(
+              1rem,
+              1.45vw,
+              1.25rem
+            );
 
           line-height: 1.65;
 
@@ -615,50 +953,69 @@ const HeroCarousel = () => {
           overflow-wrap: anywhere;
 
           text-shadow:
-            0 2px 14px rgba(0,0,0,0.6);
+            0 2px 14px
+            rgba(0,0,0,0.6);
 
           opacity: 0;
 
-          transform: translateY(30px);
+          transform:
+            translateY(30px);
 
           transition:
             opacity 0.8s ease 0.35s,
-            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
+            transform
+              0.9s
+              cubic-bezier(0.16, 1, 0.3, 1)
+              0.35s;
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-subtitle {
+        .gdc-hero-slide.active
+          .gdc-hero-subtitle {
           opacity: 1;
-          transform: translateY(0);
+
+          transform:
+            translateY(0);
         }
 
-        /* ====================================================
+        /* =====================================================
            CTA
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-actions {
           display: flex;
+
           align-items: center;
+
           gap: 18px;
 
           opacity: 0;
 
-          transform: translateY(25px);
+          transform:
+            translateY(25px);
 
           transition:
             opacity 0.8s ease 0.5s,
-            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
+            transform
+              0.9s
+              cubic-bezier(0.16, 1, 0.3, 1)
+              0.5s;
         }
 
-        .gdc-hero .carousel-item.active .gdc-hero-actions {
+        .gdc-hero-slide.active
+          .gdc-hero-actions {
           opacity: 1;
-          transform: translateY(0);
+
+          transform:
+            translateY(0);
         }
 
         .gdc-hero-cta {
           position: relative;
 
           display: inline-flex;
+
           align-items: center;
+
           justify-content: center;
 
           gap: 12px;
@@ -669,7 +1026,9 @@ const HeroCarousel = () => {
             0.82rem
             1.55rem;
 
-          border: 1px solid rgba(255,255,255,0.12);
+          border:
+            1px solid
+            rgba(255,255,255,0.12);
 
           border-radius: 100px;
 
@@ -691,12 +1050,14 @@ const HeroCarousel = () => {
           text-decoration: none;
 
           box-shadow:
-            0 12px 35px rgba(165,28,48,0.28);
+            0 12px 35px
+            rgba(165,28,48,0.28);
 
           overflow: hidden;
 
           transition:
-            transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.35s
+              cubic-bezier(0.16, 1, 0.3, 1),
             box-shadow 0.35s ease,
             background 0.35s ease;
         }
@@ -720,9 +1081,11 @@ const HeroCarousel = () => {
               transparent
             );
 
-          transform: skewX(-20deg);
+          transform:
+            skewX(-20deg);
 
-          transition: left 0.65s ease;
+          transition:
+            left 0.65s ease;
         }
 
         .gdc-hero-cta:hover {
@@ -740,7 +1103,8 @@ const HeroCarousel = () => {
             );
 
           box-shadow:
-            0 18px 45px rgba(165,28,48,0.42);
+            0 18px 45px
+            rgba(165,28,48,0.42);
         }
 
         .gdc-hero-cta:hover::before {
@@ -756,13 +1120,15 @@ const HeroCarousel = () => {
             transform 0.3s ease;
         }
 
-        .gdc-hero-cta:hover .gdc-hero-cta-arrow {
-          transform: translateX(4px);
+        .gdc-hero-cta:hover
+          .gdc-hero-cta-arrow {
+          transform:
+            translateX(4px);
         }
 
-        /* ====================================================
-           SLIDE NUMBER
-        ==================================================== */
+        /* =====================================================
+           COUNTER
+        ===================================================== */
 
         .gdc-hero-counter {
           position: absolute;
@@ -770,17 +1136,22 @@ const HeroCarousel = () => {
           right: 7%;
           bottom: 34px;
 
-          z-index: 5;
+          z-index: 10;
 
           display: flex;
+
           align-items: center;
+
           gap: 10px;
 
-          color: rgba(255,255,255,0.75);
+          color:
+            rgba(255,255,255,0.75);
 
           font-size: 0.75rem;
 
           letter-spacing: 0.12em;
+
+          pointer-events: none;
         }
 
         .gdc-hero-counter-current {
@@ -795,74 +1166,13 @@ const HeroCarousel = () => {
           width: 42px;
           height: 1px;
 
-          background: rgba(255,255,255,0.35);
-        }
-
-        /* ====================================================
-           INDICATORS
-        ==================================================== */
-
-        .gdc-hero .carousel-indicators {
-          position: absolute;
-
-          left: 7%;
-          right: auto;
-
-          bottom: 32px;
-
-          width: auto;
-
-          margin: 0;
-
-          display: flex;
-          align-items: center;
-
-          gap: 8px;
-
-          z-index: 10;
-        }
-
-        .gdc-hero .carousel-indicators button {
-          width: 28px;
-          height: 3px;
-
-          margin: 0;
-
-          padding: 0;
-
-          border: 0;
-
-          border-radius: 10px;
-
           background:
             rgba(255,255,255,0.35);
-
-          opacity: 1;
-
-          transition:
-            width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-            background 0.3s ease,
-            opacity 0.3s ease;
-
-          cursor: pointer;
         }
 
-        .gdc-hero .carousel-indicators button:hover {
-          background: rgba(255,255,255,0.7);
-        }
-
-        .gdc-hero .carousel-indicators button.active {
-          width: 58px;
-
-          background: #A51C30;
-
-          box-shadow:
-            0 0 12px rgba(165,28,48,0.55);
-        }
-
-        /* ====================================================
+        /* =====================================================
            PROGRESS BAR
-        ==================================================== */
+        ===================================================== */
 
         .gdc-hero-progress {
           position: absolute;
@@ -871,19 +1181,22 @@ const HeroCarousel = () => {
           bottom: 0;
 
           width: 100%;
-          height: 2px;
+          height: 3px;
 
           background:
             rgba(255,255,255,0.12);
 
           z-index: 20;
+
+          pointer-events: none;
         }
 
         .gdc-hero-progress-fill {
           width: 100%;
           height: 100%;
 
-          transform-origin: left center;
+          transform-origin:
+            left center;
 
           background:
             linear-gradient(
@@ -893,22 +1206,31 @@ const HeroCarousel = () => {
             );
 
           animation:
-            heroProgress 5s linear forwards;
+            heroProgress
+            5s
+            linear
+            infinite;
+        }
+
+        .gdc-hero-progress-fill.paused {
+          animation-play-state: paused;
         }
 
         @keyframes heroProgress {
           from {
-            transform: scaleX(0);
+            transform:
+              scaleX(0);
           }
 
           to {
-            transform: scaleX(1);
+            transform:
+              scaleX(1);
           }
         }
 
-        /* ====================================================
-           SIDE DECORATION
-        ==================================================== */
+        /* =====================================================
+           SIDE LABEL
+        ===================================================== */
 
         .gdc-hero-side-label {
           position: absolute;
@@ -936,105 +1258,15 @@ const HeroCarousel = () => {
           pointer-events: none;
         }
 
-        /* ====================================================
-           CONTROLS
-        ==================================================== */
-
-        .gdc-hero .carousel-control-prev,
-        .gdc-hero .carousel-control-next {
-          z-index: 8;
-
-          width: 60px;
-
-          opacity: 0;
-
-          transition:
-            opacity 0.35s ease,
-            transform 0.35s ease;
-        }
-
-        .gdc-hero:hover .carousel-control-prev,
-        .gdc-hero:hover .carousel-control-next {
-          opacity: 0.75;
-        }
-
-        .gdc-hero .carousel-control-prev {
-          transform: translateX(-8px);
-        }
-
-        .gdc-hero .carousel-control-next {
-          transform: translateX(8px);
-        }
-
-        .gdc-hero:hover .carousel-control-prev,
-        .gdc-hero:hover .carousel-control-next {
-          transform: translateX(0);
-        }
-
-        .gdc-hero .carousel-control-prev:hover,
-        .gdc-hero .carousel-control-next:hover {
-          opacity: 1;
-        }
-
-        .gdc-hero .carousel-control-prev-icon,
-        .gdc-hero .carousel-control-next-icon {
-          width: 42px;
-          height: 42px;
-
-          padding: 10px;
-
-          border-radius: 50%;
-
-          background-color:
-            rgba(0,0,0,0.32);
-
-          background-size: 45%;
-
-          backdrop-filter: blur(8px);
-
-          border: 1px solid
-            rgba(255,255,255,0.15);
-
-          transition:
-            transform 0.3s ease,
-            background-color 0.3s ease;
-        }
-
-        .gdc-hero .carousel-control-prev:hover
-          .carousel-control-prev-icon,
-        .gdc-hero .carousel-control-next:hover
-          .carousel-control-next-icon {
-          transform: scale(1.08);
-
-          background-color:
-            rgba(165,28,48,0.75);
-        }
-
-        /* ====================================================
-           PAUSED STATE
-        ==================================================== */
-
-        .gdc-hero.is-paused
-          .gdc-hero-image,
-        .gdc-hero.is-paused
-          .gdc-hero-fallback {
-          transition: none;
-        }
-
-        .gdc-hero.is-paused
-          .gdc-hero-progress-fill {
-          animation-play-state: paused;
-        }
-
-        /* ====================================================
+        /* =====================================================
            TABLET
-        ==================================================== */
+        ===================================================== */
 
         @media (max-width: 991px) {
 
           .gdc-hero {
-            height: 78vh;
-            min-height: 520px;
+            height: 100vh;
+
           }
 
           .gdc-hero-container {
@@ -1047,11 +1279,12 @@ const HeroCarousel = () => {
           }
 
           .gdc-hero-title {
-            font-size: clamp(
-              2.15rem,
-              6vw,
-              3.6rem
-            );
+            font-size:
+              clamp(
+                2.15rem,
+                6vw,
+                3.6rem
+              );
           }
 
           .gdc-hero-overlay {
@@ -1070,22 +1303,25 @@ const HeroCarousel = () => {
           .gdc-hero-counter {
             right: 6%;
           }
-
-          .gdc-hero .carousel-indicators {
-            left: 6%;
-          }
         }
 
-        /* ====================================================
+        /* =====================================================
            MOBILE
-        ==================================================== */
+        ===================================================== */
 
         @media (max-width: 767px) {
 
           .gdc-hero {
-            height: 78vh;
-            min-height: 540px;
-            max-height: 760px;
+            height: 100vh;
+
+
+
+            /*
+              Very important for mobile:
+              horizontal gesture is handled by the carousel,
+              vertical gesture remains available for page scroll.
+            */
+            touch-action: pan-y;
           }
 
           .gdc-hero-container {
@@ -1154,27 +1390,15 @@ const HeroCarousel = () => {
             font-size: 0.84rem;
           }
 
-          .gdc-hero .carousel-control-prev,
-          .gdc-hero .carousel-control-next {
-            display: none;
-          }
+          /*
+            We intentionally hide:
+            - arrows
+            - dots
+            - indicators
 
-          .gdc-hero .carousel-indicators {
-            left: 24px;
-
-            bottom: 25px;
-
-            gap: 6px;
-          }
-
-          .gdc-hero .carousel-indicators button {
-            width: 20px;
-            height: 3px;
-          }
-
-          .gdc-hero .carousel-indicators button.active {
-            width: 42px;
-          }
+            Swipe still works because it is handled
+            directly by React touch events.
+          */
 
           .gdc-hero-counter {
             right: 24px;
@@ -1210,14 +1434,14 @@ const HeroCarousel = () => {
           }
         }
 
-        /* ====================================================
+        /* =====================================================
            SMALL MOBILE
-        ==================================================== */
+        ===================================================== */
 
         @media (max-width: 420px) {
 
           .gdc-hero {
-            min-height: 500px;
+            height: 100vh;
           }
 
           .gdc-hero-title {
@@ -1241,18 +1465,23 @@ const HeroCarousel = () => {
           }
         }
 
-        /* ====================================================
+        /* =====================================================
            REDUCED MOTION
-        ==================================================== */
+        ===================================================== */
 
         @media (prefers-reduced-motion: reduce) {
 
+          .gdc-hero-slide,
           .gdc-hero *,
           .gdc-hero *::before,
           .gdc-hero *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
+
+            transition-duration:
+              0.01ms !important;
+          }
+
+          .gdc-hero-progress-fill {
+            animation: none !important;
           }
 
           .gdc-hero-image,
@@ -1264,33 +1493,47 @@ const HeroCarousel = () => {
       `}</style>
 
       <div
-        id="heroCarousel"
-        ref={carouselRef}
-        className={`gdc-hero carousel slide ${isPaused ? "is-paused" : ""}`}
-        data-bs-ride="carousel"
-        data-bs-interval="5000"
-        data-bs-pause="false"
+        ref={heroRef}
+        className={`gdc-hero ${isDragging ? "is-dragging" : ""}`}
         tabIndex="0"
         role="region"
         aria-label="GDC Gulabad featured banners"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         onKeyDown={handleKeyDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         {/* ====================================================
             SLIDES
         ==================================================== */}
 
-        <div className="carousel-inner">
+        <div className="gdc-hero-track">
           {banners.map((banner, index) => {
             const isFallback = banner.bgGradient !== undefined;
 
             const hasImageError = imageErrors[banner.id];
 
+            const isActive = index === activeIndex;
+
+            const previousIndex =
+              activeIndex === 0 ? banners.length - 1 : activeIndex - 1;
+
+            const isLeaving =
+              index === previousIndex && !isActive && isInteracting === false;
+
             return (
               <div
                 key={banner.id}
-                className={`carousel-item ${index === 0 ? "active" : ""}`}
+                className={`
+                  gdc-hero-slide
+                  ${isActive ? "active" : ""}
+                  ${isLeaving ? "leaving" : ""}
+                `}
+                aria-hidden={!isActive}
               >
                 {/* ==================================================
                     BACKGROUND
@@ -1305,15 +1548,13 @@ const HeroCarousel = () => {
                   />
                 ) : banner.imageUrl && !hasImageError ? (
                   <img
-                    ref={(el) => {
-                      imageRefs.current[index] = el;
-                    }}
                     src={banner.imageUrl}
                     className="gdc-hero-image"
                     alt={banner.title || "GDC Gulabad banner"}
                     loading={index === 0 ? "eager" : "lazy"}
                     decoding={index === 0 ? "sync" : "async"}
                     fetchpriority={index === 0 ? "high" : "low"}
+                    draggable={false}
                     onError={() => handleImageError(banner.id)}
                   />
                 ) : (
@@ -1331,7 +1572,7 @@ const HeroCarousel = () => {
 
                 <div className="gdc-hero-overlay" />
 
-                <div className="gdc-hero-glow" />
+                <div className="gdc-hero-glow" aria-hidden="true" />
 
                 {/* ==================================================
                     CONTENT
@@ -1339,12 +1580,7 @@ const HeroCarousel = () => {
 
                 <div className="gdc-hero-content">
                   <div className="gdc-hero-container">
-                    <div
-                      ref={(el) => {
-                        contentRefs.current[index] = el;
-                      }}
-                      className="gdc-hero-copy"
-                    >
+                    <div className="gdc-hero-copy">
                       <div className="gdc-hero-eyebrow">GDC - Gulabad</div>
 
                       <h1 className="gdc-hero-title">{banner.title}</h1>
@@ -1358,6 +1594,15 @@ const HeroCarousel = () => {
                           to="/programs"
                           className="gdc-hero-cta"
                           aria-label="Explore academic programs"
+                          onClick={(event) => {
+                            /*
+                              Don't follow CTA if this interaction
+                              was actually a swipe.
+                            */
+                            if (didSwipe.current) {
+                              event.preventDefault();
+                            }
+                          }}
                         >
                           <span>Explore Programs</span>
 
@@ -1378,59 +1623,8 @@ const HeroCarousel = () => {
         </div>
 
         {/* ========================================================
-            PREVIOUS
-        ======================================================== */}
-
-        {banners.length > 1 && (
-          <>
-            <button
-              className="carousel-control-prev"
-              type="button"
-              data-bs-target="#heroCarousel"
-              data-bs-slide="prev"
-              aria-label="Previous banner"
-            >
-              <span className="carousel-control-prev-icon" aria-hidden="true" />
-            </button>
-
-            {/* ==================================================
-                NEXT
-            ================================================== */}
-
-            <button
-              className="carousel-control-next"
-              type="button"
-              data-bs-target="#heroCarousel"
-              data-bs-slide="next"
-              aria-label="Next banner"
-            >
-              <span className="carousel-control-next-icon" aria-hidden="true" />
-            </button>
-          </>
-        )}
-
-        {/* ========================================================
-            INDICATORS
-        ======================================================== */}
-
-        {banners.length > 1 && (
-          <div className="carousel-indicators">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                data-bs-target="#heroCarousel"
-                data-bs-slide-to={index}
-                className={index === activeIndex ? "active" : ""}
-                aria-current={index === activeIndex ? "true" : undefined}
-                aria-label={`Go to banner ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* ========================================================
             COUNTER
+            No indicators / dots / arrows
         ======================================================== */}
 
         {banners.length > 1 && (
@@ -1459,7 +1653,12 @@ const HeroCarousel = () => {
 
         {banners.length > 1 && (
           <div className="gdc-hero-progress">
-            <div ref={progressRef} className="gdc-hero-progress-fill" />
+            <div
+              key={`${activeIndex}-${isInteracting}`}
+              className={`gdc-hero-progress-fill ${
+                isInteracting ? "paused" : ""
+              }`}
+            />
           </div>
         )}
       </div>

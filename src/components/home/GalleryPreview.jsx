@@ -1,11 +1,46 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { fetchCollection } from "../../firebase/db";
+import { db } from "../../firebase/config";
+import { collection, getDocs } from "firebase/firestore";
 
-//  Cache for gallery
+// Cache for gallery
 let cachedGallery = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000;
+
+// Sample fallback images when no images exist
+const FALLBACK_IMAGES = [
+  {
+    id: "fallback-1",
+    imageUrl: "https://picsum.photos/seed/campus1/800/600",
+    caption: "Campus Life",
+  },
+  {
+    id: "fallback-2",
+    imageUrl: "https://picsum.photos/seed/campus2/800/600",
+    caption: "Student Activities",
+  },
+  {
+    id: "fallback-3",
+    imageUrl: "https://picsum.photos/seed/campus3/800/600",
+    caption: "Academic Excellence",
+  },
+  {
+    id: "fallback-4",
+    imageUrl: "https://picsum.photos/seed/campus4/800/600",
+    caption: "College Events",
+  },
+  {
+    id: "fallback-5",
+    imageUrl: "https://picsum.photos/seed/campus5/800/600",
+    caption: "Our Campus",
+  },
+  {
+    id: "fallback-6",
+    imageUrl: "https://picsum.photos/seed/campus6/800/600",
+    caption: "Student Life",
+  },
+];
 
 const GalleryPreview = () => {
   const [images, setImages] = useState(() => {
@@ -49,19 +84,31 @@ const GalleryPreview = () => {
       }
 
       try {
-        const data = await fetchCollection("gallery", [
-          { type: "orderBy", field: "uploadedAt", direction: "desc" },
-        ]);
-        cachedGallery = data;
-        cacheTimestamp = Date.now();
-        setImages(data);
-        setFromCache(false);
-      } catch (error) {
-        console.error("Error fetching gallery:", error);
-        if (cachedGallery) {
-          setImages(cachedGallery);
-          setFromCache(true);
+        const snap = await getDocs(collection(db, "gallery"));
+        let data = snap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        if (data.length > 0) {
+          cachedGallery = data;
+          cacheTimestamp = Date.now();
+          setImages(data);
+          setFromCache(false);
+        } else {
+          const fallback = FALLBACK_IMAGES;
+          cachedGallery = fallback;
+          cacheTimestamp = Date.now();
+          setImages(fallback);
+          setFromCache(false);
         }
+      } catch (error) {
+        console.error("Error fetching gallery preview:", error);
+        const fallback = FALLBACK_IMAGES;
+        cachedGallery = fallback;
+        cacheTimestamp = Date.now();
+        setImages(fallback);
+        setFromCache(false);
       } finally {
         setLoading(false);
       }
@@ -86,14 +133,17 @@ const GalleryPreview = () => {
     );
   }
 
-  if (!images.length) return null;
+  if (!images.length) {
+    return null;
+  }
 
   const displayImages = images.slice(0, 6);
 
   return (
     <section className="py-5">
       <div className="container">
-        <div className="text-center mb-5" data-aos="fade-up">
+        {/* TITLE SECTION - NOW INCLUDED */}
+        <div className="text-center mb-5">
           <span
             style={{
               fontSize: "0.8rem",
@@ -131,89 +181,177 @@ const GalleryPreview = () => {
           >
             Explore our campus life through images
           </p>
-          {fromCache && process.env.NODE_ENV === "development" && (
-            <span
-              style={{
-                fontSize: "0.65rem",
-                color: "#28a745",
-                background: "rgba(40, 167, 69, 0.1)",
-                padding: "0.15rem 0.8rem",
-                borderRadius: "50px",
-                display: "inline-block",
-                marginTop: "0.5rem",
-              }}
-            ></span>
-          )}
         </div>
 
+        {/* GALLERY GRID */}
         <div className="row g-3">
-          {displayImages.map((img) => (
+          {displayImages.map((img, index) => (
             <div key={img.id} className="col-md-4 col-sm-6">
-              <div
-                className="card border-0 shadow-sm overflow-hidden"
-                style={{
-                  borderRadius: "10px",
-                  position: "relative",
-                  cursor: "pointer",
-                }}
+              <Link
+                to="/gallery"
+                style={{ textDecoration: "none", display: "block" }}
               >
-                <img
-                  src={img.imageUrl}
-                  className="w-100"
-                  alt={img.caption || "Gallery"}
-                  loading="lazy"
-                  decoding="async"
-                  style={{
-                    height: "200px",
-                    objectFit: "cover",
-                    transition: "transform 0.5s ease",
-                    display: "block",
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                  }}
-                />
-
-                {/* Overlay with caption - shows on hover only */}
                 <div
+                  className="card border-0 shadow-sm overflow-hidden"
                   style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    background:
-                      "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)",
-                    padding: "2rem 1rem 1rem 1rem",
-                    opacity: 0,
-                    transition: "opacity 0.4s ease, transform 0.4s ease",
-                    transform: "translateY(10px)",
+                    borderRadius: "12px",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                    backgroundColor: "#fff",
+                    height: "100%",
                   }}
-                  className="image-overlay"
                   onMouseEnter={(e) => {
-                    e.target.style.opacity = "1";
-                    e.target.style.transform = "translateY(0)";
-                    // Scale image on hover
-                    const img = e.target.previousElementSibling;
-                    if (img) {
-                      img.style.transform = "scale(1.05)";
+                    if (window.innerWidth > 768) {
+                      const card = e.currentTarget;
+                      card.style.transform = "translateY(-5px)";
+                      card.style.boxShadow =
+                        "0 12px 30px rgba(165, 28, 48, 0.15)";
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.opacity = "0";
-                    e.target.style.transform = "translateY(10px)";
-                    const img = e.target.previousElementSibling;
-                    if (img) {
-                      img.style.transform = "scale(1)";
+                    if (window.innerWidth > 768) {
+                      const card = e.currentTarget;
+                      card.style.transform = "translateY(0)";
+                      card.style.boxShadow = "0 2px 10px rgba(0,0,0,0.06)";
                     }
                   }}
                 >
-                  {/* ... rest of the content ... */}
+                  <div
+                    style={{
+                      position: "relative",
+                      overflow: "hidden",
+                      height: "220px",
+                      backgroundColor: "#f8f9fa",
+                    }}
+                  >
+                    <img
+                      src={img.imageUrl}
+                      className="w-100"
+                      alt={img.caption || "Gallery"}
+                      loading="lazy"
+                      decoding="async"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        transition: "transform 0.3s ease",
+                        display: "block",
+                      }}
+                      onError={(e) => {
+                        e.target.src =
+                          "https://via.placeholder.com/400x300?text=Image+Not+Found";
+                      }}
+                    />
+
+                    {/* Desktop Overlay with Title - Shows on hover */}
+                    <div
+                      className="desktop-overlay"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: "rgba(0, 0, 0, 0.75)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: 0,
+                        transition: "opacity 0.3s ease",
+                        padding: "1.5rem",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (window.innerWidth > 768) {
+                          e.target.style.opacity = "1";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (window.innerWidth > 768) {
+                          e.target.style.opacity = "0";
+                        }
+                      }}
+                    >
+                      {img.caption && (
+                        <>
+                          <h4
+                            style={{
+                              color: "#fff",
+                              margin: 0,
+                              fontSize: "1.1rem",
+                              fontWeight: "700",
+                              fontFamily: "'Playfair Display', Georgia, serif",
+                              textAlign: "center",
+                              textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            {img.caption}
+                          </h4>
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "3px",
+                              background: "#A51C30",
+                              marginTop: "0.5rem",
+                              borderRadius: "2px",
+                            }}
+                          />
+                          <p
+                            style={{
+                              color: "rgba(255,255,255,0.8)",
+                              fontSize: "0.7rem",
+                              marginTop: "0.5rem",
+                              fontWeight: "300",
+                              letterSpacing: "0.5px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            <i className="bi bi-arrow-right-circle me-1"></i>
+                            View Gallery
+                          </p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Mobile Title - Always visible */}
+                    <div
+                      className="mobile-title"
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: "1.5rem 1rem 1rem 1rem",
+                        background: "rgba(0, 0, 0, 0.7)",
+                        display: window.innerWidth <= 768 ? "block" : "none",
+                      }}
+                    >
+                      {img.caption && (
+                        <p
+                          style={{
+                            color: "#fff",
+                            margin: 0,
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            fontFamily: "'Playfair Display', Georgia, serif",
+                            textShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                            letterSpacing: "0.3px",
+                          }}
+                        >
+                          {img.caption}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </Link>
             </div>
           ))}
         </div>
 
+        {/* VIEW ALL BUTTON */}
         <div className="text-center mt-4">
           <Link
             to="/gallery"
@@ -221,7 +359,7 @@ const GalleryPreview = () => {
             style={{
               background: "transparent",
               color: "#A51C30",
-              padding: "0.6rem 2.5rem",
+              padding: "0.7rem 3rem",
               borderRadius: "50px",
               fontWeight: "600",
               fontSize: "0.95rem",
@@ -233,8 +371,8 @@ const GalleryPreview = () => {
             onMouseEnter={(e) => {
               e.target.style.background = "#A51C30";
               e.target.style.color = "#fff";
-              e.target.style.transform = "translateY(-2px)";
-              e.target.style.boxShadow = "0 8px 25px rgba(165, 28, 48, 0.2)";
+              e.target.style.transform = "translateY(-3px)";
+              e.target.style.boxShadow = "0 10px 30px rgba(165, 28, 48, 0.3)";
             }}
             onMouseLeave={(e) => {
               e.target.style.background = "transparent";
@@ -243,10 +381,27 @@ const GalleryPreview = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i> View Full Gallery
+            <i className="bi bi-grid-3x3-gap-fill me-2"></i> View Full Gallery
           </Link>
         </div>
       </div>
+
+      {/* Responsive Styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .desktop-overlay {
+            display: none !important;
+          }
+          .mobile-title {
+            display: block !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .mobile-title {
+            display: none !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

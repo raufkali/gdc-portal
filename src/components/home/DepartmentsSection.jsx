@@ -120,13 +120,16 @@ const DepartmentsSection = () => {
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
-        backgroundColor: "#f8f9fc",
+        backgroundColor: "#ffffff",
         padding: "4rem 0",
         position: "relative",
         overflow: "hidden",
       }}
     >
       <style>{`
+      .container{
+      overflow-x: clip}
+      
       .custom-shape-divider-top-1786172948 {
     position: absolute;
     top: 0;
