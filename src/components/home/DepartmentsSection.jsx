@@ -2,100 +2,524 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-// ---- Layout tokens (brand: maroon #A51C30 on off-white #f8f9fc) ----
+// ---- Layout tokens ----
 const LAYOUT = {
-  desktop: { width: 320, height: 440, gap: 260, maxOffset: 2 },
-  mobile: { width: 220, height: 300, gap: 150, maxOffset: 1 },
+  desktop: {
+    width: 320,
+    height: 440,
+    gap: 260,
+    maxOffset: 2,
+  },
+  mobile: {
+    width: 220,
+    height: 300,
+    gap: 150,
+    maxOffset: 1,
+  },
 };
+
+// =========================================================
+// IMAGE CACHE
+// =========================================================
+
+// High-resolution images that have already been loaded
+const highResImageCache = new Map();
+
+// Images currently being loaded
+const imageLoadingCache = new Map();
+
+// =========================================================
+// CLOUDINARY IMAGE HELPERS
+// =========================================================
+
+// Generate a low-resolution image URL
+const getLowResImageUrl = (url) => {
+  if (!url) return null;
+
+  // Only transform Cloudinary URLs
+  if (!url.includes("res.cloudinary.com")) {
+    return url;
+  }
+
+  try {
+    // Insert Cloudinary transformation after /upload/
+    const uploadIndex = url.indexOf("/upload/");
+
+    if (uploadIndex === -1) {
+      return url;
+    }
+
+    const before = url.substring(0, uploadIndex + 8);
+    const after = url.substring(uploadIndex + 8);
+
+    // Remove existing transformation if present
+    const parts = after.split("/");
+
+    const firstPart = parts[0];
+
+    const looksLikeTransformation =
+      firstPart.includes("w_") ||
+      firstPart.includes("h_") ||
+      firstPart.includes("q_") ||
+      firstPart.includes("f_") ||
+      firstPart.includes("c_") ||
+      firstPart.includes("dpr_");
+
+    if (looksLikeTransformation) {
+      parts.shift();
+    }
+
+    return `${before}w_400,h_550,c_fill,q_auto,f_auto/${parts.join("/")}`;
+  } catch (error) {
+    console.warn("Could not create low-res image URL:", error);
+    return url;
+  }
+};
+
+// Generate a high-resolution image URL
+const getHighResImageUrl = (url) => {
+  if (!url) return null;
+
+  // Only transform Cloudinary URLs
+  if (!url.includes("res.cloudinary.com")) {
+    return url;
+  }
+
+  try {
+    const uploadIndex = url.indexOf("/upload/");
+
+    if (uploadIndex === -1) {
+      return url;
+    }
+
+    const before = url.substring(0, uploadIndex + 8);
+    const after = url.substring(uploadIndex + 8);
+
+    const parts = after.split("/");
+
+    const firstPart = parts[0];
+
+    const looksLikeTransformation =
+      firstPart.includes("w_") ||
+      firstPart.includes("h_") ||
+      firstPart.includes("q_") ||
+      firstPart.includes("f_") ||
+      firstPart.includes("c_") ||
+      firstPart.includes("dpr_");
+
+    if (looksLikeTransformation) {
+      parts.shift();
+    }
+
+    return `${before}w_1600,h_2200,c_fill,q_auto:best,f_auto/${parts.join(
+      "/",
+    )}`;
+  } catch (error) {
+    console.warn("Could not create high-res image URL:", error);
+    return url;
+  }
+};
+
+// =========================================================
+// PRELOAD HIGH-RES IMAGE
+// =========================================================
+
+const preloadHighResImage = (url) => {
+  if (!url) {
+    return Promise.resolve(null);
+  }
+
+  const highResUrl = getHighResImageUrl(url);
+
+  // Already loaded
+  if (highResImageCache.has(highResUrl)) {
+    return Promise.resolve(highResImageCache.get(highResUrl));
+  }
+
+  // Already being loaded
+  if (imageLoadingCache.has(highResUrl)) {
+    return imageLoadingCache.get(highResUrl);
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      highResImageCache.set(highResUrl, highResUrl);
+      imageLoadingCache.delete(highResUrl);
+
+      resolve(highResUrl);
+    };
+
+    img.onerror = (error) => {
+      imageLoadingCache.delete(highResUrl);
+      reject(error);
+    };
+
+    // Start downloading
+    img.src = highResUrl;
+  });
+
+  imageLoadingCache.set(highResUrl, promise);
+
+  return promise;
+};
+
+// =========================================================
+// COMPONENT
+// =========================================================
 
 const DepartmentsSection = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [activeIndex, setActiveIndex] = useState(0);
+
   const [isTransitioning, setIsTransitioning] = useState(false);
+
   const [isMobile, setIsMobile] = useState(false);
+
   const [hoveredIndex, setHoveredIndex] = useState(null);
+
   const [isPaused, setIsPaused] = useState(false);
+
+  // Track which high-res images are ready
+  const [loadedHighResImages, setLoadedHighResImages] = useState(new Set());
+
   const intervalRef = useRef(null);
+
+  const transitionTimeoutRef = useRef(null);
+
   const touchStartX = useRef(0);
+
   const touchEndX = useRef(0);
 
-  // Responsive breakpoint
+  // =======================================================
+  // RESPONSIVE BREAKPOINT
+  // =======================================================
+
   useEffect(() => {
-    const updateIsMobile = () => setIsMobile(window.innerWidth < 768);
+    const updateIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
     updateIsMobile();
+
     window.addEventListener("resize", updateIsMobile);
-    return () => window.removeEventListener("resize", updateIsMobile);
+
+    return () => {
+      window.removeEventListener("resize", updateIsMobile);
+    };
   }, []);
 
-  // Fetch departments
+  // =======================================================
+  // FETCH DEPARTMENTS
+  // =======================================================
+
   useEffect(() => {
     const fetchDepts = async () => {
       try {
         const data = await fetchCollection("departments");
-        setDepartments(data.slice(0, 6));
+
+        const limitedData = data.slice(0, 6);
+
+        setDepartments(limitedData);
+
+        // ---------------------------------------------------
+        // IMPORTANT:
+        // Immediately preload the FIRST department's
+        // high-resolution image.
+        // ---------------------------------------------------
+
+        if (limitedData.length > 0 && limitedData[0]?.imageUrl) {
+          try {
+            const highResUrl = await preloadHighResImage(
+              limitedData[0].imageUrl,
+            );
+
+            setLoadedHighResImages((prev) => {
+              const next = new Set(prev);
+              next.add(highResUrl);
+              return next;
+            });
+          } catch (error) {
+            console.warn("Failed to preload first department image:", error);
+          }
+        }
       } catch (error) {
         console.error("Error fetching departments:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchDepts();
   }, []);
 
+  // =======================================================
+  // TOTAL
+  // =======================================================
+
   const total = departments.length;
 
-  const goToSlide = useCallback(
-    (index) => {
-      if (isTransitioning || total === 0) return;
-      const next = ((index % total) + total) % total;
-      if (next === activeIndex) return;
-      setIsTransitioning(true);
-      setActiveIndex(next);
-      setTimeout(() => setIsTransitioning(false), 500);
+  // =======================================================
+  // GET HIGH RES URL
+  // =======================================================
+
+  const getDepartmentHighResUrl = useCallback((department) => {
+    if (!department?.imageUrl) return null;
+
+    return getHighResImageUrl(department.imageUrl);
+  }, []);
+
+  // =======================================================
+  // LOAD ACTIVE IMAGE
+  // =======================================================
+
+  const loadActiveImage = useCallback(
+    async (index) => {
+      if (!departments[index]?.imageUrl) {
+        return;
+      }
+
+      const department = departments[index];
+
+      const highResUrl = getDepartmentHighResUrl(department);
+
+      if (!highResUrl) return;
+
+      // Already cached
+      if (highResImageCache.has(highResUrl)) {
+        setLoadedHighResImages((prev) => {
+          if (prev.has(highResUrl)) return prev;
+
+          const next = new Set(prev);
+          next.add(highResUrl);
+
+          return next;
+        });
+
+        return;
+      }
+
+      try {
+        await preloadHighResImage(department.imageUrl);
+
+        setLoadedHighResImages((prev) => {
+          const next = new Set(prev);
+          next.add(highResUrl);
+
+          return next;
+        });
+      } catch (error) {
+        console.warn(
+          `Failed to load high-resolution image for ${department.name}:`,
+          error,
+        );
+      }
     },
-    [activeIndex, isTransitioning, total],
+    [departments, getDepartmentHighResUrl],
   );
 
-  // Autoplay
+  // =======================================================
+  // PRELOAD ACTIVE + NEIGHBORING IMAGES
+  // =======================================================
+
+  useEffect(() => {
+    if (!departments.length) return;
+
+    // Active image
+    loadActiveImage(activeIndex);
+
+    // -----------------------------------------------------
+    // Also preload the next image in the background.
+    //
+    // This makes the next slide almost instant when the
+    // user clicks the next arrow.
+    // -----------------------------------------------------
+
+    if (total > 1) {
+      const nextIndex = (activeIndex + 1) % total;
+
+      if (departments[nextIndex]?.imageUrl) {
+        preloadHighResImage(departments[nextIndex].imageUrl)
+          .then((highResUrl) => {
+            setLoadedHighResImages((prev) => {
+              const next = new Set(prev);
+              next.add(highResUrl);
+              return next;
+            });
+          })
+          .catch(() => {
+            // Silent failure for background preload
+          });
+      }
+    }
+
+    // Also preload previous image
+    if (total > 2) {
+      const previousIndex = (activeIndex - 1 + total) % total;
+
+      if (departments[previousIndex]?.imageUrl) {
+        preloadHighResImage(departments[previousIndex].imageUrl)
+          .then((highResUrl) => {
+            setLoadedHighResImages((prev) => {
+              const next = new Set(prev);
+              next.add(highResUrl);
+              return next;
+            });
+          })
+          .catch(() => {
+            // Silent failure for background preload
+          });
+      }
+    }
+  }, [activeIndex, departments, total, loadActiveImage]);
+
+  // =======================================================
+  // GO TO SLIDE
+  // =======================================================
+
+  const goToSlide = useCallback(
+    async (index) => {
+      if (isTransitioning || total === 0) return;
+
+      const next = ((index % total) + total) % total;
+
+      if (next === activeIndex) return;
+
+      // ---------------------------------------------------
+      // Load the next image BEFORE switching if possible.
+      // This prevents the active card from showing a
+      // blurry/low-resolution image during navigation.
+      // ---------------------------------------------------
+
+      if (departments[next]?.imageUrl) {
+        const highResUrl = getDepartmentHighResUrl(departments[next]);
+
+        if (highResUrl && !highResImageCache.has(highResUrl)) {
+          try {
+            await preloadHighResImage(departments[next].imageUrl);
+
+            setLoadedHighResImages((prev) => {
+              const updated = new Set(prev);
+              updated.add(highResUrl);
+              return updated;
+            });
+          } catch (error) {
+            console.warn("Could not preload department image:", error);
+          }
+        }
+      }
+
+      setIsTransitioning(true);
+
+      setActiveIndex(next);
+
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+
+      transitionTimeoutRef.current = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 500);
+    },
+    [activeIndex, departments, getDepartmentHighResUrl, isTransitioning, total],
+  );
+
+  // =======================================================
+  // CLEANUP TRANSITION TIMER
+  // =======================================================
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // =======================================================
+  // AUTOPLAY
+  // =======================================================
+
   useEffect(() => {
     if (total <= 1 || isPaused) return;
+
     intervalRef.current = setInterval(() => {
       goToSlide(activeIndex + 1);
     }, 5000);
-    return () => clearInterval(intervalRef.current);
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
   }, [total, activeIndex, goToSlide, isPaused]);
 
-  // Swipe support
+  // =======================================================
+  // TOUCH / SWIPE
+  // =======================================================
+
   const handleTouchStart = (e) => {
     touchStartX.current = e.changedTouches[0].screenX;
   };
+
   const handleTouchEnd = (e) => {
     touchEndX.current = e.changedTouches[0].screenX;
+
     const diff = touchStartX.current - touchEndX.current;
+
     if (Math.abs(diff) > 40) {
-      if (diff > 0) goToSlide(activeIndex + 1);
-      else goToSlide(activeIndex - 1);
+      if (diff > 0) {
+        goToSlide(activeIndex + 1);
+      } else {
+        goToSlide(activeIndex - 1);
+      }
     }
   };
 
-  // Keyboard navigation
+  // =======================================================
+  // KEYBOARD NAVIGATION
+  // =======================================================
+
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === "ArrowRight") goToSlide(activeIndex + 1);
-      if (e.key === "ArrowLeft") goToSlide(activeIndex - 1);
+      if (e.key === "ArrowRight") {
+        goToSlide(activeIndex + 1);
+      }
+
+      if (e.key === "ArrowLeft") {
+        goToSlide(activeIndex - 1);
+      }
     };
+
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+    };
   }, [activeIndex, goToSlide]);
 
-  // Shortest signed distance from activeIndex, so the fan wraps both ways
+  // =======================================================
+  // SHORTEST SIGNED DISTANCE
+  // =======================================================
+
   const getOffset = (idx) => {
     let diff = idx - activeIndex;
-    if (diff > total / 2) diff -= total;
-    if (diff < -total / 2) diff += total;
+
+    if (diff > total / 2) {
+      diff -= total;
+    }
+
+    if (diff < -total / 2) {
+      diff += total;
+    }
+
     return diff;
   };
+
+  // =======================================================
+  // LOADING
+  // =======================================================
 
   if (loading) {
     return (
@@ -114,6 +538,10 @@ const DepartmentsSection = () => {
 
   const cfg = isMobile ? LAYOUT.mobile : LAYOUT.desktop;
 
+  // =======================================================
+  // RENDER
+  // =======================================================
+
   return (
     <section
       style={{
@@ -127,29 +555,81 @@ const DepartmentsSection = () => {
       }}
     >
       <style>{`
-      .container{
-      overflow-x: clip}
-      
-      .custom-shape-divider-top-1786172948 {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    overflow: hidden;
-    line-height: 0;
-}
+        .container {
+          overflow-x: clip;
+        }
 
-.custom-shape-divider-top-1786172948 svg {
-    position: relative;
-    display: block;
-    width: calc(100% + 1.3px);
-    height: 112px;
-}
+        .custom-shape-divider-top-1786172948 {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          overflow: hidden;
+          line-height: 0;
+        }
 
-.custom-shape-divider-top-1786172948 .shape-fill {
-    fill: #7A1523;
-}
+        .custom-shape-divider-top-1786172948 svg {
+          position: relative;
+          display: block;
+          width: calc(100% + 1.3px);
+          height: 112px;
+        }
+
+        .custom-shape-divider-top-1786172948 .shape-fill {
+          fill: #7A1523;
+        }
+
+        .custom-shape-divider-bottom-1786173539 {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          overflow: hidden;
+          line-height: 0;
+        }
+
+        .custom-shape-divider-bottom-1786173539 svg {
+          position: relative;
+          display: block;
+          width: calc(100% + 1.3px);
+          height: 64px;
+        }
+
+        .custom-shape-divider-bottom-1786173539 .shape-fill {
+          fill: #7A1523;
+        }
+
+        .dept-arrow-btn:hover {
+          background: #A51C30 !important;
+          color: #fff !important;
+          border-color: #A51C30 !important;
+          box-shadow: 0 8px 24px rgba(165,28,48,0.25);
+          transform: scale(1.06);
+        }
+
+        .dept-dot-btn:hover {
+          background: #b0b0b0;
+        }
+
+        .dept-cta-link:hover {
+          border-color: #A51C30 !important;
+          background: rgba(165,28,48,0.04) !important;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        }
+
+        @media (max-width: 768px) {
+          .dept-arrow-btn {
+            width: 36px !important;
+            height: 36px !important;
+          }
+        }
       `}</style>
+
+      {/* ===================================================
+          TOP SHAPE
+      =================================================== */}
+
       <div className="custom-shape-divider-top-1786172948">
         <svg
           data-name="Layer 1"
@@ -160,10 +640,14 @@ const DepartmentsSection = () => {
           <path
             d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
             className="shape-fill"
-          ></path>
+          />
         </svg>
       </div>
-      {/* Subtle background decoration */}
+
+      {/* ===================================================
+          BACKGROUND DECORATION
+      =================================================== */}
+
       <div
         style={{
           position: "absolute",
@@ -177,6 +661,7 @@ const DepartmentsSection = () => {
           pointerEvents: "none",
         }}
       />
+
       <div
         style={{
           position: "absolute",
@@ -193,9 +678,16 @@ const DepartmentsSection = () => {
 
       <div
         className="container"
-        style={{ position: "relative", zIndex: 2, maxWidth: "100%" }}
+        style={{
+          position: "relative",
+          zIndex: 2,
+          maxWidth: "100%",
+        }}
       >
-        {/* ---- Header ---- */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
@@ -214,6 +706,7 @@ const DepartmentsSection = () => {
           >
             Academic Excellence
           </span>
+
           <h2
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
@@ -235,6 +728,7 @@ const DepartmentsSection = () => {
               Departments
             </span>
           </h2>
+
           <p
             style={{
               color: "#6c757d",
@@ -249,7 +743,10 @@ const DepartmentsSection = () => {
           </p>
         </div>
 
-        {/* ---- Fan Carousel ---- */}
+        {/* =================================================
+            FAN CAROUSEL
+        ================================================= */}
+
         <div
           style={{
             position: "relative",
@@ -269,19 +766,43 @@ const DepartmentsSection = () => {
         >
           {departments.map((dept, idx) => {
             const diff = getOffset(idx);
-            if (Math.abs(diff) > cfg.maxOffset) return null;
+
+            if (Math.abs(diff) > cfg.maxOffset) {
+              return null;
+            }
 
             const isCenter = diff === 0;
+
             const isHovered = hoveredIndex === idx;
+
             const absDiff = Math.abs(diff);
 
             const baseScale = isCenter ? 1 : absDiff === 1 ? 0.84 : 0.7;
+
             const hoverBoost = isHovered && !isCenter ? 0.06 : 0;
+
             const scale = baseScale + hoverBoost;
 
             const opacity = isCenter ? 1 : absDiff === 1 ? 0.55 : 0.22;
+
             const lift = isCenter && isHovered ? -14 : isHovered ? -8 : 0;
+
             const translateX = diff * cfg.gap;
+
+            // ------------------------------------------------
+            // Image URLs
+            // ------------------------------------------------
+
+            const lowResUrl = getLowResImageUrl(dept.imageUrl);
+
+            const highResUrl = getDepartmentHighResUrl(dept);
+
+            const highResReady =
+              highResUrl && loadedHighResImages.has(highResUrl);
+
+            // Active image uses high-res.
+            // Other images use low-res.
+            const imageSrc = isCenter && highResReady ? highResUrl : lowResUrl;
 
             return (
               <div
@@ -297,9 +818,14 @@ const DepartmentsSection = () => {
                   top: "50%",
                   width: `${cfg.width}px`,
                   height: `${cfg.height}px`,
-                  transform: `translate(-50%, calc(-50% + ${lift}px)) translateX(${translateX}px) scale(${scale})`,
+                  transform:
+                    `translate(-50%, calc(-50% + ${lift}px)) ` +
+                    `translateX(${translateX}px) ` +
+                    `scale(${scale})`,
                   transition:
-                    "transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.55s ease, box-shadow 0.35s ease",
+                    "transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), " +
+                    "opacity 0.55s ease, " +
+                    "box-shadow 0.35s ease",
                   opacity,
                   zIndex: isCenter ? 10 : 10 - absDiff,
                   borderRadius: "22px",
@@ -313,12 +839,17 @@ const DepartmentsSection = () => {
                     : "0 10px 30px rgba(0,0,0,0.08)",
                 }}
               >
-                {/* Image */}
-                {dept.imageUrl ? (
+                {/* ==========================================
+                    IMAGE
+                ========================================== */}
+
+                {imageSrc ? (
                   <img
-                    src={dept.imageUrl}
+                    src={imageSrc}
                     alt={dept.name}
-                    loading={absDiff === 0 ? "eager" : "lazy"}
+                    loading={isCenter ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchpriority={isCenter ? "high" : "low"}
                     style={{
                       position: "absolute",
                       inset: 0,
@@ -329,7 +860,9 @@ const DepartmentsSection = () => {
                       transition:
                         "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                     }}
-                    onError={(e) => (e.target.style.display = "none")}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
                   />
                 ) : (
                   <div
@@ -348,7 +881,10 @@ const DepartmentsSection = () => {
                   </div>
                 )}
 
-                {/* Scrim */}
+                {/* ==========================================
+                    SCRIM
+                ========================================== */}
+
                 <div
                   style={{
                     position: "absolute",
@@ -360,7 +896,10 @@ const DepartmentsSection = () => {
                   }}
                 />
 
-                {/* Content overlay */}
+                {/* ==========================================
+                    CONTENT OVERLAY
+                ========================================== */}
+
                 <div
                   style={{
                     position: "absolute",
@@ -400,7 +939,13 @@ const DepartmentsSection = () => {
                       }}
                     >
                       Learn More
-                      <span style={{ fontSize: "1.1rem" }}>→</span>
+                      <span
+                        style={{
+                          fontSize: "1.1rem",
+                        }}
+                      >
+                        →
+                      </span>
                     </Link>
                   )}
                 </div>
@@ -409,7 +954,10 @@ const DepartmentsSection = () => {
           })}
         </div>
 
-        {/* ---- Controls: arrow / dots / arrow ---- */}
+        {/* =================================================
+            CONTROLS
+        ================================================= */}
+
         {total > 1 && (
           <div
             style={{
@@ -420,6 +968,7 @@ const DepartmentsSection = () => {
               marginTop: "2rem",
             }}
           >
+            {/* Previous */}
             <button
               className="dept-arrow-btn"
               onClick={() => goToSlide(activeIndex - 1)}
@@ -443,8 +992,13 @@ const DepartmentsSection = () => {
               ←
             </button>
 
+            {/* Dots */}
             <div
-              style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+              }}
             >
               {departments.map((_, idx) => (
                 <button
@@ -466,6 +1020,7 @@ const DepartmentsSection = () => {
               ))}
             </div>
 
+            {/* Next */}
             <button
               className="dept-arrow-btn"
               onClick={() => goToSlide(activeIndex + 1)}
@@ -491,7 +1046,10 @@ const DepartmentsSection = () => {
           </div>
         )}
 
-        {/* ---- CTA Button ---- */}
+        {/* =================================================
+            CTA
+        ================================================= */}
+
         <div className="text-center mt-4">
           <Link
             to="/departments"
@@ -513,55 +1071,21 @@ const DepartmentsSection = () => {
             }}
           >
             View All Departments
-            <span style={{ fontSize: "1.1rem" }}>→</span>
+            <span
+              style={{
+                fontSize: "1.1rem",
+              }}
+            >
+              →
+            </span>
           </Link>
         </div>
       </div>
 
-      {/* ---- Hover states via CSS (kept separate from JS-driven fan transforms) ---- */}
-      <style>{`
-        .dept-arrow-btn:hover {
-          background: #A51C30 !important;
-          color: #fff !important;
-          border-color: #A51C30 !important;
-          box-shadow: 0 8px 24px rgba(165,28,48,0.25);
-          transform: scale(1.06);
-        }
-        .dept-dot-btn:hover {
-          background: #b0b0b0;
-        }
-        .dept-cta-link:hover {
-          border-color: #A51C30 !important;
-          background: rgba(165,28,48,0.04) !important;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-        }
-        @media (max-width: 768px) {
-          .dept-arrow-btn {
-            width: 36px !important;
-            height: 36px !important;
-          }
-        }
-          .custom-shape-divider-bottom-1786173539 {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow: hidden;
-    line-height: 0;
-}
+      {/* ===================================================
+          BOTTOM SHAPE
+      =================================================== */}
 
-.custom-shape-divider-bottom-1786173539 svg {
-    position: relative;
-    display: block;
-    width: calc(100% + 1.3px);
-    height: 64px;
-}
-
-.custom-shape-divider-bottom-1786173539 .shape-fill {
-    fill: #7A1523;
-}
-      `}</style>
       <div className="custom-shape-divider-bottom-1786173539">
         <svg
           data-name="Layer 1"
@@ -572,7 +1096,7 @@ const DepartmentsSection = () => {
           <path
             d="M649.97 0L599.91 54.12 550.03 0 0 0 0 120 1200 120 1200 0 649.97 0z"
             className="shape-fill"
-          ></path>
+          />
         </svg>
       </div>
     </section>

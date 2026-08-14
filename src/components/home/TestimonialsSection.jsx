@@ -2,10 +2,23 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
-//  Cache for testimonials
+// Cache for testimonials
 let cachedTestimonials = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000;
+
+// Always put "Rauf Ahmad" first
+const sortTestimonials = (data) => {
+  return [...data].sort((a, b) => {
+    const nameA = a.studentName?.trim().toLowerCase();
+    const nameB = b.studentName?.trim().toLowerCase();
+
+    if (nameA === "rauf ahmad") return -1;
+    if (nameB === "rauf ahmad") return 1;
+
+    return 0;
+  });
+};
 
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState(() => {
@@ -14,8 +27,9 @@ const TestimonialsSection = () => {
       cacheTimestamp &&
       Date.now() - cacheTimestamp < CACHE_TTL
     ) {
-      return cachedTestimonials;
+      return sortTestimonials(cachedTestimonials);
     }
+
     return [];
   });
 
@@ -39,27 +53,42 @@ const TestimonialsSection = () => {
 
   useEffect(() => {
     const fetchTestimonials = async () => {
+      // Use cached testimonials if cache is still valid
       if (
         cachedTestimonials &&
         cacheTimestamp &&
         Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        setTestimonials(cachedTestimonials);
+        const sortedCachedTestimonials = sortTestimonials(cachedTestimonials);
+
+        setTestimonials(sortedCachedTestimonials);
         setFromCache(true);
         setLoading(false);
+
         return;
       }
 
       try {
+        // Fetch testimonials from Firestore
         const data = await fetchCollection("testimonials");
-        cachedTestimonials = data;
+
+        // Always put Rauf Ahmad first
+        const sortedData = sortTestimonials(data);
+
+        // Update cache with sorted data
+        cachedTestimonials = sortedData;
         cacheTimestamp = Date.now();
-        setTestimonials(data);
+
+        setTestimonials(sortedData);
         setFromCache(false);
       } catch (error) {
         console.error("Error fetching testimonials:", error);
+
+        // Use cached data if fetching fails
         if (cachedTestimonials) {
-          setTestimonials(cachedTestimonials);
+          const sortedCachedTestimonials = sortTestimonials(cachedTestimonials);
+
+          setTestimonials(sortedCachedTestimonials);
           setFromCache(true);
         }
       } finally {
@@ -73,12 +102,15 @@ const TestimonialsSection = () => {
   // Auto-rotate testimonials
   useEffect(() => {
     if (testimonials.length === 0) return;
+
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % Math.min(testimonials.length, 3));
     }, 5000);
+
     return () => clearInterval(interval);
   }, [testimonials.length]);
 
+  // Loading state
   if (loading) {
     return (
       <section className="py-5 bg-light">
@@ -97,6 +129,7 @@ const TestimonialsSection = () => {
 
   if (!testimonials.length) return null;
 
+  // Rauf Ahmad is already sorted to the first position
   const visibleTestimonials = testimonials.slice(0, 3);
 
   return (
@@ -108,6 +141,7 @@ const TestimonialsSection = () => {
         overflow: "hidden",
       }}
     >
+      {/* Decorative circle */}
       <div
         style={{
           position: "absolute",
@@ -120,6 +154,8 @@ const TestimonialsSection = () => {
           pointerEvents: "none",
         }}
       />
+
+      {/* Decorative circle */}
       <div
         style={{
           position: "absolute",
@@ -134,6 +170,7 @@ const TestimonialsSection = () => {
       />
 
       <div className="container position-relative">
+        {/* Header */}
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
@@ -152,6 +189,7 @@ const TestimonialsSection = () => {
           >
             Testimonials
           </span>
+
           <h2
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
@@ -163,6 +201,7 @@ const TestimonialsSection = () => {
           >
             What Our Students Say
           </h2>
+
           <p
             style={{
               color: "var(--color-text-light)",
@@ -175,6 +214,7 @@ const TestimonialsSection = () => {
           </p>
         </div>
 
+        {/* Testimonials */}
         <div className="row g-4 justify-content-center">
           {visibleTestimonials.map((t, index) => (
             <div
@@ -207,6 +247,7 @@ const TestimonialsSection = () => {
                     "0 5px 15px rgba(0,0,0,0.05)";
                 }}
               >
+                {/* Quote decoration */}
                 <div
                   style={{
                     position: "absolute",
@@ -223,6 +264,7 @@ const TestimonialsSection = () => {
                 </div>
 
                 <div className="card-body p-4">
+                  {/* Student information */}
                   <div className="d-flex align-items-center gap-3 mb-3">
                     {t.imageUrl ? (
                       <img
@@ -259,6 +301,7 @@ const TestimonialsSection = () => {
                         {t.studentName?.charAt(0) || "S"}
                       </div>
                     )}
+
                     <div>
                       <h6
                         className="fw-bold mb-0"
@@ -269,6 +312,7 @@ const TestimonialsSection = () => {
                       >
                         {t.studentName || "Anonymous"}
                       </h6>
+
                       {t.program && (
                         <small
                           style={{
@@ -284,15 +328,22 @@ const TestimonialsSection = () => {
                     </div>
                   </div>
 
+                  {/* Rating */}
                   {t.rating && (
                     <div className="mb-2">
-                      <span style={{ color: "#ffc107", fontSize: "0.85rem" }}>
+                      <span
+                        style={{
+                          color: "#ffc107",
+                          fontSize: "0.85rem",
+                        }}
+                      >
                         {"★".repeat(Math.floor(t.rating))}
                         {t.rating % 1 !== 0 && "☆"}
                       </span>
                     </div>
                   )}
 
+                  {/* Testimonial content */}
                   <blockquote className="blockquote mb-0">
                     <p
                       style={{
@@ -314,6 +365,7 @@ const TestimonialsSection = () => {
           ))}
         </div>
 
+        {/* View all button */}
         <div className="text-center mt-5">
           <Link
             to="/testimonials"
@@ -342,7 +394,8 @@ const TestimonialsSection = () => {
               e.target.style.boxShadow = "none";
             }}
           >
-            <i className="bi bi-arrow-right me-2"></i> View All Testimonials
+            <i className="bi bi-arrow-right me-2"></i>
+            View All Testimonials
           </Link>
         </div>
       </div>

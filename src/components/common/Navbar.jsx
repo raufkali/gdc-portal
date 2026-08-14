@@ -136,7 +136,7 @@ const Logo = memo(({ settings, loading, logoPreloaded }) => {
             alt={settings?.brandName || "GDC Gulabad Logo"}
             loading="eager"
             decoding="sync"
-            fetchPriority="high"
+            fetchpriority="high"
             width="42"
             height="42"
             style={{
@@ -302,11 +302,10 @@ const Navbar = memo(() => {
         if (currentScrollY > previousScrollY && currentScrollY > 80) {
           setHidden(true);
         } else if (currentScrollY < previousScrollY) {
-
-        /*
-         * Scrolling up:
-         * Show navbar.
-         */
+          /*
+           * Scrolling up:
+           * Show navbar.
+           */
           setHidden(false);
         }
 
@@ -878,12 +877,12 @@ const Navbar = memo(() => {
                       to="/admin"
                       style={{
                         background: "rgba(165,28,48,0.15)",
-                        color: "#A51C30",
+                        color: "#ff0228",
                         borderRadius: "50px",
                         padding: "0.25rem 1rem",
                         fontWeight: "500",
                         fontSize: "0.8rem",
-                        border: "1px solid rgba(165,28,48,0.2)",
+                        border: "1.5px solid #ff0228",
                         textDecoration: "none",
                         transition: "all 0.3s ease",
                       }}
@@ -894,7 +893,7 @@ const Navbar = memo(() => {
                       onMouseLeave={(event) => {
                         event.currentTarget.style.background =
                           "rgba(165,28,48,0.15)";
-                        event.currentTarget.style.color = "#A51C30";
+                        event.currentTarget.style.color = "#ff0228";
                       }}
                     >
                       <i className="bi bi-speedometer2 me-1" />

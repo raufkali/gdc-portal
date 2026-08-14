@@ -31,7 +31,7 @@ import EligibilityCriteria from "./pages/EligibilityCriteria";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
-
+import AINavigator from "./components/AINavigator";
 // ----- Admin -----
 import AdminLogin from "./components/admin/AdminLogin";
 import AdminDashboard from "./components/admin/AdminDashboard";
@@ -167,6 +167,7 @@ function App() {
               </Routes>
             </main>
             <FooterLayout />
+            <AINavigator />
           </div>
         </BrowserRouter>
       </SettingsProvider>
