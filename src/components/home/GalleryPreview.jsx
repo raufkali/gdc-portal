@@ -120,11 +120,11 @@ const GalleryPreview = () => {
   if (loading) {
     return (
       <section className="py-5">
-        <div className="container text-center">
+        <div className="container m-0 text-center">
           <div
             className="spinner-border"
             role="status"
-            style={{ color: "#A51C30" }}
+            style={{ color: "#ffff", backgroundColor: "#A51C30" }}
           >
             <span className="visually-hidden">Loading gallery...</span>
           </div>
@@ -140,22 +140,26 @@ const GalleryPreview = () => {
   const displayImages = images.slice(0, 6);
 
   return (
-    <section className="py-5">
-      <div className="container">
-        {/* TITLE SECTION - NOW INCLUDED */}
+    <section
+      className="py-5"
+      style={{ color: "#ffff", backgroundColor: "#A51C30" }}
+    >
+      <div className="container-fluid m-0 py-5 px-2">
+        {/* TITLE SECTION - N OW INCLUDED */}
         <div className="text-center mb-5">
           <span
             style={{
               fontSize: "0.8rem",
               fontWeight: "600",
-              color: "#A51C30",
+              color: "#fff",
               textTransform: "uppercase",
               letterSpacing: "2px",
               display: "inline-block",
-              background: "rgba(165, 28, 48, 0.08)",
+              background: "transparent",
               padding: "0.3rem 1.2rem",
               borderRadius: "50px",
               marginBottom: "0.5rem",
+              border: "2px solid white",
             }}
           >
             Visual Stories
@@ -165,15 +169,15 @@ const GalleryPreview = () => {
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: "clamp(2rem, 3vw, 2.5rem)",
               fontWeight: "700",
-              color: "var(--color-text)",
+              color: "#ffff",
               marginBottom: "0.25rem",
             }}
           >
-            Media <span style={{ color: "#A51C30" }}>Gallery</span>
+            Media <span style={{ color: "#ffff" }}>Gallery</span>
           </h2>
           <p
+            className="text-light"
             style={{
-              color: "var(--color-text-muted)",
               fontSize: "1rem",
               maxWidth: "600px",
               margin: "0 auto",
@@ -324,7 +328,7 @@ const GalleryPreview = () => {
                         left: 0,
                         right: 0,
                         padding: "1.5rem 1rem 1rem 1rem",
-                        background: "rgba(0, 0, 0, 0.7)",
+                        background: "rgba(0, 0, 0, 0.32)",
                         display: window.innerWidth <= 768 ? "block" : "none",
                       }}
                     >

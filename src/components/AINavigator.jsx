@@ -250,6 +250,77 @@ const STATIC_NAVIGATION_ITEMS = [
       "directions",
     ],
   },
+
+  // ----- NEW STUDENT & DOWNLOADS PAGES -----
+  {
+    id: "college-stars",
+    title: "College Stars",
+    description: "Meet our outstanding alumni and their achievements.",
+    route: "/college-stars",
+    icon: "bi-star",
+    keywords: [
+      "college stars",
+      "alumni",
+      "stars",
+      "achievements",
+      "outstanding students",
+      "success stories",
+      "alumni achievements",
+    ],
+  },
+
+  {
+    id: "student-achievements",
+    title: "Student Achievements",
+    description: "Explore awards and recognitions earned by our students.",
+    route: "/student-achievements",
+    icon: "bi-trophy",
+    keywords: [
+      "student achievements",
+      "achievements",
+      "awards",
+      "recognitions",
+      "student success",
+      "prizes",
+      "competitions",
+    ],
+  },
+
+  {
+    id: "student-activities",
+    title: "Student Activities",
+    description: "Discover events and activities run by our students.",
+    route: "/student-activities",
+    icon: "bi-people",
+    keywords: [
+      "student activities",
+      "student events",
+      "activities",
+      "events",
+      "student life",
+      "campus events",
+      "student clubs",
+    ],
+  },
+
+  {
+    id: "downloads",
+    title: "Downloads",
+    description: "Access important forms, documents and resources.",
+    route: "/downloads",
+    icon: "bi-download",
+    keywords: [
+      "download",
+      "downloads",
+      "forms",
+      "documents",
+      "resources",
+      "pdf",
+      "files",
+      "syllabus",
+      "admission forms",
+    ],
+  },
 ];
 
 /*
@@ -277,9 +348,7 @@ const AINavigator = () => {
   |--------------------------------------------------------------------------
   |
   | The Navigation Assistant is a public-facing feature.
-  |
   | It must NEVER appear inside:
-  |
   | /admin
   | /admin/*
   |
@@ -681,6 +750,22 @@ const AINavigator = () => {
       label: "Admission eligibility",
       icon: "bi-person-check",
       query: "eligibility criteria",
+    },
+    // Add new suggestions for the new pages
+    {
+      label: "College Stars",
+      icon: "bi-star",
+      query: "college stars",
+    },
+    {
+      label: "Student Activities",
+      icon: "bi-people",
+      query: "student activities",
+    },
+    {
+      label: "Downloads",
+      icon: "bi-download",
+      query: "downloads",
     },
   ];
 

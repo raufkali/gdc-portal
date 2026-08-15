@@ -28,7 +28,13 @@ const StudentAchievementsManager = () => {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, "studentAchievements"));
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      // Sort by date (newest first)
+      data.sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return new Date(b.date) - new Date(a.date);
+      });
       console.log("🏆 Achievements fetched:", data.length);
       setItems(data);
     } catch (error) {
@@ -128,6 +134,7 @@ const StudentAchievementsManager = () => {
     }
   };
 
+  // Added `date` field with type "date"
   const fields = [
     {
       key: "title",
@@ -152,10 +159,9 @@ const StudentAchievementsManager = () => {
     },
     {
       key: "date",
-      label: "Date (YYYY-MM-DD)",
-      type: "text",
+      label: "Date of Achievement",
+      type: "date",
       required: false,
-      placeholder: "2025-06-01",
     },
     {
       key: "description",
@@ -182,6 +188,18 @@ const StudentAchievementsManager = () => {
         />
       );
     }
+    if (field.type === "date") {
+      return (
+        <input
+          type="date"
+          className="form-control"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+          style={{ borderRadius: "10px" }}
+        />
+      );
+    }
     return (
       <input
         type={field.type || "text"}
@@ -202,6 +220,22 @@ const StudentAchievementsManager = () => {
       return item.imageUrl;
     } catch {
       return null;
+    }
+  };
+
+  // Helper to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
     }
   };
 
@@ -267,6 +301,7 @@ const StudentAchievementsManager = () => {
                     className="card-img-top"
                     alt={item.title}
                     style={{ height: "180px", objectFit: "cover" }}
+                    onError={(e) => (e.target.style.display = "none")}
                   />
                 ) : null}
                 <div className="card-body">
@@ -281,7 +316,7 @@ const StudentAchievementsManager = () => {
                   {item.date && (
                     <p className="small text-muted">
                       <i className="bi bi-calendar me-1"></i>
-                      {item.date}
+                      {formatDate(item.date)}
                     </p>
                   )}
                   {item.description && (
@@ -353,7 +388,7 @@ const StudentAchievementsManager = () => {
         </div>
       )}
 
-      {/* Modal (same as CollegeStars, reused) */}
+      {/* Modal */}
       {showModal && (
         <div
           className="modal show d-block"
@@ -419,6 +454,7 @@ const StudentAchievementsManager = () => {
                             objectFit: "cover",
                             borderRadius: "8px",
                           }}
+                          onError={(e) => (e.target.style.display = "none")}
                         />
                         <button
                           type="button"
@@ -452,6 +488,12 @@ const StudentAchievementsManager = () => {
                         color: "#fff",
                         border: "none",
                       }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.background = "#7A1523")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.background = "#A51C30")
+                      }
                     >
                       {uploading || submitting ? (
                         <>

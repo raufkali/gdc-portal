@@ -1,690 +1,94 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { fetchCollection } from "../../firebase/db";
+import { db } from "../../firebase/config";
+import { collection, getDocs } from "firebase/firestore";
 
-// ---- Layout tokens ----
-const LAYOUT = {
-  desktop: {
-    width: 320,
-    height: 440,
-    gap: 260,
-    maxOffset: 2,
-  },
-  mobile: {
-    width: 220,
-    height: 300,
-    gap: 150,
-    maxOffset: 1,
-  },
-};
-
-// =========================================================
-// IMAGE CACHE
-// =========================================================
-
-// High-resolution images that have already been loaded
-const highResImageCache = new Map();
-
-// Images currently being loaded
-const imageLoadingCache = new Map();
-
-// =========================================================
-// CLOUDINARY IMAGE HELPERS
-// =========================================================
-
-// Generate a low-resolution image URL
-const getLowResImageUrl = (url) => {
-  if (!url) return null;
-
-  // Only transform Cloudinary URLs
-  if (!url.includes("res.cloudinary.com")) {
-    return url;
-  }
-
-  try {
-    // Insert Cloudinary transformation after /upload/
-    const uploadIndex = url.indexOf("/upload/");
-
-    if (uploadIndex === -1) {
-      return url;
-    }
-
-    const before = url.substring(0, uploadIndex + 8);
-    const after = url.substring(uploadIndex + 8);
-
-    // Remove existing transformation if present
-    const parts = after.split("/");
-
-    const firstPart = parts[0];
-
-    const looksLikeTransformation =
-      firstPart.includes("w_") ||
-      firstPart.includes("h_") ||
-      firstPart.includes("q_") ||
-      firstPart.includes("f_") ||
-      firstPart.includes("c_") ||
-      firstPart.includes("dpr_");
-
-    if (looksLikeTransformation) {
-      parts.shift();
-    }
-
-    return `${before}w_400,h_550,c_fill,q_auto,f_auto/${parts.join("/")}`;
-  } catch (error) {
-    console.warn("Could not create low-res image URL:", error);
-    return url;
-  }
-};
-
-// Generate a high-resolution image URL
-const getHighResImageUrl = (url) => {
-  if (!url) return null;
-
-  if (!url.includes("res.cloudinary.com")) {
-    return url;
-  }
-
-  try {
-    const uploadIndex = url.indexOf("/upload/");
-
-    if (uploadIndex === -1) {
-      return url;
-    }
-
-    const before = url.substring(0, uploadIndex + 8);
-    const after = url.substring(uploadIndex + 8);
-
-    const parts = after.split("/");
-
-    const firstPart = parts[0];
-
-    const looksLikeTransformation =
-      firstPart.includes("w_") ||
-      firstPart.includes("h_") ||
-      firstPart.includes("q_") ||
-      firstPart.includes("f_") ||
-      firstPart.includes("c_") ||
-      firstPart.includes("dpr_");
-
-    if (looksLikeTransformation) {
-      parts.shift();
-    }
-
-    return `${before}w_800,h_1100,c_fill,q_auto,f_auto/${parts.join("/")}`;
-  } catch (error) {
-    console.warn("Could not create high-res image URL:", error);
-    return url;
-  }
-};
-
-// =========================================================
-// PRELOAD HIGH-RES IMAGE
-// =========================================================
-
-const preloadHighResImage = (url) => {
-  if (!url) {
-    return Promise.resolve(null);
-  }
-
-  const highResUrl = getHighResImageUrl(url);
-
-  // Already loaded
-  if (highResImageCache.has(highResUrl)) {
-    return Promise.resolve(highResImageCache.get(highResUrl));
-  }
-
-  // Already being loaded
-  if (imageLoadingCache.has(highResUrl)) {
-    return imageLoadingCache.get(highResUrl);
-  }
-
-  const promise = new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => {
-      highResImageCache.set(highResUrl, highResUrl);
-      imageLoadingCache.delete(highResUrl);
-
-      resolve(highResUrl);
-    };
-
-    img.onerror = (error) => {
-      imageLoadingCache.delete(highResUrl);
-      reject(error);
-    };
-
-    // Start downloading
-    img.src = highResUrl;
-  });
-
-  imageLoadingCache.set(highResUrl, promise);
-
-  return promise;
-};
-
-// =========================================================
-// COMPONENT
-// =========================================================
+let cachedDepartments = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000;
 
 const DepartmentsSection = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const [isMobile, setIsMobile] = useState(false);
-
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-
-  const [isPaused, setIsPaused] = useState(false);
-
-  // Track which high-res images are ready
-  const [loadedHighResImages, setLoadedHighResImages] = useState(new Set());
-
-  const intervalRef = useRef(null);
-
-  const transitionTimeoutRef = useRef(null);
-
-  const touchStartX = useRef(0);
-
-  const touchEndX = useRef(0);
-
-  // =======================================================
-  // RESPONSIVE BREAKPOINT
-  // =======================================================
+  const [featuredDept, setFeaturedDept] = useState(null);
+  const [otherDepts, setOtherDepts] = useState([]);
 
   useEffect(() => {
-    const updateIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    let isMounted = true;
 
-    updateIsMobile();
+    const fetchDepartments = async () => {
+      if (
+        cachedDepartments &&
+        cacheTimestamp &&
+        Date.now() - cacheTimestamp < CACHE_TTL
+      ) {
+        if (isMounted) {
+          setDepartments(cachedDepartments);
+          processDepartments(cachedDepartments);
+          setLoading(false);
+        }
+        return;
+      }
 
-    window.addEventListener("resize", updateIsMobile);
-
-    return () => {
-      window.removeEventListener("resize", updateIsMobile);
-    };
-  }, []);
-
-  // =======================================================
-  // FETCH DEPARTMENTS
-  // =======================================================
-
-  useEffect(() => {
-    const fetchDepts = async () => {
       try {
-        const data = await fetchCollection("departments");
-
-        const limitedData = data.slice(0, 6);
-
-        setDepartments(limitedData);
-
-        // ---------------------------------------------------
-        // IMPORTANT:
-        // Immediately preload the FIRST department's
-        // high-resolution image.
-        // ---------------------------------------------------
-
-        if (limitedData.length > 0 && limitedData[0]?.imageUrl) {
-          try {
-            const highResUrl = await preloadHighResImage(
-              limitedData[0].imageUrl,
-            );
-
-            setLoadedHighResImages((prev) => {
-              const next = new Set(prev);
-              next.add(highResUrl);
-              return next;
-            });
-          } catch (error) {
-            console.warn("Failed to preload first department image:", error);
-          }
+        const snap = await getDocs(collection(db, "departments"));
+        const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        // Sort by name or order if available – fallback to random?
+        // We'll just keep the order as is from Firestore.
+        cachedDepartments = data;
+        cacheTimestamp = Date.now();
+        if (isMounted) {
+          setDepartments(data);
+          processDepartments(data);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching departments:", error);
-      } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    fetchDepts();
-  }, []);
-
-  // =======================================================
-  // TOTAL
-  // =======================================================
-
-  const total = departments.length;
-
-  // =======================================================
-  // GET HIGH RES URL
-  // =======================================================
-
-  const getDepartmentHighResUrl = useCallback((department) => {
-    if (!department?.imageUrl) return null;
-
-    return getHighResImageUrl(department.imageUrl);
-  }, []);
-
-  // =======================================================
-  // LOAD ACTIVE IMAGE
-  // =======================================================
-
-  const loadActiveImage = useCallback(
-    async (index) => {
-      if (!departments[index]?.imageUrl) {
+    const processDepartments = (data) => {
+      if (data.length === 0) {
+        setFeaturedDept(null);
+        setOtherDepts([]);
         return;
       }
+      setFeaturedDept(data[0]);
+      setOtherDepts(data.slice(1, 4));
+    };
 
-      const department = departments[index];
-
-      const highResUrl = getDepartmentHighResUrl(department);
-
-      if (!highResUrl) return;
-
-      // Already cached
-      if (highResImageCache.has(highResUrl)) {
-        setLoadedHighResImages((prev) => {
-          if (prev.has(highResUrl)) return prev;
-
-          const next = new Set(prev);
-          next.add(highResUrl);
-
-          return next;
-        });
-
-        return;
-      }
-
-      try {
-        await preloadHighResImage(department.imageUrl);
-
-        setLoadedHighResImages((prev) => {
-          const next = new Set(prev);
-          next.add(highResUrl);
-
-          return next;
-        });
-      } catch (error) {
-        console.warn(
-          `Failed to load high-resolution image for ${department.name}:`,
-          error,
-        );
-      }
-    },
-    [departments, getDepartmentHighResUrl],
-  );
-
-  // =======================================================
-  // PRELOAD ACTIVE + NEIGHBORING IMAGES
-  // =======================================================
-
-  useEffect(() => {
-    if (!departments.length) return;
-
-    // Active image
-    loadActiveImage(activeIndex);
-
-    // -----------------------------------------------------
-    // Also preload the next image in the background.
-    //
-    // This makes the next slide almost instant when the
-    // user clicks the next arrow.
-    // -----------------------------------------------------
-
-    if (total > 1) {
-      const nextIndex = (activeIndex + 1) % total;
-
-      if (departments[nextIndex]?.imageUrl) {
-        preloadHighResImage(departments[nextIndex].imageUrl)
-          .then((highResUrl) => {
-            setLoadedHighResImages((prev) => {
-              const next = new Set(prev);
-              next.add(highResUrl);
-              return next;
-            });
-          })
-          .catch(() => {
-            // Silent failure for background preload
-          });
-      }
-    }
-
-    // Also preload previous image
-    if (total > 2) {
-      const previousIndex = (activeIndex - 1 + total) % total;
-
-      if (departments[previousIndex]?.imageUrl) {
-        preloadHighResImage(departments[previousIndex].imageUrl)
-          .then((highResUrl) => {
-            setLoadedHighResImages((prev) => {
-              const next = new Set(prev);
-              next.add(highResUrl);
-              return next;
-            });
-          })
-          .catch(() => {
-            // Silent failure for background preload
-          });
-      }
-    }
-  }, [activeIndex, departments, total, loadActiveImage]);
-
-  // =======================================================
-  // GO TO SLIDE
-  // =======================================================
-
-  const goToSlide = useCallback(
-    async (index) => {
-      if (isTransitioning || total === 0) return;
-
-      const next = ((index % total) + total) % total;
-
-      if (next === activeIndex) return;
-
-      // ---------------------------------------------------
-      // Load the next image BEFORE switching if possible.
-      // This prevents the active card from showing a
-      // blurry/low-resolution image during navigation.
-      // ---------------------------------------------------
-
-      if (departments[next]?.imageUrl) {
-        const highResUrl = getDepartmentHighResUrl(departments[next]);
-
-        if (highResUrl && !highResImageCache.has(highResUrl)) {
-          try {
-            await preloadHighResImage(departments[next].imageUrl);
-
-            setLoadedHighResImages((prev) => {
-              const updated = new Set(prev);
-              updated.add(highResUrl);
-              return updated;
-            });
-          } catch (error) {
-            console.warn("Could not preload department image:", error);
-          }
-        }
-      }
-
-      setIsTransitioning(true);
-
-      setActiveIndex(next);
-
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
-
-      transitionTimeoutRef.current = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 500);
-    },
-    [activeIndex, departments, getDepartmentHighResUrl, isTransitioning, total],
-  );
-
-  // =======================================================
-  // CLEANUP TRANSITION TIMER
-  // =======================================================
-
-  useEffect(() => {
+    fetchDepartments();
     return () => {
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
+      isMounted = false;
     };
   }, []);
-
-  // =======================================================
-  // AUTOPLAY
-  // =======================================================
-
-  useEffect(() => {
-    if (total <= 1 || isPaused) return;
-
-    intervalRef.current = setInterval(() => {
-      goToSlide(activeIndex + 1);
-    }, 5000);
-
-    return () => {
-      clearInterval(intervalRef.current);
-    };
-  }, [total, activeIndex, goToSlide, isPaused]);
-
-  // =======================================================
-  // TOUCH / SWIPE
-  // =======================================================
-
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.changedTouches[0].screenX;
-  };
-
-  const handleTouchEnd = (e) => {
-    touchEndX.current = e.changedTouches[0].screenX;
-
-    const diff = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(diff) > 40) {
-      if (diff > 0) {
-        goToSlide(activeIndex + 1);
-      } else {
-        goToSlide(activeIndex - 1);
-      }
-    }
-  };
-
-  // =======================================================
-  // KEYBOARD NAVIGATION
-  // =======================================================
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === "ArrowRight") {
-        goToSlide(activeIndex + 1);
-      }
-
-      if (e.key === "ArrowLeft") {
-        goToSlide(activeIndex - 1);
-      }
-    };
-
-    window.addEventListener("keydown", handleKey);
-
-    return () => {
-      window.removeEventListener("keydown", handleKey);
-    };
-  }, [activeIndex, goToSlide]);
-
-  // =======================================================
-  // SHORTEST SIGNED DISTANCE
-  // =======================================================
-
-  const getOffset = (idx) => {
-    let diff = idx - activeIndex;
-
-    if (diff > total / 2) {
-      diff -= total;
-    }
-
-    if (diff < -total / 2) {
-      diff += total;
-    }
-
-    return diff;
-  };
-
-  // =======================================================
-  // LOADING
-  // =======================================================
 
   if (loading) {
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "100vh" }}
-      >
-        <div className="spinner-border text-danger" role="status">
-          <span className="visually-hidden">Loading departments…</span>
+      <section className="py-5">
+        <div className="container text-center">
+          <div
+            className="spinner-border"
+            style={{ color: "#A51C30" }}
+            role="status"
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
-  if (!total) return null;
-
-  const cfg = isMobile ? LAYOUT.mobile : LAYOUT.desktop;
-
-  // =======================================================
-  // RENDER
-  // =======================================================
+  if (!departments.length) return null;
 
   return (
     <section
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        backgroundColor: "#ffffff",
-        padding: "4rem 0",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className="py-5"
+      style={{ backgroundColor: "var(--color-bg-alt)" }}
     >
-      <style>{`
-        .container {
-          overflow-x: clip;
-        }
-
-        .custom-shape-divider-top-1786172948 {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          overflow: hidden;
-          line-height: 0;
-        }
-
-        .custom-shape-divider-top-1786172948 svg {
-          position: relative;
-          display: block;
-          width: calc(100% + 1.3px);
-          height: 112px;
-        }
-
-        .custom-shape-divider-top-1786172948 .shape-fill {
-          fill: #7A1523;
-        }
-
-        .custom-shape-divider-bottom-1786173539 {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 100%;
-          overflow: hidden;
-          line-height: 0;
-        }
-
-        .custom-shape-divider-bottom-1786173539 svg {
-          position: relative;
-          display: block;
-          width: calc(100% + 1.3px);
-          height: 64px;
-        }
-
-        .custom-shape-divider-bottom-1786173539 .shape-fill {
-          fill: #7A1523;
-        }
-
-        .dept-arrow-btn:hover {
-          background: #A51C30 !important;
-          color: #fff !important;
-          border-color: #A51C30 !important;
-          box-shadow: 0 8px 24px rgba(165,28,48,0.25);
-          transform: scale(1.06);
-        }
-
-        .dept-dot-btn:hover {
-          background: #b0b0b0;
-        }
-
-        .dept-cta-link:hover {
-          border-color: #A51C30 !important;
-          background: rgba(165,28,48,0.04) !important;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-        }
-
-        @media (max-width: 768px) {
-          .dept-arrow-btn {
-            width: 36px !important;
-            height: 36px !important;
-          }
-        }
-      `}</style>
-
-      {/* ===================================================
-          TOP SHAPE
-      =================================================== */}
-
-      <div className="custom-shape-divider-top-1786172948">
-        <svg
-          data-name="Layer 1"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 1200 120"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-            className="shape-fill"
-          />
-        </svg>
-      </div>
-
-      {/* ===================================================
-          BACKGROUND DECORATION
-      =================================================== */}
-
-      <div
-        style={{
-          position: "absolute",
-          top: "-40%",
-          right: "-10%",
-          width: "600px",
-          height: "600px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(165,28,48,0.04) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          bottom: "-30%",
-          left: "-5%",
-          width: "400px",
-          height: "400px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(165,28,48,0.03) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        className="container"
-        style={{
-          position: "relative",
-          zIndex: 2,
-          maxWidth: "100%",
-        }}
-      >
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
+      <div className="container">
+        {/* Section Header */}
         <div className="text-center mb-5" data-aos="fade-up">
           <span
             style={{
@@ -692,409 +96,352 @@ const DepartmentsSection = () => {
               fontWeight: "600",
               color: "#A51C30",
               textTransform: "uppercase",
-              letterSpacing: "3px",
+              letterSpacing: "2px",
               display: "inline-block",
-              background: "rgba(165, 28, 48, 0.06)",
+              background: "rgba(165, 28, 48, 0.08)",
               padding: "0.3rem 1.2rem",
               borderRadius: "50px",
-              marginBottom: "0.75rem",
-              marginTop: "10vh",
+              marginBottom: "0.5rem",
             }}
           >
-            Academic Excellence
+            Academic Departments
           </span>
-
           <h2
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: "clamp(2.2rem, 4.5vw, 3.8rem)",
+              fontSize: "clamp(2rem, 3vw, 2.5rem)",
               fontWeight: "700",
-              color: "#1a1a1a",
-              marginBottom: "0.5rem",
-              letterSpacing: "-0.5px",
+              color: "var(--color-text)",
+              marginBottom: "0.25rem",
             }}
           >
-            Explore Our{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, #A51C30, #d43d55)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Departments
-            </span>
+            Our <span style={{ color: "#A51C30" }}>Departments</span>
           </h2>
-
           <p
             style={{
-              color: "#6c757d",
-              fontSize: "clamp(1rem, 1.1vw, 1.2rem)",
-              maxWidth: "550px",
+              color: "var(--color-text-muted)",
+              maxWidth: "600px",
               margin: "0 auto",
-              lineHeight: "1.7",
             }}
           >
-            Discover our diverse academic programs designed to shape future
-            leaders and innovators.
+            Explore our academic departments, each dedicated to excellence in
+            teaching and research.
           </p>
         </div>
 
-        {/* =================================================
-            FAN CAROUSEL
-        ================================================= */}
-
-        <div
-          style={{
-            position: "relative",
-            height: `${cfg.height + 40}px`,
-            WebkitMaskImage:
-              "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
-            maskImage:
-              "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
-          }}
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => {
-            setIsPaused(false);
-            setHoveredIndex(null);
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {departments.map((dept, idx) => {
-            const diff = getOffset(idx);
-
-            if (Math.abs(diff) > cfg.maxOffset) {
-              return null;
-            }
-
-            const isCenter = diff === 0;
-
-            const isHovered = hoveredIndex === idx;
-
-            const absDiff = Math.abs(diff);
-
-            const baseScale = isCenter ? 1 : absDiff === 1 ? 0.84 : 0.7;
-
-            const hoverBoost = isHovered && !isCenter ? 0.06 : 0;
-
-            const scale = baseScale + hoverBoost;
-
-            const opacity = isCenter ? 1 : absDiff === 1 ? 0.55 : 0.22;
-
-            const lift = isCenter && isHovered ? -14 : isHovered ? -8 : 0;
-
-            const translateX = diff * cfg.gap;
-
-            // ------------------------------------------------
-            // Image URLs
-            // ------------------------------------------------
-
-            const lowResUrl = getLowResImageUrl(dept.imageUrl);
-
-            const highResUrl = getDepartmentHighResUrl(dept);
-
-            const highResReady =
-              highResUrl && loadedHighResImages.has(highResUrl);
-
-            // Active image uses high-res.
-            // Other images use low-res.
-            const imageSrc = isCenter && highResReady ? highResUrl : lowResUrl;
-
-            return (
-              <div
-                key={dept.id}
-                onClick={() => !isCenter && goToSlide(idx)}
-                onMouseEnter={() => setHoveredIndex(idx)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                role={isCenter ? undefined : "button"}
-                aria-label={!isCenter ? `Go to ${dept.name}` : undefined}
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  width: `${cfg.width}px`,
-                  height: `${cfg.height}px`,
-                  transform:
-                    `translate(-50%, calc(-50% + ${lift}px)) ` +
-                    `translateX(${translateX}px) ` +
-                    `scale(${scale})`,
-                  transition:
-                    "transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), " +
-                    "opacity 0.55s ease, " +
-                    "box-shadow 0.35s ease",
-                  opacity,
-                  zIndex: isCenter ? 10 : 10 - absDiff,
-                  borderRadius: "22px",
-                  overflow: "hidden",
-                  cursor: isCenter ? "default" : "pointer",
-                  backgroundColor: "#e9e9ee",
-                  boxShadow: isCenter
-                    ? isHovered
-                      ? "0 30px 70px rgba(165,28,48,0.22)"
-                      : "0 20px 55px rgba(0,0,0,0.14)"
-                    : "0 10px 30px rgba(0,0,0,0.08)",
-                }}
-              >
-                {/* ==========================================
-                    IMAGE
-                ========================================== */}
-
-                {imageSrc ? (
-                  <img
-                    src={imageSrc}
-                    alt={dept.name}
-                    loading={isCenter ? "eager" : "lazy"}
-                    decoding="async"
-                    fetchpriority={isCenter ? "high" : "low"}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      transform: isHovered ? "scale(1.08)" : "scale(1)",
-                      transition:
-                        "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "linear-gradient(135deg, #f0f0f0, #dcdce2)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "3rem",
-                      color: "#c9c9d1",
-                    }}
-                  >
-                    <i className="bi bi-building" />
-                  </div>
-                )}
-
-                {/* ==========================================
-                    SCRIM
-                ========================================== */}
-
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: isCenter
-                      ? "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.25) 45%, transparent 70%)"
-                      : "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)",
-                    pointerEvents: "none",
-                  }}
-                />
-
-                {/* ==========================================
-                    CONTENT OVERLAY
-                ========================================== */}
-
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    padding: isCenter ? "1.5rem" : "1rem",
-                    color: "#fff",
-                  }}
-                >
-                  <h5
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: isCenter ? "1.35rem" : "0.9rem",
-                      fontWeight: "700",
-                      marginBottom: isCenter ? "0.5rem" : 0,
-                      lineHeight: "1.3",
-                      textShadow: "0 2px 10px rgba(0,0,0,0.3)",
-                      color: "#fff",
-                    }}
-                  >
-                    {dept.name}
-                  </h5>
-
-                  {isCenter && (
-                    <Link
-                      to={`/departments/${dept.slug || dept.id}`}
+        {/* Featured Department */}
+        {featuredDept && (
+          <div className="mb-4" data-aos="fade-up" data-aos-duration="600">
+            <div
+              className="card border-0 shadow-lg overflow-hidden"
+              style={{
+                borderRadius: "20px",
+                backgroundColor: "var(--card-bg)",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-4px)";
+                e.currentTarget.style.boxShadow =
+                  "0 20px 50px rgba(0,0,0,0.12)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 10px 40px rgba(0,0,0,0.08)";
+              }}
+            >
+              <div className="row g-0">
+                {featuredDept.imageUrl && (
+                  <div className="col-lg-6">
+                    <div
                       style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: isHovered ? "0.75rem" : "0.5rem",
-                        color: "#fff",
-                        fontWeight: "600",
-                        fontSize: "0.85rem",
-                        textDecoration: "none",
-                        transition: "gap 0.3s ease",
+                        height: "100%",
+                        minHeight: "280px",
+                        overflow: "hidden",
+                        position: "relative",
                       }}
                     >
-                      Learn More
-                      <span
+                      <img
+                        src={featuredDept.imageUrl}
+                        alt={featuredDept.name}
                         style={{
-                          fontSize: "1.1rem",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          transition: "transform 0.5s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = "scale(1.03)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = "scale(1)";
+                        }}
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "20px",
+                          left: "20px",
+                          background: "#A51C30",
+                          color: "#fff",
+                          padding: "0.3rem 1.2rem",
+                          borderRadius: "50px",
+                          fontSize: "0.7rem",
+                          fontWeight: "600",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
                         }}
                       >
-                        →
-                      </span>
-                    </Link>
-                  )}
+                        Featured
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className={featuredDept.imageUrl ? "col-lg-6" : "col-12"}>
+                  <div className="p-4 p-md-5 d-flex flex-column h-100">
+                    {featuredDept.category && (
+                      <div className="mb-2">
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#A51C30",
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          {featuredDept.category}
+                        </span>
+                      </div>
+                    )}
+                    <h3
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: "clamp(1.5rem, 2.5vw, 2.2rem)",
+                        fontWeight: "700",
+                        color: "var(--color-text)",
+                        marginBottom: "0.75rem",
+                        lineHeight: "1.2",
+                      }}
+                    >
+                      {featuredDept.name}
+                    </h3>
+                    {featuredDept.description && (
+                      <p
+                        style={{
+                          color: "var(--color-text-muted)",
+                          fontSize: "1rem",
+                          lineHeight: "1.7",
+                          flex: "1",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        {featuredDept.description}
+                      </p>
+                    )}
+                    <div className="mt-3">
+                      <Link
+                        to={`/departments/${featuredDept.id}`}
+                        className="btn"
+                        style={{
+                          background: "#A51C30",
+                          color: "#fff",
+                          borderRadius: "50px",
+                          padding: "0.5rem 1.8rem",
+                          fontWeight: "600",
+                          fontSize: "0.85rem",
+                          border: "none",
+                          transition: "all 0.3s ease",
+                          textDecoration: "none",
+                          display: "inline-block",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.background = "#7A1523";
+                          e.target.style.transform = "translateY(-2px)";
+                          e.target.style.boxShadow =
+                            "0 8px 25px rgba(165, 28, 48, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = "#A51C30";
+                          e.target.style.transform = "translateY(0)";
+                          e.target.style.boxShadow = "none";
+                        }}
+                      >
+                        Explore Department{" "}
+                        <i className="bi bi-arrow-right ms-2"></i>
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* =================================================
-            CONTROLS
-        ================================================= */}
-
-        {total > 1 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "1.25rem",
-              marginTop: "2rem",
-            }}
-          >
-            {/* Previous */}
-            <button
-              className="dept-arrow-btn"
-              onClick={() => goToSlide(activeIndex - 1)}
-              aria-label="Previous department"
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                border: "1px solid #e0e0e0",
-                background: "#fff",
-                color: "#1a1a1a",
-                fontSize: "1.1rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                flexShrink: 0,
-              }}
-            >
-              ←
-            </button>
-
-            {/* Dots */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.6rem",
-              }}
-            >
-              {departments.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => goToSlide(idx)}
-                  aria-label={`Go to slide ${idx + 1}`}
-                  className="dept-dot-btn"
-                  style={{
-                    width: idx === activeIndex ? "28px" : "8px",
-                    height: "8px",
-                    borderRadius: "50px",
-                    border: "none",
-                    background: idx === activeIndex ? "#A51C30" : "#d0d0d0",
-                    transition: "all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                />
-              ))}
             </div>
-
-            {/* Next */}
-            <button
-              className="dept-arrow-btn"
-              onClick={() => goToSlide(activeIndex + 1)}
-              aria-label="Next department"
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                border: "1px solid #e0e0e0",
-                background: "#fff",
-                color: "#1a1a1a",
-                fontSize: "1.1rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                flexShrink: 0,
-              }}
-            >
-              →
-            </button>
           </div>
         )}
 
-        {/* =================================================
-            CTA
-        ================================================= */}
+        {/* Grid of other departments */}
+        {otherDepts.length > 0 && (
+          <div className="row g-4">
+            {otherDepts.map((dept, index) => (
+              <div
+                key={dept.id}
+                className="col-md-4"
+                data-aos="fade-up"
+                data-aos-delay={(index + 1) * 100}
+              >
+                <div
+                  className="card border-0 shadow-sm h-100"
+                  style={{
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    backgroundColor: "var(--card-bg)",
+                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-6px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 16px 40px rgba(0,0,0,0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 15px rgba(0,0,0,0.06)";
+                  }}
+                >
+                  {dept.imageUrl && (
+                    <div style={{ overflow: "hidden" }}>
+                      <img
+                        src={dept.imageUrl}
+                        className="card-img-top"
+                        alt={dept.name}
+                        style={{
+                          height: "180px",
+                          width: "100%",
+                          objectFit: "cover",
+                          transition: "transform 0.4s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = "scale(1)";
+                        }}
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
+                    </div>
+                  )}
+                  <div className="card-body p-3">
+                    <h6
+                      className="fw-bold"
+                      style={{
+                        color: "var(--color-text)",
+                        fontSize: "1rem",
+                        marginBottom: "0.5rem",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {dept.name}
+                    </h6>
+                    {dept.description && (
+                      <p
+                        className="small"
+                        style={{
+                          color: "var(--color-text-muted)",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        {dept.description}
+                      </p>
+                    )}
+                    {dept.category && (
+                      <span
+                        className="badge"
+                        style={{
+                          background: "rgba(165, 28, 48, 0.08)",
+                          color: "#A51C30",
+                          fontSize: "0.65rem",
+                          padding: "0.25rem 0.7rem",
+                          borderRadius: "50px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {dept.category}
+                      </span>
+                    )}
+                  </div>
+                  <div className="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
+                    <Link
+                      to={`/departments/${dept.id}`}
+                      className="btn w-100"
+                      style={{
+                        background: "transparent",
+                        color: "#A51C30",
+                        border: "1px solid #A51C30",
+                        borderRadius: "50px",
+                        padding: "0.3rem 0.8rem",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                        transition: "all 0.3s ease",
+                        textDecoration: "none",
+                        textAlign: "center",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#A51C30";
+                        e.target.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "transparent";
+                        e.target.style.color = "#A51C30";
+                      }}
+                    >
+                      Learn More <i className="bi bi-arrow-right ms-1"></i>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="text-center mt-4">
+        {/* View All button */}
+        <div className="text-center mt-5">
           <Link
             to="/departments"
-            className="dept-cta-link"
+            className="btn"
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              color: "#1a1a1a",
+              background: "transparent",
+              color: "#A51C30",
+              padding: "0.5rem 2.5rem",
+              borderRadius: "50px",
               fontWeight: "600",
               fontSize: "0.95rem",
+              border: "2px solid #A51C30",
               textDecoration: "none",
-              padding: "0.6rem 2rem",
-              borderRadius: "50px",
-              border: "2px solid #e0e0e0",
               transition: "all 0.3s ease",
-              background: "transparent",
-              marginBottom: "10vh",
+              display: "inline-block",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#A51C30";
+              e.target.style.color = "#fff";
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 8px 25px rgba(165, 28, 48, 0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "transparent";
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "none";
             }}
           >
-            View All Departments
-            <span
-              style={{
-                fontSize: "1.1rem",
-              }}
-            >
-              →
-            </span>
+            View All Departments <i className="bi bi-arrow-right ms-2"></i>
           </Link>
         </div>
-      </div>
-
-      {/* ===================================================
-          BOTTOM SHAPE
-      =================================================== */}
-
-      <div className="custom-shape-divider-bottom-1786173539">
-        <svg
-          data-name="Layer 1"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 1200 120"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M649.97 0L599.91 54.12 550.03 0 0 0 0 120 1200 120 1200 0 649.97 0z"
-            className="shape-fill"
-          />
-        </svg>
       </div>
     </section>
   );

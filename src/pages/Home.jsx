@@ -50,6 +50,10 @@ const Home = () => {
         <DepartmentsSection />
       </div>
       {/* NEW: College Stars and Student Activities sections */}
+
+      <div>
+        <ActivitiesSection />
+      </div>
       <div>
         <CollegeStarsSection />
       </div>
@@ -57,14 +61,12 @@ const Home = () => {
         <StudentActivitiesSection />
       </div>
       <div>
-        <ActivitiesSection />
+        <GalleryPreview />
       </div>
       <div>
         <VisionMissionAims />
       </div>
-      <div>
-        <GalleryPreview />
-      </div>
+
       <div>
         <TestimonialsSection />
       </div>

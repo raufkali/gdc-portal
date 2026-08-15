@@ -417,6 +417,28 @@ export const prefetchHomeData = async () => {
       ],
     },
     {
+      name: "studentActivities",
+      conditions: [
+        { type: "orderBy", field: "date", direction: "desc" },
+        { type: "limit", value: 4 },
+      ],
+    },
+    {
+      name: "collegeStars",
+      conditions: [
+        { type: "orderBy", field: "date", direction: "desc" },
+        { type: "limit", value: 4 },
+      ],
+    },
+    {
+      name: "studentAchievements", // <-- ADD THIS
+      conditions: [
+        { type: "orderBy", field: "date", direction: "desc" },
+        { type: "limit", value: 6 },
+      ],
+    },
+
+    {
       name: "gallery",
       conditions: [
         { type: "orderBy", field: "uploadedAt", direction: "desc" },

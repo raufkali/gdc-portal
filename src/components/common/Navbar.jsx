@@ -44,11 +44,7 @@ const quickLinks = [
     label: "Exam Results",
     icon: "bi-file-earmark-text",
   },
-  {
-    path: "/fee-structure",
-    label: "Fee Structure",
-    icon: "bi-cash-stack",
-  },
+
   {
     path: "/faq",
     label: "FAQ",

@@ -28,7 +28,14 @@ const CollegeStarsManager = () => {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, "collegeStars"));
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      // Sort by date (newest first)
+      data.sort((a, b) => {
+        // If no date, treat as oldest
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return new Date(b.date) - new Date(a.date);
+      });
       console.log("🌟 College Stars fetched:", data.length);
       setItems(data);
     } catch (error) {
@@ -128,6 +135,7 @@ const CollegeStarsManager = () => {
     }
   };
 
+  // Form fields (added 'date')
   const fields = [
     {
       key: "name",
@@ -149,6 +157,12 @@ const CollegeStarsManager = () => {
       type: "text",
       required: true,
       placeholder: "e.g., Gold Medalist",
+    },
+    {
+      key: "date",
+      label: "Date of Recognition",
+      type: "date",
+      required: false,
     },
     {
       key: "description",
@@ -182,6 +196,18 @@ const CollegeStarsManager = () => {
         />
       );
     }
+    if (field.type === "date") {
+      return (
+        <input
+          type="date"
+          className="form-control"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+          style={{ borderRadius: "10px" }}
+        />
+      );
+    }
     return (
       <input
         type={field.type || "text"}
@@ -202,6 +228,21 @@ const CollegeStarsManager = () => {
       return item.imageUrl;
     } catch {
       return null;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
     }
   };
 
@@ -266,6 +307,7 @@ const CollegeStarsManager = () => {
                     className="card-img-top"
                     alt={item.name}
                     style={{ height: "180px", objectFit: "cover" }}
+                    onError={(e) => (e.target.style.display = "none")}
                   />
                 ) : (
                   <div
@@ -293,6 +335,12 @@ const CollegeStarsManager = () => {
                   </h6>
                   <p className="small text-muted">{item.batch}</p>
                   <p className="small text-muted">{item.achievement}</p>
+                  {item.date && (
+                    <p className="small text-muted">
+                      <i className="bi bi-calendar me-1"></i>
+                      {formatDate(item.date)}
+                    </p>
+                  )}
                   {item.description && (
                     <p
                       className="small"
@@ -428,6 +476,7 @@ const CollegeStarsManager = () => {
                             objectFit: "cover",
                             borderRadius: "8px",
                           }}
+                          onError={(e) => (e.target.style.display = "none")}
                         />
                         <button
                           type="button"
@@ -461,6 +510,12 @@ const CollegeStarsManager = () => {
                         color: "#fff",
                         border: "none",
                       }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.background = "#7A1523")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.background = "#A51C30")
+                      }
                     >
                       {uploading || submitting ? (
                         <>
