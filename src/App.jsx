@@ -120,7 +120,7 @@ function App() {
                   path="/eligibility-criteria"
                   element={<EligibilityCriteria />}
                 />
-                <Route path="/fee-structure" element={<FeeStructure />} />
+                {/* <Route path="/fee-structure" element={<FeeStructure />} /> */}
                 <Route path="/exam-result" element={<ExamResult />} />
 
                 {/* ===== Information ===== */}
