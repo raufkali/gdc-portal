@@ -18,7 +18,6 @@ const DepartmentDetail = () => {
 
   useEffect(() => {
     const fetchDepartment = async () => {
-      // Check cache for this specific department
       const cacheKey = slug;
       if (
         cachedDepartments[cacheKey] &&
@@ -36,7 +35,6 @@ const DepartmentDetail = () => {
         const found = data.find((d) => d.slug === slug || d.id === slug);
 
         if (found) {
-          // Cache the found department
           cachedDepartments[cacheKey] = {
             data: found,
             timestamp: Date.now(),
@@ -48,7 +46,6 @@ const DepartmentDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching department:", error);
-        // Try to use stale cache if available
         if (cachedDepartments[cacheKey]) {
           setDept(cachedDepartments[cacheKey].data);
           setFromCache(true);
@@ -65,24 +62,17 @@ const DepartmentDetail = () => {
   useEffect(() => {
     const fetchDepartmentResults = async () => {
       if (!dept) return;
-
       setResultsLoading(true);
       try {
-        // Fetch all exam results
         const allResults = await fetchCollection("examResults", [
           { type: "orderBy", field: "year", direction: "desc" },
         ]);
-
-        // Filter results for this specific department
         const filtered = allResults.filter(
           (result) => result.department === dept.name,
         );
-
-        // Sort by year (newest first) and limit to 5
         const sorted = filtered
           .sort((a, b) => parseInt(b.year) - parseInt(a.year))
           .slice(0, 5);
-
         setDepartmentResults(sorted);
       } catch (error) {
         console.error("Error fetching department results:", error);
@@ -97,7 +87,7 @@ const DepartmentDetail = () => {
     }
   }, [dept]);
 
-  // Get images array (single imageUrl or multiple images)
+  // Get images array
   const getImages = () => {
     if (!dept) return [];
     if (dept.images && Array.isArray(dept.images) && dept.images.length > 0) {
@@ -112,7 +102,6 @@ const DepartmentDetail = () => {
   const images = getImages();
   const hasMultipleImages = images.length > 1;
 
-  // Next/Prev functions
   const nextImage = () => {
     setActiveImageIndex((prev) => (prev + 1) % images.length);
   };
@@ -134,7 +123,18 @@ const DepartmentDetail = () => {
           <p className="text-muted mb-4">
             The department you're looking for doesn't exist.
           </p>
-          <Link to="/departments" className="btn btn-primary rounded-pill px-4">
+          <Link
+            to="/departments"
+            className="btn rounded-pill px-4"
+            style={{
+              background: "#A51C30",
+              color: "#fff",
+              textDecoration: "none",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#7A1523")}
+            onMouseLeave={(e) => (e.target.style.background = "#A51C30")}
+          >
             <i className="bi bi-arrow-left me-2"></i>
             Back to Departments
           </Link>
@@ -152,13 +152,15 @@ const DepartmentDetail = () => {
         {/* Back Button */}
         <Link
           to="/departments"
-          className="btn btn-outline-secondary rounded-pill mb-4"
+          className="btn rounded-pill mb-4"
           style={{
             padding: "0.4rem 1.5rem",
             fontSize: "0.9rem",
-            borderColor: "var(--color-border)",
+            border: "2px solid var(--color-border)",
             color: "var(--color-text)",
+            background: "transparent",
             transition: "all 0.3s ease",
+            textDecoration: "none",
           }}
           onMouseEnter={(e) => {
             e.target.style.borderColor = "#A51C30";
@@ -176,7 +178,7 @@ const DepartmentDetail = () => {
         {/* Main Card */}
         <div
           className="card border-0 shadow-lg overflow-hidden"
-          style={{ borderRadius: "16px" }}
+          style={{ borderRadius: "16px", backgroundColor: "var(--card-bg)" }}
         >
           {/* Image Carousel */}
           {images.length > 0 && (
@@ -205,28 +207,24 @@ const DepartmentDetail = () => {
                 />
               </div>
 
-              {/* Image Counter */}
-              {hasMultipleImages && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "20px",
-                    right: "20px",
-                    background: "rgba(0,0,0,0.7)",
-                    color: "#fff",
-                    padding: "4px 14px",
-                    borderRadius: "20px",
-                    fontSize: "0.85rem",
-                    zIndex: 5,
-                  }}
-                >
-                  {activeImageIndex + 1} / {images.length}
-                </div>
-              )}
-
-              {/* Navigation Arrows */}
               {hasMultipleImages && (
                 <>
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "20px",
+                      right: "20px",
+                      background: "rgba(0,0,0,0.7)",
+                      color: "#fff",
+                      padding: "4px 14px",
+                      borderRadius: "20px",
+                      fontSize: "0.85rem",
+                      zIndex: 5,
+                    }}
+                  >
+                    {activeImageIndex + 1} / {images.length}
+                  </div>
+
                   <button
                     onClick={prevImage}
                     style={{
@@ -288,7 +286,6 @@ const DepartmentDetail = () => {
                     <i className="bi bi-chevron-right"></i>
                   </button>
 
-                  {/* Dots Indicator */}
                   <div
                     style={{
                       position: "absolute",
@@ -381,13 +378,160 @@ const DepartmentDetail = () => {
                   {dept.description}
                 </p>
 
-                {/* Additional Info */}
+                {/* ======== REDESIGNED HOD SECTION ======== */}
+                {(dept.hodImage || dept.hodMessage) && (
+                  <div
+                    className="mt-5 p-4 p-lg-5 rounded-4"
+                    style={{
+                      background: "linear-gradient(145deg, #faf5f5, #f0e8e8)",
+                      border: "1px solid rgba(165, 28, 48, 0.2)",
+                      boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Decorative quote mark */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "-20px",
+                        right: "20px",
+                        fontSize: "8rem",
+                        fontWeight: "700",
+                        color: "rgba(165, 28, 48, 0.06)",
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        lineHeight: 1,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      "
+                    </div>
+
+                    <div className="row g-4 align-items-center">
+                      {/* Left: Large Profile Image */}
+                      <div className="col-md-4 text-center text-md-start">
+                        {dept.hodImage ? (
+                          <img
+                            src={dept.hodImage}
+                            alt="Head of Department"
+                            style={{
+                              width: "150px",
+                              height: "150px",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                              border: "4px solid #A51C30",
+                              boxShadow: "0 8px 25px rgba(165, 28, 48, 0.25)",
+                              transition: "transform 0.3s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = "scale(1.03)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = "scale(1)";
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.parentElement.innerHTML = `
+                                <div style="width:150px;height:150px;border-radius:50%;background:rgba(165,28,48,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto;border:4px solid #A51C30;">
+                                  <i class="bi bi-person" style="font-size:4rem;color:#A51C30;"></i>
+                                </div>
+                              `;
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "150px",
+                              height: "150px",
+                              borderRadius: "50%",
+                              background: "rgba(165, 28, 48, 0.1)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              margin: "0 auto",
+                              border: "4px solid #A51C30",
+                            }}
+                          >
+                            <i
+                              className="bi bi-person"
+                              style={{ fontSize: "4rem", color: "#A51C30" }}
+                            ></i>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Message */}
+                      <div className="col-md-8">
+                        <div
+                          style={{
+                            fontSize: "1.1rem",
+                            fontWeight: "600",
+                            color: "#A51C30",
+                            marginBottom: "0.25rem",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          <i
+                            className="bi bi-chat-quote-fill me-2"
+                            style={{ fontSize: "1.2rem" }}
+                          ></i>
+                          Message from the HOD
+                        </div>
+
+                        {dept.hodMessage && (
+                          <blockquote
+                            style={{
+                              fontSize: "clamp(1.1rem, 1.5vw, 1.4rem)",
+                              fontStyle: "italic",
+                              color: "var(--color-text)",
+                              lineHeight: "1.8",
+                              margin: "0.5rem 0",
+                              paddingLeft: "1rem",
+                              borderLeft: "4px solid #A51C30",
+                            }}
+                          >
+                            {dept.hodMessage}
+                          </blockquote>
+                        )}
+
+                        {dept.headName && (
+                          <div
+                            style={{
+                              fontSize: "1rem",
+                              fontWeight: "600",
+                              color: "var(--color-text-muted)",
+                              marginTop: "0.25rem",
+                            }}
+                          >
+                            — {dept.headName}
+                            <span
+                              style={{
+                                fontSize: "0.85rem",
+                                fontWeight: "400",
+                                color: "#6c757d",
+                                marginLeft: "0.5rem",
+                              }}
+                            >
+                              Head of Department
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* ======== END HOD SECTION ======== */}
+
+                {/* Additional Info (headName, facultyCount) */}
                 <div className="row g-3 mt-3">
                   {dept.headName && (
                     <div className="col-md-6">
                       <div
-                        className="d-flex align-items-center gap-2 p-3 bg-light rounded-3"
-                        style={{ backgroundColor: "var(--color-bg-alt)" }}
+                        className="d-flex align-items-center gap-2 p-3 rounded-3"
+                        style={{
+                          backgroundColor: "var(--color-bg-alt)",
+                          border: "1px solid rgba(165,28,48,0.08)",
+                        }}
                       >
                         <i
                           className="bi bi-person-badge fs-4"
@@ -405,8 +549,11 @@ const DepartmentDetail = () => {
                   {dept.facultyCount && (
                     <div className="col-md-6">
                       <div
-                        className="d-flex align-items-center gap-2 p-3 bg-light rounded-3"
-                        style={{ backgroundColor: "var(--color-bg-alt)" }}
+                        className="d-flex align-items-center gap-2 p-3 rounded-3"
+                        style={{
+                          backgroundColor: "var(--color-bg-alt)",
+                          border: "1px solid rgba(165,28,48,0.08)",
+                        }}
                       >
                         <i
                           className="bi bi-people fs-4"
@@ -437,7 +584,13 @@ const DepartmentDetail = () => {
                     <h6 className="fw-bold mb-3">Department Details</h6>
                     <div className="d-flex justify-content-between py-2 border-bottom">
                       <span className="text-muted small">Status</span>
-                      <span className="badge bg-success rounded-pill">
+                      <span
+                        className="badge rounded-pill"
+                        style={{
+                          background: "rgba(40, 167, 69, 0.15)",
+                          color: "#28a745",
+                        }}
+                      >
                         Active
                       </span>
                     </div>
@@ -460,7 +613,7 @@ const DepartmentDetail = () => {
 
                     <Link
                       to="/contact"
-                      className="btn w-100"
+                      className="btn w-100 mt-3"
                       style={{
                         background: "linear-gradient(145deg, #A51C30, #7A1523)",
                         color: "#fff",
@@ -469,8 +622,8 @@ const DepartmentDetail = () => {
                         fontWeight: "600",
                         textDecoration: "none",
                         transition: "all 0.3s ease",
-                        display: "inline-block",
                         textAlign: "center",
+                        display: "inline-block",
                       }}
                       onMouseEnter={(e) => {
                         e.target.style.transform = "translateY(-2px)";
@@ -669,7 +822,7 @@ const DepartmentDetail = () => {
           </div>
         </div>
 
-        {/* Related Departments (Optional) */}
+        {/* Explore Other Departments */}
         <div className="mt-5">
           <h4
             className="fw-bold mb-3"
@@ -679,12 +832,14 @@ const DepartmentDetail = () => {
           </h4>
           <Link
             to="/departments"
-            className="btn btn-outline-primary rounded-pill"
+            className="btn rounded-pill"
             style={{
-              borderColor: "#A51C30",
+              border: "2px solid #A51C30",
               color: "#A51C30",
+              background: "transparent",
               padding: "0.5rem 1.5rem",
               transition: "all 0.3s ease",
+              textDecoration: "none",
             }}
             onMouseEnter={(e) => {
               e.target.style.background = "#A51C30";

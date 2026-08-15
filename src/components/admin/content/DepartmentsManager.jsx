@@ -19,9 +19,16 @@ const DepartmentsManager = () => {
   const [editing, setEditing] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
+
+  // Main image upload
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
+
+  // HOD image upload
+  const [hodUploading, setHodUploading] = useState(false);
+  const [hodUploadProgress, setHodUploadProgress] = useState(0);
+  const [hodPreviewImage, setHodPreviewImage] = useState(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -39,22 +46,18 @@ const DepartmentsManager = () => {
     fetchItems();
   }, []);
 
-  const handleFileUpload = async (file) => {
+  // ----- Main Image Upload -----
+  const handleMainFileUpload = async (file) => {
     if (!file) return null;
-
     setUploading(true);
     setUploadProgress(0);
-
     try {
       const result = await uploadToR2WithProgress(
         file,
         "departments/",
-        (progress) => {
-          setUploadProgress(progress);
-        },
+        (progress) => setUploadProgress(progress),
       );
-
-      if (result && result.url) {
+      if (result?.url) {
         setPreviewImage(result.url);
         setUploadProgress(100);
         setTimeout(() => setUploadProgress(0), 1000);
@@ -70,51 +73,97 @@ const DepartmentsManager = () => {
     }
   };
 
-  const handleFileSelect = async (e) => {
+  const handleMainFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (file.size > 20 * 1024 * 1024) {
       alert("File is too large. Please upload a file smaller than 5MB.");
       e.target.value = "";
       return;
     }
-
     const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
     if (!validTypes.includes(file.type)) {
       alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
       e.target.value = "";
       return;
     }
-
-    const url = await handleFileUpload(file);
-    if (url) {
-      setFormData({ ...formData, imageUrl: url });
-    }
+    const url = await handleMainFileUpload(file);
+    if (url) setFormData({ ...formData, imageUrl: url });
     e.target.value = "";
   };
 
-  const removeImage = () => {
+  const removeMainImage = () => {
     setFormData({ ...formData, imageUrl: "" });
     setPreviewImage(null);
   };
 
+  // ----- HOD Image Upload -----
+  const handleHodFileUpload = async (file) => {
+    if (!file) return null;
+    setHodUploading(true);
+    setHodUploadProgress(0);
+    try {
+      const result = await uploadToR2WithProgress(
+        file,
+        "departments/hod/",
+        (progress) => setHodUploadProgress(progress),
+      );
+      if (result?.url) {
+        setHodPreviewImage(result.url);
+        setHodUploadProgress(100);
+        setTimeout(() => setHodUploadProgress(0), 1000);
+        return result.url;
+      }
+      return null;
+    } catch (error) {
+      console.error("HOD upload error:", error);
+      alert("HOD image upload failed: " + error.message);
+      return null;
+    } finally {
+      setHodUploading(false);
+    }
+  };
+
+  const handleHodFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      alert("File is too large. Please upload a file smaller than 5MB.");
+      e.target.value = "";
+      return;
+    }
+    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
+      e.target.value = "";
+      return;
+    }
+    const url = await handleHodFileUpload(file);
+    if (url) setFormData({ ...formData, hodImage: url });
+    e.target.value = "";
+  };
+
+  const removeHodImage = () => {
+    setFormData({ ...formData, hodImage: "" });
+    setHodPreviewImage(null);
+  };
+
+  // ----- Submit / Delete -----
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editing) {
         await updateDoc(doc(db, "departments", editing.id), formData);
-        alert(" Department updated successfully!");
+        alert("Department updated successfully!");
       } else {
         await addDoc(collection(db, "departments"), formData);
-        alert(" Department added successfully!");
+        alert("Department added successfully!");
       }
-
       setShowModal(false);
       setFormData({});
       setPreviewImage(null);
+      setHodPreviewImage(null);
       setEditing(null);
-
       await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
@@ -124,16 +173,16 @@ const DepartmentsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "departments", deletingId));
-      alert(" Department deleted successfully!");
+      alert("Department deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
-
       await fetchItems();
     } catch (error) {
       alert("Error deleting: " + error.message);
     }
   };
 
+  // ----- Form fields -----
   const fields = [
     {
       key: "name",
@@ -177,12 +226,14 @@ const DepartmentsManager = () => {
       required: false,
       placeholder: "10",
     },
+
+    // NEW HOD fields
     {
-      key: "icon",
-      label: "Icon (e.g., bi-laptop)",
-      type: "text",
+      key: "hodMessage",
+      label: "Message from HOD",
+      type: "textarea",
       required: false,
-      placeholder: "bi-building",
+      placeholder: "Write a short message from the Head of Department...",
     },
   ];
 
@@ -229,7 +280,7 @@ const DepartmentsManager = () => {
     );
   };
 
-  // Get image URL for display
+  // ----- Helper to validate image URL -----
   const getImageUrl = (item) => {
     if (!item.imageUrl) return null;
     try {
@@ -250,6 +301,7 @@ const DepartmentsManager = () => {
             setEditing(null);
             setFormData({});
             setPreviewImage(null);
+            setHodPreviewImage(null);
             setShowModal(true);
           }}
           style={{
@@ -259,12 +311,8 @@ const DepartmentsManager = () => {
             border: "none",
             transition: "all 0.3s ease",
           }}
-          onMouseEnter={(e) => {
-            e.target.style.background = "#7A1523";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = "#A51C30";
-          }}
+          onMouseEnter={(e) => (e.target.style.background = "#7A1523")}
+          onMouseLeave={(e) => (e.target.style.background = "#A51C30")}
         >
           <i className="bi bi-plus-circle me-1"></i> Add Department
         </button>
@@ -293,6 +341,7 @@ const DepartmentsManager = () => {
         <div className="row g-3">
           {items.map((item) => {
             const imageUrl = getImageUrl(item);
+            const hodImageUrl = item.hodImage || null;
             return (
               <div key={item.id} className="col-md-6 col-lg-4">
                 <div
@@ -354,7 +403,64 @@ const DepartmentsManager = () => {
                     >
                       {item.description?.substring(0, 80)}...
                     </p>
-                    <div className="d-flex flex-wrap gap-1">
+
+                    {/* HOD info row */}
+                    {(hodImageUrl || item.hodMessage) && (
+                      <div
+                        className="d-flex align-items-start gap-2 mt-2 pt-2 border-top"
+                        style={{ borderColor: "rgba(165,28,48,0.15)" }}
+                      >
+                        {hodImageUrl && (
+                          <img
+                            src={hodImageUrl}
+                            alt="HOD"
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                              border: "2px solid #A51C30",
+                              flexShrink: 0,
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                        )}
+                        {item.hodMessage && (
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--color-text-muted)",
+                              lineHeight: "1.4",
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: "#A51C30" }}>
+                              “
+                            </span>
+                            {item.hodMessage.substring(0, 60)}
+                            {item.hodMessage.length > 60 && "..."}
+                            <span style={{ fontWeight: 600, color: "#A51C30" }}>
+                              ”
+                            </span>
+                            {item.headName && (
+                              <div
+                                style={{
+                                  fontSize: "0.65rem",
+                                  color: "#A51C30",
+                                  fontWeight: 600,
+                                  marginTop: "2px",
+                                }}
+                              >
+                                — {item.headName}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="d-flex flex-wrap gap-1 mt-2">
                       {item.category && (
                         <span
                           className="badge"
@@ -405,6 +511,7 @@ const DepartmentsManager = () => {
                           setEditing(item);
                           setFormData(item);
                           setPreviewImage(item.imageUrl || null);
+                          setHodPreviewImage(item.hodImage || null);
                           setShowModal(true);
                         }}
                         onMouseEnter={(e) => {
@@ -480,7 +587,7 @@ const DepartmentsManager = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  {/* Image Upload */}
+                  {/* Main Image Upload */}
                   <div className="mb-3">
                     <label className="form-label fw-semibold">
                       Image (optional)
@@ -489,7 +596,7 @@ const DepartmentsManager = () => {
                       type="file"
                       className="form-control"
                       accept="image/*"
-                      onChange={handleFileSelect}
+                      onChange={handleMainFileSelect}
                       disabled={uploading}
                       style={{ borderRadius: "10px" }}
                     />
@@ -520,14 +627,67 @@ const DepartmentsManager = () => {
                             objectFit: "cover",
                             borderRadius: "8px",
                           }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
+                          onError={(e) => (e.target.style.display = "none")}
                         />
                         <button
                           type="button"
                           className="btn btn-outline-danger btn-sm"
-                          onClick={removeImage}
+                          onClick={removeMainImage}
+                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                        >
+                          <i className="bi bi-x"></i> Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* HOD Image Upload */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      HOD Image (optional)
+                    </label>
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/*"
+                      onChange={handleHodFileSelect}
+                      disabled={hodUploading}
+                      style={{ borderRadius: "10px" }}
+                    />
+                    {hodUploading && (
+                      <div className="mt-1">
+                        <div className="progress" style={{ height: "4px" }}>
+                          <div
+                            className="progress-bar progress-bar-striped progress-bar-animated"
+                            style={{
+                              width: `${hodUploadProgress}%`,
+                              backgroundColor: "#A51C30",
+                            }}
+                          ></div>
+                        </div>
+                        <small className="text-muted">
+                          {hodUploadProgress}% uploaded
+                        </small>
+                      </div>
+                    )}
+                    {(hodPreviewImage || formData.hodImage) && (
+                      <div className="mt-2 d-flex align-items-center gap-2">
+                        <img
+                          src={hodPreviewImage || formData.hodImage}
+                          alt="HOD preview"
+                          style={{
+                            width: "80px",
+                            height: "80px",
+                            objectFit: "cover",
+                            borderRadius: "50%",
+                            border: "2px solid #A51C30",
+                          }}
+                          onError={(e) => (e.target.style.display = "none")}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={removeHodImage}
                           style={{ borderRadius: "50px", fontSize: "0.7rem" }}
                         >
                           <i className="bi bi-x"></i> Remove
@@ -552,21 +712,21 @@ const DepartmentsManager = () => {
                     <button
                       type="submit"
                       className="btn px-4 rounded-pill"
-                      disabled={uploading}
+                      disabled={uploading || hodUploading}
                       style={{
                         background: "#A51C30",
                         color: "#fff",
                         border: "none",
                         transition: "all 0.3s ease",
                       }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = "#7A1523";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = "#A51C30";
-                      }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.background = "#7A1523")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.background = "#A51C30")
+                      }
                     >
-                      {uploading ? (
+                      {uploading || hodUploading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
                           Uploading...
@@ -584,6 +744,7 @@ const DepartmentsManager = () => {
                       onClick={() => {
                         setShowModal(false);
                         setPreviewImage(null);
+                        setHodPreviewImage(null);
                       }}
                     >
                       Cancel
