@@ -32,6 +32,13 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import AINavigator from "./components/AINavigator";
+
+// ----- New Public Pages (Student & Downloads) -----
+import CollegeStars from "./pages/CollegeStars";
+import StudentAchievements from "./pages/StudentAchievements";
+import StudentActivities from "./pages/StudentActivities";
+import Downloads from "./pages/Downloads";
+
 // ----- Admin -----
 import AdminLogin from "./components/admin/AdminLogin";
 import AdminDashboard from "./components/admin/AdminDashboard";
@@ -126,6 +133,18 @@ function App() {
                 {/* ===== Information ===== */}
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/faq" element={<FAQ />} />
+
+                {/* ===== New Student & Downloads Routes ===== */}
+                <Route path="/college-stars" element={<CollegeStars />} />
+                <Route
+                  path="/student-achievements"
+                  element={<StudentAchievements />}
+                />
+                <Route
+                  path="/student-activities"
+                  element={<StudentActivities />}
+                />
+                <Route path="/downloads" element={<Downloads />} />
 
                 {/* ===== Admin Login (public) ===== */}
                 <Route path="/admin/login" element={<AdminLogin />} />

@@ -8,15 +8,19 @@ import VisionMissionAims from "../components/home/VisionMissionAims";
 import GalleryPreview from "../components/home/GalleryPreview";
 import TestimonialsSection from "../components/home/TestimonialsSection";
 import FaqSection from "../components/home/FaqSection";
+import CollegeStarsSection from "../components/home/CollegeStarsSection";
+import StudentActivitiesSection from "../components/home/StudentActivitiesSection";
+
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
 // import RecentUpdatePopup from "../components/RecentUpdates";
+
 const Home = () => {
   useEffect(() => {
-    //  Prefetch all home data
+    // Prefetch all home data
     prefetchHomeData().then(() => {});
 
-    //  Preload critical images (first 3 gallery images)
+    // Preload critical images (first 3 gallery images)
     const criticalImages = [
       // Add your critical image URLs here
     ];
@@ -24,7 +28,7 @@ const Home = () => {
       preloadImages(criticalImages);
     }
 
-    //  Prefetch remaining images
+    // Prefetch remaining images
     const remainingImages = [
       // Add your remaining image URLs here
     ];
@@ -44,6 +48,13 @@ const Home = () => {
       </div>
       <div>
         <DepartmentsSection />
+      </div>
+      {/* NEW: College Stars and Student Activities sections */}
+      <div>
+        <CollegeStarsSection />
+      </div>
+      <div>
+        <StudentActivitiesSection />
       </div>
       <div>
         <ActivitiesSection />

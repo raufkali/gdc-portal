@@ -44,15 +44,36 @@ const quickLinks = [
     label: "Exam Results",
     icon: "bi-file-earmark-text",
   },
-  // {
-  //   path: "/fee-structure",
-  //   label: "Fee Structure",
-  //   icon: "bi-cash-stack",
-  // },
+  {
+    path: "/fee-structure",
+    label: "Fee Structure",
+    icon: "bi-cash-stack",
+  },
   {
     path: "/faq",
     label: "FAQ",
     icon: "bi-question-circle",
+  },
+  // NEW: Student & Downloads links
+  {
+    path: "/college-stars",
+    label: "College Stars",
+    icon: "bi-star",
+  },
+  {
+    path: "/student-activities",
+    label: "Student Activities",
+    icon: "bi-people",
+  },
+  {
+    path: "/student-achievements",
+    label: "Student Achievements",
+    icon: "bi-trophy",
+  },
+  {
+    path: "/downloads",
+    label: "Downloads",
+    icon: "bi-download",
   },
 ];
 

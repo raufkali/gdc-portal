@@ -10,7 +10,9 @@ import ContentManager from "./ContentManager";
 import SettingsManager from "./SettingsManager";
 import AnnouncementsManager from "./content/AnnouncementsManager";
 import ResultsManager from "./content/ResultsManager";
-import MessagesManager from "./content/MessagesManager"; //  Added import
+import MessagesManager from "./content/MessagesManager";
+import StudentManager from "./StudentManager"; // NEW
+import DownloadsManager from "./content/DownloadsManager"; // NEW
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
@@ -35,6 +37,10 @@ const DashboardOverview = () => {
           announcementsSnap,
           resultsSnap,
           activitiesSnap,
+          collegeStarsSnap, // NEW
+          studentAchievementsSnap, // NEW
+          studentActivitiesSnap, // NEW
+          downloadsSnap, // NEW
         ] = await Promise.all([
           getDocs(collection(db, "banners")),
           getDocs(collection(db, "programs")),
@@ -44,6 +50,10 @@ const DashboardOverview = () => {
           getDocs(collection(db, "announcements")),
           getDocs(collection(db, "examResults")),
           getDocs(collection(db, "activities")),
+          getDocs(collection(db, "collegeStars")),
+          getDocs(collection(db, "studentAchievements")),
+          getDocs(collection(db, "studentActivities")),
+          getDocs(collection(db, "downloads")),
         ]);
 
         const activeBanners = bannersSnap.docs.filter(
@@ -79,6 +89,27 @@ const DashboardOverview = () => {
             value: activitiesSnap.size,
             icon: "bi-calendar-event",
           },
+          // NEW STATS
+          {
+            label: "College Stars",
+            value: collegeStarsSnap.size,
+            icon: "bi-star",
+          },
+          {
+            label: "Achievements",
+            value: studentAchievementsSnap.size,
+            icon: "bi-trophy",
+          },
+          {
+            label: "Student Activities",
+            value: studentActivitiesSnap.size,
+            icon: "bi-people",
+          },
+          {
+            label: "Downloads",
+            value: downloadsSnap.size,
+            icon: "bi-download",
+          },
         ]);
 
         const announcementsData = announcementsSnap.docs
@@ -89,7 +120,6 @@ const DashboardOverview = () => {
             return dateB - dateA;
           })
           .slice(0, 5);
-
         setRecentAnnouncements(announcementsData);
 
         const resultsData = resultsSnap.docs
@@ -100,7 +130,6 @@ const DashboardOverview = () => {
             return dateB - dateA;
           })
           .slice(0, 5);
-
         setRecentResults(resultsData);
 
         const activitiesData = activitiesSnap.docs
@@ -111,7 +140,6 @@ const DashboardOverview = () => {
             return dateB - dateA;
           })
           .slice(0, 3);
-
         setRecentActivities(activitiesData);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -133,7 +161,7 @@ const DashboardOverview = () => {
         day: "numeric",
         year: "numeric",
       });
-    } catch (e) {
+    } catch {
       return "";
     }
   };
@@ -259,12 +287,6 @@ const DashboardOverview = () => {
                     fontWeight: "500",
                     textDecoration: "none",
                   }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = "rgba(165, 28, 48, 0.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = "transparent";
-                  }}
                 >
                   View All
                 </Link>
@@ -346,12 +368,6 @@ const DashboardOverview = () => {
                     fontSize: "0.7rem",
                     fontWeight: "500",
                     textDecoration: "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = "rgba(165, 28, 48, 0.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = "transparent";
                   }}
                 >
                   View All
@@ -493,6 +509,7 @@ const AdminDashboard = () => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  // Sidebar items – new entries added and font-size reduced
   const navItems = [
     { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
     {
@@ -503,17 +520,16 @@ const AdminDashboard = () => {
     { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
     { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
     { path: "/admin/content", label: "Content", icon: "bi-folder" },
+    // NEW: Students and Downloads
+    { path: "/admin/students", label: "Students", icon: "bi-people" },
+    { path: "/admin/downloads", label: "Downloads", icon: "bi-download" },
     { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
     { path: "/", label: "Back To Home", icon: "bi-house" },
   ];
 
   const isActive = (path, exact = false) => {
     const currentPath = location.pathname;
-
-    if (path === "/") {
-      return currentPath === "/";
-    }
-
+    if (path === "/") return currentPath === "/";
     if (exact) return currentPath === path;
     return currentPath.startsWith(path);
   };
@@ -538,7 +554,7 @@ const AdminDashboard = () => {
           boxShadow: "2px 0 20px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Brand with Logo */}
+        {/* Brand */}
         <div className="sidebar-brand p-3 text-center border-bottom border-secondary">
           <div className="d-flex align-items-center justify-content-center gap-2">
             {settings?.logoUrl ? (
@@ -573,15 +589,20 @@ const AdminDashboard = () => {
             )}
             <h4
               className="fw-bold mb-0"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: "1.1rem",
+              }}
             >
               <span style={{ color: "#A51C30" }}>GDC</span> Gulabad
             </h4>
           </div>
-          <small className="text-muted">Admin Panel</small>
+          <small className="text-muted" style={{ fontSize: "0.7rem" }}>
+            Admin Panel
+          </small>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation (reduced font-size) */}
         <nav className="nav flex-column p-3 flex-grow-1">
           {navItems.map((item) => {
             const isItemActive = isActive(item.path, item.exact);
@@ -593,21 +614,19 @@ const AdminDashboard = () => {
                 style={{
                   textDecoration: "none",
                   transition: "all 0.2s ease",
-                  fontSize: "0.95rem",
+                  fontSize: "0.85rem",
                   background: isItemActive ? "#A51C30" : "transparent",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isItemActive) {
+                  if (!isItemActive)
                     e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isItemActive) {
+                  if (!isItemActive)
                     e.currentTarget.style.background = "transparent";
-                  }
                 }}
               >
-                <i className={`bi ${item.icon} fs-5`}></i>
+                <i className={`bi ${item.icon} fs-6`}></i>
                 <span className="flex-grow-1">{item.label}</span>
               </Link>
             );
@@ -695,6 +714,8 @@ const AdminDashboard = () => {
         {/* Routes */}
         <Routes>
           <Route path="/" element={<DashboardOverview />} />
+
+          {/* Content (with optional initialTab) */}
           <Route path="/content" element={<ContentManager />} />
           <Route
             path="/content/banners"
@@ -724,10 +745,19 @@ const AdminDashboard = () => {
             path="/content/faqs"
             element={<ContentManager initialTab="faqs" />}
           />
+
+          {/* Standalone modules */}
           <Route path="/announcements" element={<AnnouncementsManager />} />
           <Route path="/results" element={<ResultsManager />} />
-          <Route path="/messages" element={<MessagesManager />} />{" "}
-          {/*  Added route */}
+          <Route path="/messages" element={<MessagesManager />} />
+
+          {/* NEW: Students (tabbed) */}
+          <Route path="/students/*" element={<StudentManager />} />
+
+          {/* NEW: Downloads */}
+          <Route path="/downloads" element={<DownloadsManager />} />
+
+          {/* Settings (with subsections) */}
           <Route path="/settings" element={<SettingsManager />} />
           <Route
             path="/settings/principal"
@@ -745,6 +775,8 @@ const AdminDashboard = () => {
             path="/settings/footer"
             element={<SettingsManager section="footer" />}
           />
+
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 
 /*
@@ -260,6 +260,7 @@ const STATIC_NAVIGATION_ITEMS = [
 
 const AINavigator = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -272,30 +273,65 @@ const AINavigator = () => {
 
   /*
   |--------------------------------------------------------------------------
+  | Admin Route Protection
+  |--------------------------------------------------------------------------
+  |
+  | The Navigation Assistant is a public-facing feature.
+  |
+  | It must NEVER appear inside:
+  |
+  | /admin
+  | /admin/*
+  |
+  | This also prevents unnecessary department fetching while inside
+  | the admin panel.
+  |
+  */
+
+  const isAdminRoute =
+    location.pathname === "/admin" || location.pathname.startsWith("/admin/");
+
+  /*
+  |--------------------------------------------------------------------------
   | Fetch Departments
   |--------------------------------------------------------------------------
   */
 
   useEffect(() => {
+    /*
+     * Do not fetch public navigation data inside the admin panel.
+     */
+    if (isAdminRoute) {
+      setDepartments([]);
+      setDepartmentsLoading(false);
+      return;
+    }
+
     const loadDepartments = async () => {
+      setDepartmentsLoading(true);
+
       try {
         const data = await fetchCollection("departments");
 
         if (Array.isArray(data)) {
           setDepartments(data.filter((department) => department?.id));
+        } else {
+          setDepartments([]);
         }
       } catch (error) {
         console.error(
           "Navigation Assistant: Failed to fetch departments:",
           error,
         );
+
+        setDepartments([]);
       } finally {
         setDepartmentsLoading(false);
       }
     };
 
     loadDepartments();
-  }, []);
+  }, [isAdminRoute]);
 
   /*
   |--------------------------------------------------------------------------
@@ -543,6 +579,13 @@ const AINavigator = () => {
   */
 
   const openAssistant = () => {
+    /*
+     * Extra safety:
+     * Never open the assistant on admin routes.
+     */
+
+    if (isAdminRoute) return;
+
     setIsOpen(true);
 
     setTimeout(() => {
@@ -561,6 +604,18 @@ const AINavigator = () => {
     setQuery("");
     setHasSearched(false);
   };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Automatically close when entering admin
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (isAdminRoute && isOpen) {
+      closeAssistant();
+    }
+  }, [isAdminRoute]);
 
   /*
   |--------------------------------------------------------------------------
@@ -589,7 +644,7 @@ const AINavigator = () => {
   */
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isAdminRoute) return;
 
     if (window.innerWidth < 768) {
       document.body.style.overflow = "hidden";
@@ -598,7 +653,7 @@ const AINavigator = () => {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isOpen, isAdminRoute]);
 
   /*
   |--------------------------------------------------------------------------
@@ -628,6 +683,17 @@ const AINavigator = () => {
       query: "eligibility criteria",
     },
   ];
+
+  /*
+  |--------------------------------------------------------------------------
+  | IMPORTANT:
+  | Never render the Navigation Assistant inside the admin panel.
+  |--------------------------------------------------------------------------
+  */
+
+  if (isAdminRoute) {
+    return null;
+  }
 
   /*
   |--------------------------------------------------------------------------
