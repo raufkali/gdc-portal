@@ -13,6 +13,7 @@ import DeleteModal from "./Shared/DeleteModal";
 
 const ProgramsManager = () => {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]); // NEW: list of unique categories
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -31,6 +32,12 @@ const ProgramsManager = () => {
       const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log("📦 Programs fetched:", data.length);
       setItems(data);
+
+      // NEW: extract unique categories (excluding empty/undefined)
+      const uniqueCategories = [
+        ...new Set(data.map((item) => item.category).filter(Boolean)),
+      ];
+      setCategories(uniqueCategories);
     } catch (error) {
       console.error("Error fetching programs:", error);
     } finally {
@@ -115,13 +122,12 @@ const ProgramsManager = () => {
         alert(" Program added successfully!");
       }
 
-      //  Close modal FIRST
       setShowModal(false);
       setFormData({});
       setPreviewImage(null);
       setEditing(null);
 
-      //  THEN fetch fresh data
+      // Fetch fresh data – this also updates the categories list
       await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
@@ -137,8 +143,7 @@ const ProgramsManager = () => {
       setShowDeleteModal(false);
       setDeletingId(null);
 
-      //  Fetch fresh data after delete
-      await fetchItems();
+      await fetchItems(); // refresh categories as well
     } catch (error) {
       alert("Error deleting: " + error.message);
     }
@@ -158,6 +163,13 @@ const ProgramsManager = () => {
       type: "text",
       required: false,
       placeholder: "Enter subtitle",
+    },
+    {
+      key: "category", // NEW: category field
+      label: "Category",
+      type: "text", // we'll render it with a datalist
+      required: false,
+      placeholder: "Select or type a category",
     },
     {
       key: "description",
@@ -206,6 +218,32 @@ const ProgramsManager = () => {
         />
       );
     }
+
+    // NEW: if this is the category field, render input + datalist
+    if (field.key === "category") {
+      return (
+        <>
+          <input
+            type="text"
+            className="form-control"
+            list="categoryOptions"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required={field.required}
+            placeholder={field.placeholder}
+            style={{ borderRadius: "10px" }}
+            autoComplete="off"
+          />
+          <datalist id="categoryOptions">
+            {categories.map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
+          </datalist>
+        </>
+      );
+    }
+
+    // Default: text input
     return (
       <input
         type={field.type || "text"}
@@ -337,6 +375,22 @@ const ProgramsManager = () => {
                     </h6>
                     {item.subtitle && (
                       <p className="small text-muted">{item.subtitle}</p>
+                    )}
+                    {/* NEW: display category if exists */}
+                    {item.category && (
+                      <span
+                        className="badge me-1"
+                        style={{
+                          background: "rgba(13, 110, 253, 0.1)",
+                          color: "#0d6efd",
+                          padding: "0.25rem 0.7rem",
+                          borderRadius: "50px",
+                          fontWeight: "500",
+                          fontSize: "0.65rem",
+                        }}
+                      >
+                        {item.category}
+                      </span>
                     )}
                     <p
                       className="small"

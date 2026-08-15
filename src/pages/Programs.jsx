@@ -1,21 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import Loader from "../components/common/Loader";
 
-// NOTE: no more module-level cachedPrograms/cacheTimestamp here.
-// fetchCollection() in firebase/db.js already caches this data
-// (in-memory + IndexedDB persistence) and is shared with
-// ProgramsSection.jsx and anywhere else that reads "programs",
-// so keeping a second, isolated cache here just caused duplicate
-// fetches and stale/out-of-sync state between pages.
-
 const Programs = () => {
   const [programs, setPrograms] = useState([]);
+  const [filteredPrograms, setFilteredPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
   const [imageErrors, setImageErrors] = useState({});
+
+  // Filter states
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch programs
   useEffect(() => {
@@ -38,6 +36,41 @@ const Programs = () => {
     };
   }, []);
 
+  // Extract unique categories
+  const categories = useMemo(() => {
+    const cats = new Set();
+    programs.forEach((p) => {
+      if (p.category) cats.add(p.category);
+      else cats.add("Other");
+    });
+    return ["All", ...Array.from(cats)];
+  }, [programs]);
+
+  // Filter programs based on category and search
+  useEffect(() => {
+    let result = programs;
+
+    // Category filter
+    if (selectedCategory !== "All") {
+      result = result.filter(
+        (p) => (p.category || "Other") === selectedCategory,
+      );
+    }
+
+    // Search filter (title, subtitle, description)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title?.toLowerCase().includes(query) ||
+          p.subtitle?.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query),
+      );
+    }
+
+    setFilteredPrograms(result);
+  }, [programs, selectedCategory, searchQuery]);
+
   useEffect(() => {
     if (!loading && programs.length > 0) {
       const timeoutId = setTimeout(() => {
@@ -50,18 +83,7 @@ const Programs = () => {
     }
   }, [loading, programs]);
 
-  // Intersection Observer for manual visibility control.
-  //
-  // FIX: this used to run once on mount with an empty [] dependency
-  // array. But while `loading` is true, the component returns early
-  // with <Loader /> — so `sectionRef.current` is null at the moment
-  // this effect first runs, and observer.observe() is called on
-  // nothing. Once loading finishes and the real section mounts,
-  // nothing is watching it anymore, so isVisible never becomes true
-  // and the whole page sits at opacity:0 forever on a cold load.
-  //
-  // Depending on [loading] makes this effect re-run right after the
-  // real section mounts, so it actually has something to observe.
+  // Intersection Observer for visibility
   useEffect(() => {
     if (loading) return;
 
@@ -100,7 +122,7 @@ const Programs = () => {
       <div className="container">
         {/* Page Header */}
         <div
-          className="text-center mb-5"
+          className="text-center mb-4"
           style={{
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? "translateY(0)" : "translateY(30px)",
@@ -147,20 +169,107 @@ const Programs = () => {
           </p>
         </div>
 
+        {/* Filter and Search Bar */}
+        <div
+          className="mb-4"
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(30px)",
+            transition: "opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s",
+          }}
+        >
+          <div className="row g-3 align-items-center">
+            <div className="col-md-8">
+              <div className="d-flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    style={{
+                      padding: "0.4rem 1.2rem",
+                      borderRadius: "50px",
+                      border:
+                        selectedCategory === cat
+                          ? "2px solid #A51C30"
+                          : "2px solid transparent",
+                      background:
+                        selectedCategory === cat ? "#A51C30" : "transparent",
+                      color:
+                        selectedCategory === cat ? "#fff" : "var(--color-text)",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      backgroundColor:
+                        selectedCategory === cat
+                          ? "#A51C30"
+                          : "rgba(165, 28, 48, 0.05)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedCategory !== cat) {
+                        e.target.style.borderColor = "#A51C30";
+                        e.target.style.backgroundColor =
+                          "rgba(165, 28, 48, 0.08)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedCategory !== cat) {
+                        e.target.style.borderColor = "transparent";
+                        e.target.style.backgroundColor =
+                          "rgba(165, 28, 48, 0.05)";
+                      }
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Search programs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    borderRadius: "50px",
+                    paddingLeft: "2.5rem",
+                    borderColor: "var(--color-border)",
+                    backgroundColor: "var(--card-bg)",
+                    color: "var(--color-text)",
+                  }}
+                />
+                <i
+                  className="bi bi-search"
+                  style={{
+                    position: "absolute",
+                    left: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#A51C30",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Programs Grid */}
-        {programs.length === 0 ? (
+        {filteredPrograms.length === 0 ? (
           <div className="text-center py-5">
             <div className="display-1 text-muted mb-4">
-              <i className="bi bi-book"></i>
+              <i className="bi bi-search"></i>
             </div>
-            <h4 className="text-muted">No programs available</h4>
+            <h4 className="text-muted">No programs found</h4>
             <p className="text-muted small">
-              Please check back later for updates.
+              Try adjusting your filters or search terms.
             </p>
           </div>
         ) : (
           <div className="row g-4">
-            {programs.map((program, index) => {
+            {filteredPrograms.map((program, index) => {
               const hasImageError = imageErrors[program.id];
 
               return (
@@ -221,7 +330,6 @@ const Programs = () => {
                           }}
                           onError={() => handleImageError(program.id)}
                         />
-                        {/* Program type badge */}
                         <div
                           style={{
                             position: "absolute",
@@ -263,7 +371,6 @@ const Programs = () => {
                         >
                           {program.title?.charAt(0) || "P"}
                         </div>
-                        {/* Program type badge */}
                         <div
                           style={{
                             position: "absolute",

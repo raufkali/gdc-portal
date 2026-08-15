@@ -10,6 +10,7 @@ import TestimonialsSection from "../components/home/TestimonialsSection";
 import FaqSection from "../components/home/FaqSection";
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
+// import RecentUpdatePopup from "../components/RecentUpdates";
 const Home = () => {
   useEffect(() => {
     //  Prefetch all home data
@@ -59,6 +60,7 @@ const Home = () => {
       <div>
         <FaqSection />
       </div>
+      {/* <RecentUpdatePopup /> */}
     </>
   );
 };
