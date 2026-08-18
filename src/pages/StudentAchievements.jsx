@@ -254,7 +254,7 @@ const StudentAchievements = () => {
 
   return (
     <div
-      className="student-achievements-page py-5 mt-5"
+      className="student-achievements-page py-5"
       style={{
         backgroundColor: "var(--color-bg-alt)",
       }}
@@ -267,10 +267,10 @@ const StudentAchievements = () => {
         <header className="achievements-header">
           <div className="achievements-eyebrow">Student Success</div>
 
-          <h1>
+          <h2>
             Our Students,
-            <span> Our Pride.</span>
-          </h1>
+            <span style={{ color: "#A51C30" }}> Our Pride.</span>
+          </h2>
 
           <p>
             Celebrating the achievements, talents, and success stories of the
@@ -777,7 +777,7 @@ const StudentAchievements = () => {
           align-items: center;
           gap: 5px;
 
-          background: #A51C30;
+          background: #a51c3148;
           color: #fff;
 
           padding:

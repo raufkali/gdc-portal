@@ -362,25 +362,25 @@ const GalleryPreview = () => {
             className="btn"
             style={{
               background: "transparent",
-              color: "#A51C30",
+              color: "#ffff",
               padding: "0.7rem 3rem",
               borderRadius: "50px",
               fontWeight: "600",
               fontSize: "0.95rem",
-              border: "2px solid #A51C30",
+              border: "2px solid #ffff",
               textDecoration: "none",
               transition: "all 0.3s ease",
               display: "inline-block",
             }}
             onMouseEnter={(e) => {
-              e.target.style.background = "#A51C30";
+              e.target.style.background = "#eb2d49";
               e.target.style.color = "#fff";
               e.target.style.transform = "translateY(-3px)";
               e.target.style.boxShadow = "0 10px 30px rgba(165, 28, 48, 0.3)";
             }}
             onMouseLeave={(e) => {
               e.target.style.background = "transparent";
-              e.target.style.color = "#A51C30";
+              e.target.style.color = "#ffff";
               e.target.style.transform = "translateY(0)";
               e.target.style.boxShadow = "none";
             }}

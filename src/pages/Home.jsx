@@ -10,7 +10,7 @@ import TestimonialsSection from "../components/home/TestimonialsSection";
 import FaqSection from "../components/home/FaqSection";
 import CollegeStarsSection from "../components/home/CollegeStarsSection";
 import StudentActivitiesSection from "../components/home/StudentActivitiesSection";
-
+import StudentAchievements from "./StudentAchievements";
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
 // import RecentUpdatePopup from "../components/RecentUpdates";
@@ -66,7 +66,9 @@ const Home = () => {
       <div>
         <VisionMissionAims />
       </div>
-
+      <div>
+        <StudentAchievements />
+      </div>
       <div>
         <TestimonialsSection />
       </div>
