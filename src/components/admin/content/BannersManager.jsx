@@ -7,7 +7,9 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  writeBatch,
 } from "firebase/firestore";
+import imageCompression from "browser-image-compression";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 
@@ -20,23 +22,52 @@ const BannersManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState(null);
 
-  // Fetch banners
+  // ==========================================================
+  // FETCH BANNERS
+  // Sorts by "order" and also silently closes any gaps/duplicates
+  // left behind by deletions, so order always ends up 0,1,2,3...
+  // ==========================================================
+
   const fetchItems = async () => {
     setLoading(true);
 
     try {
       const snap = await getDocs(collection(db, "banners"));
 
-      setItems(
-        snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })),
-      );
+      let list = snap.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+
+      // Sort by existing order (missing order treated as 0)
+      list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+      // Re-sequence to 0,1,2,3... and push any changes to Firestore
+      // in a single batch, so gaps from deleted banners disappear.
+      const batch = writeBatch(db);
+      let needsUpdate = false;
+
+      list = list.map((item, index) => {
+        const newOrder = index + 1;
+        if (item.order !== newOrder) {
+          needsUpdate = true;
+          batch.update(doc(db, "banners", item.id), { order: newOrder });
+          return { ...item, order: newOrder };
+        }
+        return item;
+      });
+
+      if (needsUpdate) {
+        await batch.commit();
+      }
+
+      setItems(list);
     } catch (error) {
       console.error("Error fetching banners:", error);
     } finally {
@@ -47,6 +78,34 @@ const BannersManager = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // ==========================================================
+  // COMPRESS IMAGE BEFORE UPLOAD
+  // Skips animated GIFs (compression would flatten them to a
+  // single frame). Falls back to the original file if
+  // compression fails for any reason, so upload never breaks.
+  // ==========================================================
+
+  const compressImage = async (file) => {
+    if (file.type === "image/gif") {
+      // Preserve animation - don't recompress GIFs
+      return file;
+    }
+
+    const options = {
+      maxWidthOrHeight: 1920,
+      maxSizeMB: 0.5,
+      useWebWorker: true,
+      fileType: "image/webp",
+      initialQuality: 0.82,
+    };
+
+    const compressedFile = await imageCompression(file, options);
+
+    return new File([compressedFile], file.name.replace(/\.[^.]+$/, ".webp"), {
+      type: "image/webp",
+    });
+  };
 
   // Upload banner image to R2
   const handleFileUpload = async (file) => {
@@ -91,9 +150,10 @@ const BannersManager = () => {
 
     if (!file) return;
 
-    // Maximum 20MB
-    if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 20MB.");
+    // Maximum 25MB for the original file - compression happens
+    // client-side afterwards, so raw phone/camera photos are fine.
+    if (file.size > 25 * 1024 * 1024) {
+      alert("File is too large. Please upload a file smaller than 25MB.");
       e.target.value = "";
       return;
     }
@@ -107,7 +167,33 @@ const BannersManager = () => {
       return;
     }
 
-    const url = await handleFileUpload(file);
+    setCompressionInfo(null);
+    setCompressing(true);
+
+    let fileToUpload = file;
+
+    try {
+      const originalSizeKB = (file.size / 1024).toFixed(0);
+
+      fileToUpload = await compressImage(file);
+
+      const finalSizeKB = (fileToUpload.size / 1024).toFixed(0);
+
+      if (fileToUpload !== file) {
+        setCompressionInfo({
+          before: originalSizeKB,
+          after: finalSizeKB,
+        });
+      }
+    } catch (error) {
+      console.error("Compression failed, uploading original file:", error);
+      // Fall back to the original file so the upload still works
+      fileToUpload = file;
+    } finally {
+      setCompressing(false);
+    }
+
+    const url = await handleFileUpload(fileToUpload);
 
     if (url) {
       setFormData((prev) => ({
@@ -129,6 +215,7 @@ const BannersManager = () => {
 
     setPreviewImage(null);
     setUploadProgress(0);
+    setCompressionInfo(null);
   };
 
   // Submit banner
@@ -136,7 +223,7 @@ const BannersManager = () => {
     e.preventDefault();
 
     // Prevent duplicate submissions
-    if (submitting || uploading) return;
+    if (submitting || uploading || compressing) return;
 
     setSubmitting(true);
 
@@ -155,6 +242,7 @@ const BannersManager = () => {
       setFormData({});
       setPreviewImage(null);
       setUploadProgress(0);
+      setCompressionInfo(null);
       setEditing(null);
 
       await fetchItems();
@@ -168,6 +256,8 @@ const BannersManager = () => {
   };
 
   // Delete banner
+  // fetchItems() re-sequences "order" for everyone left behind,
+  // so deleting banner 3 out of 5 no longer leaves a gap.
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "banners", deletingId));
@@ -278,9 +368,11 @@ const BannersManager = () => {
           className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
-            setFormData({});
+            // Default new banners to the end of the current order
+            setFormData({ order: items.length, active: true });
             setPreviewImage(null);
             setUploadProgress(0);
+            setCompressionInfo(null);
             setShowModal(true);
           }}
           style={{
@@ -356,17 +448,29 @@ const BannersManager = () => {
 
                 {/* Card body */}
                 <div className="card-body">
-                  <h6
-                    className="fw-bold"
-                    style={{
-                      color: "var(--color-text)",
-                    }}
-                  >
-                    {item.title}
-                  </h6>
+                  <div className="d-flex justify-content-between align-items-start">
+                    <h6
+                      className="fw-bold mb-0"
+                      style={{
+                        color: "var(--color-text)",
+                      }}
+                    >
+                      {item.title}
+                    </h6>
+
+                    <span
+                      className="badge bg-light text-muted"
+                      style={{
+                        fontSize: "0.65rem",
+                        fontWeight: "500",
+                      }}
+                    >
+                      #{(item.order ?? 0) + 1}
+                    </span>
+                  </div>
 
                   {item.subtitle && (
-                    <p className="small text-muted">{item.subtitle}</p>
+                    <p className="small text-muted mb-2">{item.subtitle}</p>
                   )}
 
                   <span
@@ -408,6 +512,7 @@ const BannersManager = () => {
                         });
                         setPreviewImage(item.imageUrl || null);
                         setUploadProgress(0);
+                        setCompressionInfo(null);
                         setShowModal(true);
                       }}
                       onMouseEnter={(e) => {
@@ -502,11 +607,19 @@ const BannersManager = () => {
                       className="form-control"
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       onChange={handleFileSelect}
-                      disabled={uploading}
+                      disabled={uploading || compressing}
                       style={{
                         borderRadius: "10px",
                       }}
                     />
+
+                    {/* Compressing status */}
+                    {compressing && (
+                      <div className="mt-1 text-primary small">
+                        <span className="spinner-border spinner-border-sm me-1"></span>
+                        Optimizing image...
+                      </div>
+                    )}
 
                     {/* Upload progress */}
                     {uploading && (
@@ -530,6 +643,14 @@ const BannersManager = () => {
                           {uploadProgress}% uploaded
                         </small>
                       </div>
+                    )}
+
+                    {/* Compression feedback */}
+                    {compressionInfo && (
+                      <small className="text-muted d-block mt-1">
+                        Optimized: {compressionInfo.before} KB →{" "}
+                        {compressionInfo.after} KB
+                      </small>
                     )}
 
                     {/* Image preview */}
@@ -583,7 +704,7 @@ const BannersManager = () => {
                     <button
                       type="submit"
                       className="btn px-4 rounded-pill"
-                      disabled={uploading}
+                      disabled={uploading || compressing || submitting}
                       style={{
                         background: "#A51C30",
                         color: "#fff",
@@ -591,7 +712,7 @@ const BannersManager = () => {
                         transition: "all 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
-                        if (!uploading) {
+                        if (!uploading && !compressing) {
                           e.target.style.background = "#7A1523";
                         }
                       }}
@@ -599,10 +720,20 @@ const BannersManager = () => {
                         e.target.style.background = "#A51C30";
                       }}
                     >
-                      {uploading ? (
+                      {compressing ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Optimizing...
+                        </>
+                      ) : uploading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
                           Uploading...
+                        </>
+                      ) : submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Saving...
                         </>
                       ) : (
                         <>
@@ -619,6 +750,7 @@ const BannersManager = () => {
                         setShowModal(false);
                         setPreviewImage(null);
                         setUploadProgress(0);
+                        setCompressionInfo(null);
                       }}
                     >
                       Cancel

@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import ImageUpload from "./Shared/ImageUpload";
 
 const DepartmentsManager = () => {
   const [items, setItems] = useState([]);
@@ -20,15 +21,10 @@ const DepartmentsManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
 
-  // Main image upload
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [previewImage, setPreviewImage] = useState(null);
-
-  // HOD image upload
   const [hodUploading, setHodUploading] = useState(false);
-  const [hodUploadProgress, setHodUploadProgress] = useState(0);
-  const [hodPreviewImage, setHodPreviewImage] = useState(null);
+  const [mainImageKey, setMainImageKey] = useState(0);
+  const [hodImageKey, setHodImageKey] = useState(0);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -46,21 +42,16 @@ const DepartmentsManager = () => {
     fetchItems();
   }, []);
 
-  // ----- Main Image Upload -----
-  const handleMainFileUpload = async (file) => {
-    if (!file) return null;
+  const handleMainUpload = async (file, folder) => {
     setUploading(true);
-    setUploadProgress(0);
     try {
       const result = await uploadToR2WithProgress(
         file,
-        "departments/",
-        (progress) => setUploadProgress(progress),
+        folder || "departments/",
+        () => {},
       );
       if (result?.url) {
-        setPreviewImage(result.url);
-        setUploadProgress(100);
-        setTimeout(() => setUploadProgress(0), 1000);
+        setFormData((prev) => ({ ...prev, imageUrl: result.url }));
         return result.url;
       }
       return null;
@@ -73,45 +64,16 @@ const DepartmentsManager = () => {
     }
   };
 
-  const handleMainFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 5MB.");
-      e.target.value = "";
-      return;
-    }
-    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
-      e.target.value = "";
-      return;
-    }
-    const url = await handleMainFileUpload(file);
-    if (url) setFormData({ ...formData, imageUrl: url });
-    e.target.value = "";
-  };
-
-  const removeMainImage = () => {
-    setFormData({ ...formData, imageUrl: "" });
-    setPreviewImage(null);
-  };
-
-  // ----- HOD Image Upload -----
-  const handleHodFileUpload = async (file) => {
-    if (!file) return null;
+  const handleHodUpload = async (file, folder) => {
     setHodUploading(true);
-    setHodUploadProgress(0);
     try {
       const result = await uploadToR2WithProgress(
         file,
-        "departments/hod/",
-        (progress) => setHodUploadProgress(progress),
+        folder || "departments/hod/",
+        () => {},
       );
       if (result?.url) {
-        setHodPreviewImage(result.url);
-        setHodUploadProgress(100);
-        setTimeout(() => setHodUploadProgress(0), 1000);
+        setFormData((prev) => ({ ...prev, hodImage: result.url }));
         return result.url;
       }
       return null;
@@ -124,31 +86,16 @@ const DepartmentsManager = () => {
     }
   };
 
-  const handleHodFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 5MB.");
-      e.target.value = "";
-      return;
-    }
-    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
-      e.target.value = "";
-      return;
-    }
-    const url = await handleHodFileUpload(file);
-    if (url) setFormData({ ...formData, hodImage: url });
-    e.target.value = "";
+  const removeMainImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setMainImageKey((k) => k + 1);
   };
 
   const removeHodImage = () => {
-    setFormData({ ...formData, hodImage: "" });
-    setHodPreviewImage(null);
+    setFormData((prev) => ({ ...prev, hodImage: "" }));
+    setHodImageKey((k) => k + 1);
   };
 
-  // ----- Submit / Delete -----
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -161,8 +108,6 @@ const DepartmentsManager = () => {
       }
       setShowModal(false);
       setFormData({});
-      setPreviewImage(null);
-      setHodPreviewImage(null);
       setEditing(null);
       await fetchItems();
     } catch (error) {
@@ -182,7 +127,6 @@ const DepartmentsManager = () => {
     }
   };
 
-  // ----- Form fields -----
   const fields = [
     {
       key: "name",
@@ -226,8 +170,6 @@ const DepartmentsManager = () => {
       required: false,
       placeholder: "10",
     },
-
-    // NEW HOD fields
     {
       key: "hodMessage",
       label: "Message from HOD",
@@ -280,7 +222,6 @@ const DepartmentsManager = () => {
     );
   };
 
-  // ----- Helper to validate image URL -----
   const getImageUrl = (item) => {
     if (!item.imageUrl) return null;
     try {
@@ -293,15 +234,12 @@ const DepartmentsManager = () => {
 
   return (
     <div>
-      {/* Header */}
       <div className="d-flex justify-content-end mb-3">
         <button
           className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
-            setPreviewImage(null);
-            setHodPreviewImage(null);
             setShowModal(true);
           }}
           style={{
@@ -404,7 +342,6 @@ const DepartmentsManager = () => {
                       {item.description?.substring(0, 80)}...
                     </p>
 
-                    {/* HOD info row */}
                     {(hodImageUrl || item.hodMessage) && (
                       <div
                         className="d-flex align-items-start gap-2 mt-2 pt-2 border-top"
@@ -510,8 +447,6 @@ const DepartmentsManager = () => {
                         onClick={() => {
                           setEditing(item);
                           setFormData(item);
-                          setPreviewImage(item.imageUrl || null);
-                          setHodPreviewImage(item.hodImage || null);
                           setShowModal(true);
                         }}
                         onMouseEnter={(e) => {
@@ -560,7 +495,6 @@ const DepartmentsManager = () => {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div
           className="modal show d-block"
@@ -587,112 +521,43 @@ const DepartmentsManager = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  {/* Main Image Upload */}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
-                      Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      accept="image/*"
-                      onChange={handleMainFileSelect}
-                      disabled={uploading}
-                      style={{ borderRadius: "10px" }}
+                    <ImageUpload
+                      key={`main-${editing?.id || "new"}-${mainImageKey}`}
+                      onUpload={handleMainUpload}
+                      existingImage={formData.imageUrl || null}
+                      label="Image"
+                      folder="departments/"
                     />
-                    {uploading && (
-                      <div className="mt-1">
-                        <div className="progress" style={{ height: "4px" }}>
-                          <div
-                            className="progress-bar progress-bar-striped progress-bar-animated"
-                            style={{
-                              width: `${uploadProgress}%`,
-                              backgroundColor: "#A51C30",
-                            }}
-                          ></div>
-                        </div>
-                        <small className="text-muted">
-                          {uploadProgress}% uploaded
-                        </small>
-                      </div>
-                    )}
-                    {(previewImage || formData.imageUrl) && (
-                      <div className="mt-2 d-flex align-items-center gap-2">
-                        <img
-                          src={previewImage || formData.imageUrl}
-                          alt="preview"
-                          style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "cover",
-                            borderRadius: "8px",
-                          }}
-                          onError={(e) => (e.target.style.display = "none")}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger btn-sm"
-                          onClick={removeMainImage}
-                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
-                        >
-                          <i className="bi bi-x"></i> Remove
-                        </button>
-                      </div>
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm mt-2"
+                        onClick={removeMainImage}
+                        style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                      >
+                        <i className="bi bi-x"></i> Remove image
+                      </button>
                     )}
                   </div>
 
-                  {/* HOD Image Upload */}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
-                      HOD Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      accept="image/*"
-                      onChange={handleHodFileSelect}
-                      disabled={hodUploading}
-                      style={{ borderRadius: "10px" }}
+                    <ImageUpload
+                      key={`hod-${editing?.id || "new"}-${hodImageKey}`}
+                      onUpload={handleHodUpload}
+                      existingImage={formData.hodImage || null}
+                      label="HOD Image"
+                      folder="departments/hod/"
                     />
-                    {hodUploading && (
-                      <div className="mt-1">
-                        <div className="progress" style={{ height: "4px" }}>
-                          <div
-                            className="progress-bar progress-bar-striped progress-bar-animated"
-                            style={{
-                              width: `${hodUploadProgress}%`,
-                              backgroundColor: "#A51C30",
-                            }}
-                          ></div>
-                        </div>
-                        <small className="text-muted">
-                          {hodUploadProgress}% uploaded
-                        </small>
-                      </div>
-                    )}
-                    {(hodPreviewImage || formData.hodImage) && (
-                      <div className="mt-2 d-flex align-items-center gap-2">
-                        <img
-                          src={hodPreviewImage || formData.hodImage}
-                          alt="HOD preview"
-                          style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "cover",
-                            borderRadius: "50%",
-                            border: "2px solid #A51C30",
-                          }}
-                          onError={(e) => (e.target.style.display = "none")}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger btn-sm"
-                          onClick={removeHodImage}
-                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
-                        >
-                          <i className="bi bi-x"></i> Remove
-                        </button>
-                      </div>
+                    {formData.hodImage && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm mt-2"
+                        onClick={removeHodImage}
+                        style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                      >
+                        <i className="bi bi-x"></i> Remove HOD image
+                      </button>
                     )}
                   </div>
 
@@ -741,11 +606,7 @@ const DepartmentsManager = () => {
                     <button
                       type="button"
                       className="btn btn-outline-secondary rounded-pill"
-                      onClick={() => {
-                        setShowModal(false);
-                        setPreviewImage(null);
-                        setHodPreviewImage(null);
-                      }}
+                      onClick={() => setShowModal(false)}
                     >
                       Cancel
                     </button>

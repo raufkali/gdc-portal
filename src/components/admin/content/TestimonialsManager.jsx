@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import ImageUpload from "./Shared/ImageUpload";
 
 const TestimonialsManager = () => {
   const [items, setItems] = useState([]);
@@ -20,9 +21,9 @@ const TestimonialsManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [previewImage, setPreviewImage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [imageKey, setImageKey] = useState(0);
+
   const fetchItems = async () => {
     setLoading(true);
     try {
@@ -39,25 +40,16 @@ const TestimonialsManager = () => {
     fetchItems();
   }, []);
 
-  const handleFileUpload = async (file) => {
-    if (!file) return null;
-
+  const handleUpload = async (file, folder) => {
     setUploading(true);
-    setUploadProgress(0);
-
     try {
       const result = await uploadToR2WithProgress(
         file,
-        "testimonials/",
-        (progress) => {
-          setUploadProgress(progress);
-        },
+        folder || "testimonials/",
+        () => {},
       );
-
-      if (result && result.url) {
-        setPreviewImage(result.url);
-        setUploadProgress(100);
-        setTimeout(() => setUploadProgress(0), 1000);
+      if (result?.url) {
+        setFormData((prev) => ({ ...prev, imageUrl: result.url }));
         return result.url;
       }
       return null;
@@ -70,33 +62,9 @@ const TestimonialsManager = () => {
     }
   };
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 5MB.");
-      e.target.value = "";
-      return;
-    }
-
-    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
-      e.target.value = "";
-      return;
-    }
-
-    const url = await handleFileUpload(file);
-    if (url) {
-      setFormData({ ...formData, imageUrl: url });
-    }
-    e.target.value = "";
-  };
-
   const removeImage = () => {
-    setFormData({ ...formData, imageUrl: "" });
-    setPreviewImage(null);
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setImageKey((k) => k + 1);
   };
 
   const handleSubmit = async (e) => {
@@ -111,12 +79,9 @@ const TestimonialsManager = () => {
         await addDoc(collection(db, "testimonials"), formData);
         alert(" Testimonial added successfully!");
       }
-
       setShowModal(false);
       setFormData({});
-      setPreviewImage(null);
       setEditing(null);
-
       await fetchItems();
     } catch (error) {
       alert("Error saving: " + error.message);
@@ -131,7 +96,6 @@ const TestimonialsManager = () => {
       alert(" Testimonial deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
-
       await fetchItems();
     } catch (error) {
       alert("Error deleting: " + error.message);
@@ -214,7 +178,6 @@ const TestimonialsManager = () => {
     );
   };
 
-  // Render stars for rating display
   const renderStars = (rating) => {
     if (!rating) return null;
     return (
@@ -225,7 +188,6 @@ const TestimonialsManager = () => {
     );
   };
 
-  // Get image URL for display
   const getImageUrl = (item) => {
     if (!item.imageUrl) return null;
     try {
@@ -238,14 +200,12 @@ const TestimonialsManager = () => {
 
   return (
     <div>
-      {/* Header */}
       <div className="d-flex justify-content-end mb-3">
         <button
           className="btn rounded-pill px-4"
           onClick={() => {
             setEditing(null);
             setFormData({});
-            setPreviewImage(null);
             setShowModal(true);
           }}
           style={{
@@ -382,7 +342,6 @@ const TestimonialsManager = () => {
                         onClick={() => {
                           setEditing(item);
                           setFormData(item);
-                          setPreviewImage(item.imageUrl || null);
                           setShowModal(true);
                         }}
                         onMouseEnter={(e) => {
@@ -431,7 +390,6 @@ const TestimonialsManager = () => {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div
           className="modal show d-block"
@@ -458,59 +416,23 @@ const TestimonialsManager = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  {/* Image Upload */}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
-                      Student Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      disabled={uploading}
-                      style={{ borderRadius: "10px" }}
+                    <ImageUpload
+                      key={`${editing?.id || "new"}-${imageKey}`}
+                      onUpload={handleUpload}
+                      existingImage={formData.imageUrl || null}
+                      label="Student Image"
+                      folder="testimonials/"
                     />
-                    {uploading && (
-                      <div className="mt-1">
-                        <div className="progress" style={{ height: "4px" }}>
-                          <div
-                            className="progress-bar progress-bar-striped progress-bar-animated"
-                            style={{
-                              width: `${uploadProgress}%`,
-                              backgroundColor: "#A51C30",
-                            }}
-                          ></div>
-                        </div>
-                        <small className="text-muted">
-                          {uploadProgress}% uploaded
-                        </small>
-                      </div>
-                    )}
-                    {(previewImage || formData.imageUrl) && (
-                      <div className="mt-2 d-flex align-items-center gap-2">
-                        <img
-                          src={previewImage || formData.imageUrl}
-                          alt="preview"
-                          style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "cover",
-                            borderRadius: "8px",
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger btn-sm"
-                          onClick={removeImage}
-                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
-                        >
-                          <i className="bi bi-x"></i> Remove
-                        </button>
-                      </div>
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm mt-2"
+                        onClick={removeImage}
+                        style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                      >
+                        <i className="bi bi-x"></i> Remove image
+                      </button>
                     )}
                   </div>
 
@@ -564,10 +486,7 @@ const TestimonialsManager = () => {
                     <button
                       type="button"
                       className="btn btn-outline-secondary rounded-pill"
-                      onClick={() => {
-                        setShowModal(false);
-                        setPreviewImage(null);
-                      }}
+                      onClick={() => setShowModal(false)}
                     >
                       Cancel
                     </button>

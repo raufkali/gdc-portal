@@ -10,6 +10,8 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+// 👇 adjust the path if ImageUpload lives somewhere else
+import ImageUpload from "./Shared/ImageUpload";
 
 const ActivitiesManager = () => {
   const [items, setItems] = useState([]);
@@ -20,8 +22,8 @@ const ActivitiesManager = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [previewImage, setPreviewImage] = useState(null);
+  // used to force-remount <ImageUpload /> when the image is removed
+  const [imageKey, setImageKey] = useState(0);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -39,25 +41,19 @@ const ActivitiesManager = () => {
     fetchItems();
   }, []);
 
-  const handleFileUpload = async (file) => {
-    if (!file) return null;
-
+  // ✅ Called by <ImageUpload /> AFTER it has compressed the file.
+  // `file` is already a compressed .webp
+  const handleUpload = async (file, folder) => {
     setUploading(true);
-    setUploadProgress(0);
-
     try {
       const result = await uploadToR2WithProgress(
         file,
-        "activities/",
-        (progress) => {
-          setUploadProgress(progress);
-        },
+        folder || "activities/",
+        () => {}, // ImageUpload handles its own spinner; progress not needed here
       );
 
-      if (result && result.url) {
-        setPreviewImage(result.url);
-        setUploadProgress(100);
-        setTimeout(() => setUploadProgress(0), 1000);
+      if (result?.url) {
+        setFormData((prev) => ({ ...prev, imageUrl: result.url }));
         return result.url;
       }
       return null;
@@ -70,33 +66,9 @@ const ActivitiesManager = () => {
     }
   };
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 5MB.");
-      e.target.value = "";
-      return;
-    }
-
-    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
-      e.target.value = "";
-      return;
-    }
-
-    const url = await handleFileUpload(file);
-    if (url) {
-      setFormData({ ...formData, imageUrl: url });
-    }
-    e.target.value = "";
-  };
-
   const removeImage = () => {
-    setFormData({ ...formData, imageUrl: "" });
-    setPreviewImage(null);
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setImageKey((k) => k + 1); // remount ImageUpload so its preview clears
   };
 
   const handleSubmit = async (e) => {
@@ -112,7 +84,6 @@ const ActivitiesManager = () => {
 
       setShowModal(false);
       setFormData({});
-      setPreviewImage(null);
       setEditing(null);
 
       await fetchItems();
@@ -221,7 +192,6 @@ const ActivitiesManager = () => {
           onClick={() => {
             setEditing(null);
             setFormData({});
-            setPreviewImage(null);
             setShowModal(true);
           }}
           style={{
@@ -360,7 +330,6 @@ const ActivitiesManager = () => {
                         onClick={() => {
                           setEditing(item);
                           setFormData(item);
-                          setPreviewImage(item.imageUrl || null);
                           setShowModal(true);
                         }}
                         onMouseEnter={(e) => {
@@ -436,59 +405,25 @@ const ActivitiesManager = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  {/* Image Upload */}
+                  {/* ✅ Image upload (compression handled inside ImageUpload) */}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
-                      Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      disabled={uploading}
-                      style={{ borderRadius: "10px" }}
+                    <ImageUpload
+                      key={`${editing?.id || "new"}-${imageKey}`}
+                      onUpload={handleUpload}
+                      existingImage={formData.imageUrl || null}
+                      label="Image"
+                      folder="activities/"
                     />
-                    {uploading && (
-                      <div className="mt-1">
-                        <div className="progress" style={{ height: "4px" }}>
-                          <div
-                            className="progress-bar progress-bar-striped progress-bar-animated"
-                            style={{
-                              width: `${uploadProgress}%`,
-                              backgroundColor: "#A51C30",
-                            }}
-                          ></div>
-                        </div>
-                        <small className="text-muted">
-                          {uploadProgress}% uploaded
-                        </small>
-                      </div>
-                    )}
-                    {(previewImage || formData.imageUrl) && (
-                      <div className="mt-2 d-flex align-items-center gap-2">
-                        <img
-                          src={previewImage || formData.imageUrl}
-                          alt="preview"
-                          style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "cover",
-                            borderRadius: "8px",
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger btn-sm"
-                          onClick={removeImage}
-                          style={{ borderRadius: "50px", fontSize: "0.7rem" }}
-                        >
-                          <i className="bi bi-x"></i> Remove
-                        </button>
-                      </div>
+
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm mt-2"
+                        onClick={removeImage}
+                        style={{ borderRadius: "50px", fontSize: "0.7rem" }}
+                      >
+                        <i className="bi bi-x"></i> Remove image
+                      </button>
                     )}
                   </div>
 
@@ -539,7 +474,6 @@ const ActivitiesManager = () => {
                       className="btn btn-outline-secondary rounded-pill"
                       onClick={() => {
                         setShowModal(false);
-                        setPreviewImage(null);
                       }}
                     >
                       Cancel
