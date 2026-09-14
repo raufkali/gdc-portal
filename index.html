@@ -6,6 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GDC Gulabad</title>
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,6 +14,42 @@
     href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,700;1,700&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <!--
+    Preload the first banner image as early as possible.
+    The HeroCarousel writes banner URLs to localStorage/sessionStorage
+    after the first successful fetch, so on every visit after the very
+    first one, this script starts the image download in parallel with
+    the JS bundle instead of waiting for React to mount.
+
+    On the very first visit (no cache yet), this silently no-ops and
+    the carousel handles the load itself.
+  -->
+  <script>
+    (function () {
+      try {
+        var raw =
+          localStorage.getItem("hero_banners_v1") ||
+          sessionStorage.getItem("hero_banners_session_v1");
+        if (!raw) return;
+
+        var banners = JSON.parse(raw);
+        if (!Array.isArray(banners) || banners.length === 0) return;
+
+        var firstUrl = banners[0] && banners[0].imageUrl;
+        if (!firstUrl) return;
+
+        var link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = firstUrl;
+        link.fetchPriority = "high";
+        document.head.appendChild(link);
+      } catch (e) {
+        /* ignore — no cache yet or storage disabled */
+      }
+    })();
+  </script>
 </head>
 
 <body>

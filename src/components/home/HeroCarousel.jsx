@@ -39,24 +39,70 @@ const AUTOPLAY_INTERVAL = 5000;
 const SWIPE_THRESHOLD = 50;
 
 // ============================================================
+// SYNCHRONOUS SESSION CACHE
+// Lets the first paint use cached banners with 0 network wait.
+// ============================================================
+
+const SESSION_KEY = "hero_banners_session_v1";
+
+const readSessionBanners = () => {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionBanners = (banners) => {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(banners));
+  } catch {
+    /* ignore quota / privacy-mode errors */
+  }
+};
+
+// ============================================================
+// IMAGE PRELOAD HELPER
+// ============================================================
+
+const preloadImage = (src) => {
+  if (!src) return;
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+};
+
+const preloadImages = (urls) => {
+  urls.forEach(preloadImage);
+};
+
+// ============================================================
 // COMPONENT
 // ============================================================
 
 const HeroCarousel = () => {
-  const [banners, setBanners] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [usingFallback, setUsingFallback] = useState(false);
+  // Initial state: session cache → fallbacks (never empty)
+  const [banners, setBanners] = useState(() => {
+    const cached = readSessionBanners();
+    return cached && cached.length > 0 ? cached : FALLBACK_BANNERS;
+  });
+
+  const [usingFallback, setUsingFallback] = useState(() => {
+    const cached = readSessionBanners();
+    return !(cached && cached.length > 0);
+  });
+
   const [imageErrors, setImageErrors] = useState({});
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Interaction state
   const [isInteracting, setIsInteracting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  // ==========================================================
-  // REFS
-  // ==========================================================
-
+  // Refs
   const heroRef = useRef(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -64,9 +110,10 @@ const HeroCarousel = () => {
   const dragOffset = useRef(0);
   const didSwipe = useRef(false);
   const autoplayRef = useRef(null);
+  const preloadedRef = useRef(new Set());
 
   // ==========================================================
-  // FETCH BANNERS
+  // FETCH BANNERS (non-blocking — runs in parallel with paint)
   // ==========================================================
 
   useEffect(() => {
@@ -98,6 +145,7 @@ const HeroCarousel = () => {
         if (sorted.length > 0) {
           setBanners(sorted);
           setUsingFallback(false);
+          writeSessionBanners(sorted);
         } else {
           setBanners(FALLBACK_BANNERS);
           setUsingFallback(true);
@@ -109,10 +157,6 @@ const HeroCarousel = () => {
           setBanners(FALLBACK_BANNERS);
           setUsingFallback(true);
         }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
       }
     };
 
@@ -122,6 +166,52 @@ const HeroCarousel = () => {
       isMounted = false;
     };
   }, []);
+
+  // ==========================================================
+  // PRELOAD BANNER IMAGES
+  // First image: immediately (competes for LCP bandwidth)
+  // Rest: after the page is idle (won't block anything)
+  // ==========================================================
+
+  useEffect(() => {
+    if (!banners.length || usingFallback) return;
+
+    const imageUrls = banners.map((b) => b.imageUrl).filter(Boolean);
+
+    if (imageUrls.length === 0) return;
+
+    // Preload the first banner immediately
+    const firstUrl = imageUrls[0];
+    if (firstUrl && !preloadedRef.current.has(firstUrl)) {
+      preloadedRef.current.add(firstUrl);
+      preloadImage(firstUrl);
+    }
+
+    // Preload the rest when the browser is idle
+    const idle =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? window.requestIdleCallback
+        : (cb) => setTimeout(cb, 1200);
+
+    const handle = idle(() => {
+      imageUrls.slice(1).forEach((url) => {
+        if (!preloadedRef.current.has(url)) {
+          preloadedRef.current.add(url);
+          preloadImage(url);
+        }
+      });
+    });
+
+    return () => {
+      if (
+        typeof window !== "undefined" &&
+        "cancelIdleCallback" in window &&
+        typeof handle === "number"
+      ) {
+        window.cancelIdleCallback(handle);
+      }
+    };
+  }, [banners, usingFallback]);
 
   // ==========================================================
   // IMAGE ERROR
@@ -195,7 +285,7 @@ const HeroCarousel = () => {
   }, []);
 
   useEffect(() => {
-    if (loading || banners.length <= 1 || isInteracting || isDragging) {
+    if (banners.length <= 1 || isInteracting || isDragging) {
       stopAutoplay();
       return;
     }
@@ -205,14 +295,7 @@ const HeroCarousel = () => {
     return () => {
       stopAutoplay();
     };
-  }, [
-    loading,
-    banners.length,
-    isInteracting,
-    isDragging,
-    startAutoplay,
-    stopAutoplay,
-  ]);
+  }, [banners.length, isInteracting, isDragging, startAutoplay, stopAutoplay]);
 
   // ==========================================================
   // CLEANUP
@@ -254,10 +337,6 @@ const HeroCarousel = () => {
     const diffX = touch.clientX - touchStartX.current;
     const diffY = touch.clientY - touchStartY.current;
 
-    /*
-      If the user is primarily scrolling vertically,
-      don't interfere with the page.
-    */
     if (Math.abs(diffY) > Math.abs(diffX)) {
       return;
     }
@@ -291,10 +370,6 @@ const HeroCarousel = () => {
 
     dragOffset.current = 0;
 
-    /*
-      Give React/browser a moment before allowing clicks.
-      This prevents a swipe from accidentally clicking the CTA.
-    */
     setTimeout(() => {
       didSwipe.current = false;
     }, 80);
@@ -309,9 +384,6 @@ const HeroCarousel = () => {
   const handleMouseDown = (event) => {
     if (banners.length <= 1) return;
 
-    /*
-      Only left mouse button.
-    */
     if (event.button !== 0) return;
 
     mouseStartX.current = event.clientX;
@@ -419,112 +491,11 @@ const HeroCarousel = () => {
   }, [isInteracting, isDragging, startAutoplay, stopAutoplay]);
 
   // ==========================================================
-  // LOADING
-  // ==========================================================
-
-  if (loading) {
-    return (
-      <>
-        <style>{`
-          .hero-loading {
-            height: 100vh;
-
-            background:
-              radial-gradient(
-                circle at 30% 50%,
-                rgba(165, 28, 48, 0.18),
-                transparent 45%
-              ),
-              #101010;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            position: relative;
-            overflow: hidden;
-          }
-
-          .hero-loading::before {
-            content: "";
-
-            position: absolute;
-
-            width: 500px;
-            height: 500px;
-
-            border-radius: 50%;
-
-            border:
-              1px solid
-              rgba(255,255,255,0.08);
-
-            animation:
-              loadingPulse
-              2s
-              ease-in-out
-              infinite;
-          }
-
-          .hero-loader {
-            width: 52px;
-            height: 52px;
-
-            border-radius: 50%;
-
-            border:
-              2px solid
-              rgba(255,255,255,0.12);
-
-            border-top-color: #A51C30;
-
-            animation:
-              heroSpin
-              0.9s
-              linear
-              infinite;
-
-            position: relative;
-            z-index: 2;
-          }
-
-          @keyframes heroSpin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          @keyframes loadingPulse {
-            0%, 100% {
-              transform: scale(0.8);
-              opacity: 0.3;
-            }
-
-            50% {
-              transform: scale(1.1);
-              opacity: 0.7;
-            }
-          }
-        `}</style>
-
-        <div className="hero-loading">
-          <div className="hero-loader" />
-        </div>
-      </>
-    );
-  }
-
-  // ==========================================================
-  // EMPTY
-  // ==========================================================
-
-  if (!banners || banners.length === 0) {
-    return null;
-  }
-
-  // ==========================================================
   // RENDER
   // ==========================================================
+  // Note: no full-screen loading spinner anymore. The carousel
+  // always has something to render — either cached banners,
+  // Firestore banners, or the gradient fallbacks.
 
   return (
     <>
@@ -548,11 +519,6 @@ const HeroCarousel = () => {
 
           isolation: isolate;
 
-          /*
-            IMPORTANT:
-            Allows horizontal touch gestures while still
-            allowing normal vertical page scrolling.
-          */
           touch-action: pan-y;
 
           user-select: none;
@@ -620,10 +586,6 @@ const HeroCarousel = () => {
 
           z-index: 2;
         }
-
-        /*
-          Previous slide leaves toward the left.
-        */
 
         .gdc-hero-slide.leaving {
           opacity: 0;
@@ -771,7 +733,7 @@ const HeroCarousel = () => {
           top: 50%;
 
           width: 100%;
-        
+
           transform:
             translateY(-50%);
 
@@ -1266,7 +1228,6 @@ const HeroCarousel = () => {
 
           .gdc-hero {
             height: 100vh;
-
           }
 
           .gdc-hero-container {
@@ -1313,14 +1274,6 @@ const HeroCarousel = () => {
 
           .gdc-hero {
             height: 100vh;
-
-
-
-            /*
-              Very important for mobile:
-              horizontal gesture is handled by the carousel,
-              vertical gesture remains available for page scroll.
-            */
             touch-action: pan-y;
           }
 
@@ -1389,16 +1342,6 @@ const HeroCarousel = () => {
 
             font-size: 0.84rem;
           }
-
-          /*
-            We intentionally hide:
-            - arrows
-            - dots
-            - indicators
-
-            Swipe still works because it is handled
-            directly by React touch events.
-          */
 
           .gdc-hero-counter {
             right: 24px;
@@ -1595,10 +1538,6 @@ const HeroCarousel = () => {
                           className="gdc-hero-cta"
                           aria-label="Explore academic programs"
                           onClick={(event) => {
-                            /*
-                              Don't follow CTA if this interaction
-                              was actually a swipe.
-                            */
                             if (didSwipe.current) {
                               event.preventDefault();
                             }
@@ -1624,7 +1563,6 @@ const HeroCarousel = () => {
 
         {/* ========================================================
             COUNTER
-            No indicators / dots / arrows
         ======================================================== */}
 
         {banners.length > 1 && (

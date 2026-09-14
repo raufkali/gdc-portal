@@ -13,25 +13,17 @@ import StudentActivitiesSection from "../components/home/StudentActivitiesSectio
 import StudentAchievements from "./StudentAchievements";
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
-// import RecentUpdatePopup from "../components/RecentUpdates";
 
 const Home = () => {
   useEffect(() => {
-    // Prefetch all home data
-    prefetchHomeData().then(() => {});
+    prefetchHomeData().catch(() => {});
 
-    // Preload critical images (first 3 gallery images)
-    const criticalImages = [
-      // Add your critical image URLs here
-    ];
+    const criticalImages = [];
     if (criticalImages.length > 0) {
       preloadImages(criticalImages);
     }
 
-    // Prefetch remaining images
-    const remainingImages = [
-      // Add your remaining image URLs here
-    ];
+    const remainingImages = [];
     if (remainingImages.length > 0) {
       prefetchImages(remainingImages);
     }
@@ -49,8 +41,6 @@ const Home = () => {
       <div>
         <DepartmentsSection />
       </div>
-      {/* NEW: College Stars and Student Activities sections */}
-
       <div>
         <ActivitiesSection />
       </div>
@@ -75,7 +65,6 @@ const Home = () => {
       <div>
         <FaqSection />
       </div>
-      {/* <RecentUpdatePopup /> */}
     </>
   );
 };

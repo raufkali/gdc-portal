@@ -18,19 +18,21 @@ import {
 } from "firebase/firestore";
 
 // ============================================
-// IN-MEMORY CACHE
+// IN-MEMORY CACHE (per-key TTL)
 // ============================================
+
+const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+
 const memoryCache = {
-  data: {},
-  timestamps: {},
-  TTL: 5 * 60 * 1000, // 5 minutes default
+  data: {}, // key -> cached payload
+  expiresAt: {}, // key -> timestamp when this entry becomes stale
 };
 
-// Check if cached data is still valid
+// Check if cached data is still valid for a specific key
 const isCacheValid = (key) => {
-  if (!memoryCache.timestamps[key]) return false;
-  const age = Date.now() - memoryCache.timestamps[key];
-  return age < memoryCache.TTL;
+  const expires = memoryCache.expiresAt[key];
+  if (!expires) return false;
+  return Date.now() < expires;
 };
 
 // Get data from cache
@@ -41,21 +43,20 @@ const getFromCache = (key) => {
   return null;
 };
 
-// Set data in cache
-const setInCache = (key, data, ttl = null) => {
+// Set data in cache with a per-key TTL
+const setInCache = (key, data, ttl = DEFAULT_TTL) => {
   memoryCache.data[key] = data;
-  memoryCache.timestamps[key] = Date.now();
-  if (ttl) memoryCache.TTL = ttl;
+  memoryCache.expiresAt[key] = Date.now() + ttl;
 };
 
 // Clear cache
 export const clearCache = (key = null) => {
   if (key) {
     delete memoryCache.data[key];
-    delete memoryCache.timestamps[key];
+    delete memoryCache.expiresAt[key];
   } else {
     memoryCache.data = {};
-    memoryCache.timestamps = {};
+    memoryCache.expiresAt = {};
   }
 };
 
@@ -88,10 +89,9 @@ const buildQuery = (collectionName, conditions = []) => {
   return q;
 };
 
-// Track in-flight requests so concurrent callers share one fetch
-// instead of firing duplicate reads (fixes double-fetch on
-// StrictMode / fast remounts / multiple components requesting
-// the same collection at once).
+// Track in-flight requests so concurrent callers share one fetch.
+// This is what prevents double-fetches during StrictMode remounts
+// or when multiple components request the same collection at once.
 const inFlightRequests = {};
 
 // ============================================
@@ -104,10 +104,6 @@ const inFlightRequests = {};
  *   2. IndexedDB persistence cache (near-instant, survives reloads)
  *      -> returned immediately, then silently refreshed from server
  *   3. Network (source of truth, used when no local cache exists yet)
- *
- * This is what actually fixes "slow every reload" - IndexedDB
- * persistence was enabled in config.js but never used as a
- * read-first source, so every reload was paying full network cost.
  */
 export const fetchCollection = async (
   collectionName,
@@ -116,7 +112,7 @@ export const fetchCollection = async (
 ) => {
   const {
     forceRefresh = false,
-    cacheTTL = 5 * 60 * 1000, // 5 minutes
+    cacheTTL = DEFAULT_TTL,
     useLimit = false,
     limitCount = 0,
   } = options;
@@ -140,8 +136,9 @@ export const fetchCollection = async (
     }
   }
 
-  // De-dupe concurrent requests for the same key
-  if (!forceRefresh && inFlightRequests[cacheKey]) {
+  // De-dupe concurrent requests for the same key (including forceRefresh,
+  // so two quick forceRefresh calls don't both hit the network).
+  if (inFlightRequests[cacheKey]) {
     return inFlightRequests[cacheKey];
   }
 
@@ -211,10 +208,10 @@ export const fetchCollection = async (
 };
 
 // ============================================
-//  ENHANCED fetchDocument with IndexedDB persistence
+// ENHANCED fetchDocument with IndexedDB persistence
 // ============================================
 export const fetchDocument = async (collectionName, id, options = {}) => {
-  const { forceRefresh = false, cacheTTL = 5 * 60 * 1000 } = options;
+  const { forceRefresh = false, cacheTTL = DEFAULT_TTL } = options;
   const cacheKey = `${collectionName}_doc_${id}`;
 
   // 1) In-memory cache
@@ -235,7 +232,7 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
         const data = { id: cacheSnap.id, ...cacheSnap.data() };
         setInCache(cacheKey, data, cacheTTL);
 
-        // Refresh in background (no await – fire and forget)
+        // Refresh in background (fire and forget)
         getDocFromServer(docRef)
           .then((serverSnap) => {
             if (serverSnap.exists()) {
@@ -243,7 +240,7 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
               setInCache(cacheKey, freshData, cacheTTL);
             }
           })
-          .catch(() => {}); // ignore background errors
+          .catch(() => {});
 
         return data;
       }
@@ -263,14 +260,13 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
     return data;
   } catch (error) {
     console.error(`Error fetching ${collectionName}/${id}:`, error);
-    // Return stale in-memory data if available
     const stale = memoryCache.data[cacheKey];
     if (stale) return stale;
     throw error;
   }
 };
 
-//  Add document with cache invalidation
+// Add document with cache invalidation
 export const addDocument = async (collectionName, data) => {
   try {
     const result = await addDoc(collection(db, collectionName), data);
@@ -282,7 +278,7 @@ export const addDocument = async (collectionName, data) => {
   }
 };
 
-//  Update document with cache invalidation
+// Update document with cache invalidation
 export const updateDocument = async (collectionName, id, data) => {
   try {
     const docRef = doc(db, collectionName, id);
@@ -296,7 +292,7 @@ export const updateDocument = async (collectionName, id, data) => {
   }
 };
 
-//  Delete document with cache invalidation
+// Delete document with cache invalidation
 export const deleteDocument = async (collectionName, id) => {
   try {
     const docRef = doc(db, collectionName, id);
@@ -315,11 +311,11 @@ export const deleteDocument = async (collectionName, id) => {
 // ============================================
 
 const clearCacheForCollection = (collectionName) => {
-  const keys = Object.keys(memoryCache.data);
-  keys.forEach((key) => {
-    if (key.startsWith(collectionName)) {
+  const prefix = `${collectionName}_`;
+  Object.keys(memoryCache.data).forEach((key) => {
+    if (key.startsWith(prefix)) {
       delete memoryCache.data[key];
-      delete memoryCache.timestamps[key];
+      delete memoryCache.expiresAt[key];
     }
   });
 };
@@ -327,10 +323,10 @@ const clearCacheForCollection = (collectionName) => {
 const clearCacheForDocument = (collectionName, id) => {
   const docKey = `${collectionName}_doc_${id}`;
   delete memoryCache.data[docKey];
-  delete memoryCache.timestamps[docKey];
+  delete memoryCache.expiresAt[docKey];
 };
 
-//  Prefetch collections with TTL
+// Prefetch collections with TTL
 export const prefetchCollection = async (
   collectionName,
   conditions = [],
@@ -344,7 +340,7 @@ export const prefetchCollection = async (
   });
 };
 
-//  Get cache stats
+// Get cache stats
 export const getCacheStats = () => {
   const keys = Object.keys(memoryCache.data);
   const stats = {
@@ -354,6 +350,7 @@ export const getCacheStats = () => {
   };
 
   keys.forEach((key) => {
+    // Keys are "collectionName_conditions...", grab the first segment.
     const collectionName = key.split("_")[0];
     if (!stats.collections[collectionName]) {
       stats.collections[collectionName] = 0;
@@ -364,7 +361,7 @@ export const getCacheStats = () => {
   return stats;
 };
 
-//  Export cache control
+// Export cache control
 export const cacheControl = {
   clear: clearCache,
   stats: getCacheStats,
@@ -389,8 +386,12 @@ export const clearImageCache = () => {
 };
 
 // ============================================
-// PREFETCH HOME DATA (Optimized)
+// PREFETCH HOME DATA
 // ============================================
+// Note: this relies on the memory/IndexedDB cache — it will NOT
+// force a network read if the data is already cached. That's
+// intentional: the Home component calls it on mount, and we want
+// that call to be cheap on repeat visits.
 export const prefetchHomeData = async () => {
   const collections = [
     {
@@ -431,13 +432,12 @@ export const prefetchHomeData = async () => {
       ],
     },
     {
-      name: "studentAchievements", // <-- ADD THIS
+      name: "studentAchievements",
       conditions: [
         { type: "orderBy", field: "date", direction: "desc" },
         { type: "limit", value: 6 },
       ],
     },
-
     {
       name: "gallery",
       conditions: [
@@ -472,7 +472,7 @@ export const prefetchHomeData = async () => {
 };
 
 // ============================================
-// BATCH FETCH (Optimized)
+// BATCH FETCH
 // ============================================
 export const batchFetchCollections = async (collections) => {
   const results = {};
