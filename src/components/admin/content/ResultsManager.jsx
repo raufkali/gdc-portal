@@ -10,8 +10,14 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const ResultsManager = () => {
+  const { isHOD, departmentId, userProfile } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -27,9 +33,14 @@ const ResultsManager = () => {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, "examResults"));
-      setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      if (isHOD && departmentId) {
+        data = data.filter((d) => d.departmentId === departmentId);
+      }
+      setItems(data);
     } catch (error) {
       console.error("Error fetching results:", error);
+      showError("Error fetching results: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -51,7 +62,7 @@ const ResultsManager = () => {
   useEffect(() => {
     fetchItems();
     fetchDepartments();
-  }, []);
+  }, [isHOD, departmentId]);
 
   const handleFileUpload = async (file) => {
     setUploading(true);
@@ -59,7 +70,7 @@ const ResultsManager = () => {
       const result = await uploadToR2WithProgress(file, "examResults/");
       return result.url;
     } catch (error) {
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -71,15 +82,37 @@ const ResultsManager = () => {
     if (submitting || uploading) return;
     setSubmitting(true);
     try {
+      let dataToSave = { ...formData, updatedAt: new Date() };
+      if (isHOD && departmentId) {
+        const myDept = departments.find((d) => d.id === departmentId);
+        dataToSave.departmentId = departmentId;
+        if (myDept) dataToSave.department = myDept.name;
+      } else if (dataToSave.department) {
+        const selectedDept = departments.find((d) => d.name === dataToSave.department);
+        if (selectedDept) dataToSave.departmentId = selectedDept.id;
+      }
+
       if (editing) {
-        await updateDoc(doc(db, "examResults", editing.id), formData);
+        if (isHOD && editing.departmentId && editing.departmentId !== departmentId) {
+          showError("You can only modify results from your own department.");
+          return;
+        }
+        await updateDoc(doc(db, "examResults", editing.id), dataToSave);
+        invalidateCache("examResults", editing.id);
+        await logActivity(userProfile, "UPDATE", "examResults", editing.id, { title: dataToSave.title });
+        showSuccess("Exam result updated successfully!");
       } else {
-        await addDoc(collection(db, "examResults"), formData);
+        dataToSave.createdAt = new Date();
+        const docRef = await addDoc(collection(db, "examResults"), dataToSave);
+        invalidateCache("examResults", docRef.id);
+        await logActivity(userProfile, "CREATE", "examResults", docRef.id, { title: dataToSave.title });
+        showSuccess("Exam result added successfully!");
       }
       setShowModal(false);
+      setFormData({});
       fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -87,11 +120,22 @@ const ResultsManager = () => {
 
   const handleDelete = async () => {
     try {
+      if (isHOD && departmentId) {
+        const itemToDelete = items.find((i) => i.id === deletingId);
+        if (itemToDelete && itemToDelete.departmentId && itemToDelete.departmentId !== departmentId) {
+          showError("You cannot delete results from other departments.");
+          return;
+        }
+      }
       await deleteDoc(doc(db, "examResults", deletingId));
+      invalidateCache("examResults", deletingId);
+      await logActivity(userProfile, "DELETE", "examResults", deletingId);
+      showSuccess("Exam result deleted successfully!");
       setShowDeleteModal(false);
+      setDeletingId(null);
       fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 
@@ -139,6 +183,18 @@ const ResultsManager = () => {
     const onChange = (val) => setFormData({ ...formData, [field.key]: val });
 
     if (field.type === "select") {
+      if (isHOD) {
+        const myDept = departments.find((d) => d.id === departmentId);
+        return (
+          <input
+            type="text"
+            className="form-control"
+            value={myDept ? myDept.name : (formData.department || "Your Department")}
+            disabled
+            style={{ borderRadius: "10px", backgroundColor: "#e9ecef" }}
+          />
+        );
+      }
       return (
         <select
           className="form-select"

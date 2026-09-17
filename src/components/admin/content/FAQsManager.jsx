@@ -9,8 +9,14 @@ import {
   doc,
 } from "firebase/firestore";
 import DeleteModal from "./Shared/DeleteModal";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const FAQsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +33,7 @@ const FAQsManager = () => {
       setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error fetching FAQs:", error);
+      showError("Error fetching FAQs: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -45,13 +52,21 @@ const FAQsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "faqs", editing.id), formData);
+        invalidateCache("faqs", editing.id);
+        await logActivity(userProfile, "UPDATE", "faqs", editing.id, { question: formData.question });
+        showSuccess("FAQ updated successfully!");
       } else {
-        await addDoc(collection(db, "faqs"), formData);
+        const docRef = await addDoc(collection(db, "faqs"), formData);
+        invalidateCache("faqs", docRef.id);
+        await logActivity(userProfile, "CREATE", "faqs", docRef.id, { question: formData.question });
+        showSuccess("FAQ added successfully!");
       }
       setShowModal(false);
+      setFormData({});
+      setEditing(null);
       fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -60,10 +75,14 @@ const FAQsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "faqs", deletingId));
+      invalidateCache("faqs", deletingId);
+      await logActivity(userProfile, "DELETE", "faqs", deletingId);
+      showSuccess("FAQ deleted successfully!");
       setShowDeleteModal(false);
+      setDeletingId(null);
       fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

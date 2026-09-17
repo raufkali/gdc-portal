@@ -1,0 +1,225 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==========================================================
+    // HELPER FUNCTIONS
+    // ==========================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSeedAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'admin@gmail.com';
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActive() {
+      return isSeedAdmin() || (isAuthenticated() && userExists() && getUserData().status == 'active');
+    }
+
+    function hasRole(role) {
+      return isSeedAdmin() || (isActive() && getUserData().role == role);
+    }
+
+    function isAdmin() {
+      return isSeedAdmin() || (isActive() && getUserData().role == 'ADMIN');
+    }
+
+    function isContentManager() {
+      return isAdmin() || hasRole('CONTENT_MANAGER');
+    }
+
+    function isStudentAffairsManager() {
+      return isAdmin() || hasRole('STUDENT_AFFAIRS_MANAGER');
+    }
+
+    function isPrincipal() {
+      return isAdmin() || hasRole('PRINCIPAL');
+    }
+
+    function isHOD() {
+      return isActive() && getUserData().role == 'HOD';
+    }
+
+    function isOwnDepartment(deptId) {
+      return isHOD() && getUserData().departmentId == deptId;
+    }
+
+    // ==========================================================
+    // USER PROFILES
+    // ==========================================================
+
+    match /users/{userId} {
+      // Anyone authenticated can read their own profile, admins can read all
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isPrincipal());
+
+      // Creating a user profile
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == userId ||
+        isSeedAdmin()
+      );
+
+      // Updating a user profile: admin can update anything, user can update self (lastLogin, profile info)
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == userId && (
+          // Self cannot elevate role or change status
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'departmentId'])
+        ))
+      );
+
+      // Only Admin can delete user profiles, cannot delete self
+      allow delete: if isAdmin() && request.auth.uid != userId;
+    }
+
+    // ==========================================================
+    // AUDIT LOGS (Immutable & Append-Only)
+    // ==========================================================
+
+    match /activityLogs/{logId} {
+      // Admins and Principal can view audit trail
+      allow read: if isAdmin() || isPrincipal();
+      // Any authenticated active user can log activity
+      allow create: if isActive();
+      // Audit logs can NEVER be updated or deleted
+      allow update, delete: if false;
+    }
+
+    // ==========================================================
+    // DEPARTMENTS
+    // ==========================================================
+
+    match /departments/{deptId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isOwnDepartment(deptId);
+    }
+
+    // ==========================================================
+    // ANNOUNCEMENTS
+    // ==========================================================
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create: if isContentManager() || (
+        isHOD() && request.resource.data.departmentId == getUserData().departmentId
+      );
+      allow update: if isContentManager() || (
+        isHOD() && resource.data.departmentId == getUserData().departmentId &&
+        request.resource.data.departmentId == getUserData().departmentId
+      );
+      allow delete: if isContentManager() || (
+        isHOD() && resource.data.departmentId == getUserData().departmentId
+      );
+    }
+
+    // ==========================================================
+    // EXAM RESULTS
+    // ==========================================================
+
+    match /examResults/{resultId} {
+      allow read: if true;
+      allow create: if isContentManager() || (
+        isHOD() && request.resource.data.departmentId == getUserData().departmentId
+      );
+      allow update: if isContentManager() || (
+        isHOD() && resource.data.departmentId == getUserData().departmentId &&
+        request.resource.data.departmentId == getUserData().departmentId
+      );
+      allow delete: if isContentManager() || (
+        isHOD() && resource.data.departmentId == getUserData().departmentId
+      );
+    }
+
+    // ==========================================================
+    // STUDENT ACTIVITIES & ACHIEVEMENTS
+    // ==========================================================
+
+    match /studentActivities/{activityId} {
+      allow read: if true;
+      allow write: if isStudentAffairsManager() || isContentManager();
+    }
+
+    match /studentAchievements/{achievementId} {
+      allow read: if true;
+      allow write: if isStudentAffairsManager() || isContentManager();
+    }
+
+    // ==========================================================
+    // GENERAL CONTENT COLLECTIONS
+    // ==========================================================
+
+    match /activities/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /gallery/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /testimonials/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /downloads/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /faqs/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /banners/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /programs/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    match /collegeStars/{id} {
+      allow read: if true;
+      allow write: if isContentManager();
+    }
+
+    // ==========================================================
+    // CONTACTS / MESSAGES
+    // ==========================================================
+
+    match /contacts/{messageId} {
+      // Public can send contact messages
+      allow create: if true;
+      // Staff roles can read
+      allow read: if isAdmin() || isContentManager() || isPrincipal() || isStudentAffairsManager();
+      // Content Manager and Admin can update (mark read) and delete
+      allow update, delete: if isContentManager();
+    }
+
+    // ==========================================================
+    // SYSTEM SETTINGS
+    // ==========================================================
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

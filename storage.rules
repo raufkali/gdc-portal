@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSeedAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'admin@gmail.com';
+    }
+
+    function isStaff() {
+      return isSeedAdmin() || (
+        isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
+      );
+    }
+
+    // Public read for all uploaded files (college website assets)
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}

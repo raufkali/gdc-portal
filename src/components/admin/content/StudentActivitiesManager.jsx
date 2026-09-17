@@ -11,8 +11,14 @@ import {
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 import ImageUpload from "./Shared/ImageUpload";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const StudentActivitiesManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -37,6 +43,7 @@ const StudentActivitiesManager = () => {
       setItems(data);
     } catch (error) {
       console.error("Error fetching activities:", error);
+      showError("Error fetching activities: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -61,7 +68,7 @@ const StudentActivitiesManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -80,17 +87,21 @@ const StudentActivitiesManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "studentActivities", editing.id), formData);
-        alert("🎯 Activity updated successfully!");
+        invalidateCache("studentActivities", editing.id);
+        await logActivity(userProfile, "UPDATE", "studentActivities", editing.id, { title: formData.title });
+        showSuccess("Activity updated successfully!");
       } else {
-        await addDoc(collection(db, "studentActivities"), formData);
-        alert("🎯 Activity added successfully!");
+        const docRef = await addDoc(collection(db, "studentActivities"), formData);
+        invalidateCache("studentActivities", docRef.id);
+        await logActivity(userProfile, "CREATE", "studentActivities", docRef.id, { title: formData.title });
+        showSuccess("Activity added successfully!");
       }
       setShowModal(false);
       setFormData({});
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -99,12 +110,14 @@ const StudentActivitiesManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "studentActivities", deletingId));
-      alert("🎯 Activity deleted successfully!");
+      invalidateCache("studentActivities", deletingId);
+      await logActivity(userProfile, "DELETE", "studentActivities", deletingId);
+      showSuccess("Activity deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

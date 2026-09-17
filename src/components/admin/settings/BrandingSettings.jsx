@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useNotification } from "../../../contexts/NotificationContext";
 
 const BrandingSettings = ({
   form,
@@ -7,6 +8,7 @@ const BrandingSettings = ({
   uploading,
   uploadProgress,
 }) => {
+  const { showError } = useNotification();
   const logoInputRef = useRef(null);
   const faviconInputRef = useRef(null);
   const [logoError, setLogoError] = useState(false);
@@ -16,7 +18,7 @@ const BrandingSettings = ({
     const file = e.target.files[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) {
-        alert("File is too large. Please upload a file smaller than 5MB.");
+        showError("File is too large. Please upload a file smaller than 20MB.");
         e.target.value = "";
         return;
       }
@@ -28,7 +30,7 @@ const BrandingSettings = ({
         "image/webp",
       ];
       if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid image file (PNG, JPG, SVG, WEBP).");
+        showError("Please upload a valid image file (PNG, JPG, SVG, WEBP).");
         e.target.value = "";
         return;
       }
@@ -42,7 +44,7 @@ const BrandingSettings = ({
     const file = e.target.files[0];
     if (file) {
       if (file.size > 1 * 1024 * 1024) {
-        alert("File is too large. Please upload a file smaller than 1MB.");
+        showError("File is too large. Please upload a file smaller than 1MB.");
         e.target.value = "";
         return;
       }
@@ -54,7 +56,7 @@ const BrandingSettings = ({
         "image/x-icon",
       ];
       if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid image file (PNG, JPG, SVG, ICO).");
+        showError("Please upload a valid image file (PNG, JPG, SVG, ICO).");
         e.target.value = "";
         return;
       }

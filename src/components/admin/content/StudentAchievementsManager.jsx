@@ -11,8 +11,14 @@ import {
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 import ImageUpload from "./Shared/ImageUpload";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const StudentAchievementsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -37,6 +43,7 @@ const StudentAchievementsManager = () => {
       setItems(data);
     } catch (error) {
       console.error("Error fetching achievements:", error);
+      showError("Error fetching achievements: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -61,7 +68,7 @@ const StudentAchievementsManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -80,17 +87,21 @@ const StudentAchievementsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "studentAchievements", editing.id), formData);
-        alert("🏆 Achievement updated successfully!");
+        invalidateCache("studentAchievements", editing.id);
+        await logActivity(userProfile, "UPDATE", "studentAchievements", editing.id, { title: formData.title });
+        showSuccess("Achievement updated successfully!");
       } else {
-        await addDoc(collection(db, "studentAchievements"), formData);
-        alert("🏆 Achievement added successfully!");
+        const docRef = await addDoc(collection(db, "studentAchievements"), formData);
+        invalidateCache("studentAchievements", docRef.id);
+        await logActivity(userProfile, "CREATE", "studentAchievements", docRef.id, { title: formData.title });
+        showSuccess("Achievement added successfully!");
       }
       setShowModal(false);
       setFormData({});
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -99,12 +110,14 @@ const StudentAchievementsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "studentAchievements", deletingId));
-      alert("🏆 Achievement deleted successfully!");
+      invalidateCache("studentAchievements", deletingId);
+      await logActivity(userProfile, "DELETE", "studentAchievements", deletingId);
+      showSuccess("Achievement deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

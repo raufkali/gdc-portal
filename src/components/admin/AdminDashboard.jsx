@@ -11,12 +11,21 @@ import SettingsManager from "./SettingsManager";
 import AnnouncementsManager from "./content/AnnouncementsManager";
 import ResultsManager from "./content/ResultsManager";
 import MessagesManager from "./content/MessagesManager";
-import StudentManager from "./StudentManager"; // NEW
-import DownloadsManager from "./content/DownloadsManager"; // NEW
+import StudentManager from "./StudentManager";
+import DownloadsManager from "./content/DownloadsManager";
+import DepartmentsManager from "./content/DepartmentsManager";
+import UserManagement from "./users/UserManagement";
+import ActivityLog from "./activity/ActivityLog";
+import PrincipalDashboard from "./dashboards/PrincipalDashboard";
+import HODDashboard from "./dashboards/HODDashboard";
+import StudentAffairsDashboard from "./dashboards/StudentAffairsDashboard";
+import ProtectedRoute from "../common/ProtectedRoute";
+import { ROLES, ROLE_LABELS, ROLE_BADGE_COLORS } from "../../constants/roles";
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
   const { settings } = useSettings();
+  const { userProfile, role } = useAuth();
   const [stats, setStats] = useState([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState([]);
   const [recentResults, setRecentResults] = useState([]);
@@ -188,7 +197,7 @@ const DashboardOverview = () => {
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
           <h4 className="mb-1 fw-bold" style={{ color: "var(--color-text)" }}>
-            Welcome back, <span style={{ color: "#A51C30" }}>Admin</span>
+            Welcome back, <span style={{ color: "#A51C30" }}>{userProfile?.name || "Administrator"}</span>
           </h4>
           <p className="text-muted small mb-0">
             <i className="bi bi-calendar3 me-1"></i>
@@ -198,6 +207,11 @@ const DashboardOverview = () => {
               month: "long",
               day: "numeric",
             })}
+            {role && (
+              <span className="ms-2 badge bg-light text-dark border">
+                {ROLE_LABELS[role] || role}
+              </span>
+            )}
           </p>
         </div>
         <div>
@@ -500,7 +514,7 @@ const DashboardOverview = () => {
 
 // Main AdminDashboard Component
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, userProfile, role, logout } = useAuth();
   const { settings } = useSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -509,29 +523,75 @@ const AdminDashboard = () => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Sidebar items – new entries added and font-size reduced
-  const navItems = [
-    { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
-    {
-      path: "/admin/announcements",
-      label: "Announcements",
-      icon: "bi-megaphone",
-    },
-    { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
-    { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
-    { path: "/admin/content", label: "Content", icon: "bi-folder" },
-    // NEW: Students and Downloads
-    { path: "/admin/students", label: "Students", icon: "bi-people" },
-    { path: "/admin/downloads", label: "Downloads", icon: "bi-download" },
-    { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
-    { path: "/", label: "Back To Home", icon: "bi-house" },
-  ];
+  // Compute dynamic navigation items based on active role
+  const getNavItems = () => {
+    switch (role) {
+      case ROLES.STUDENT_AFFAIRS_MANAGER:
+        return [
+          { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+          { path: "/admin/students", label: "Student Affairs", icon: "bi-mortarboard" },
+          { path: "/", label: "Back To Home", icon: "bi-house" },
+        ];
+      case ROLES.HOD:
+        return [
+          { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+          { path: "/admin/departments", label: "My Department", icon: "bi-building" },
+          { path: "/admin/announcements", label: "Announcements", icon: "bi-megaphone" },
+          { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
+          { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
+          { path: "/", label: "Back To Home", icon: "bi-house" },
+        ];
+      case ROLES.PRINCIPAL:
+        return [
+          { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+          { path: "/admin/announcements", label: "Announcements", icon: "bi-megaphone" },
+          { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
+          { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
+          { path: "/admin/downloads", label: "Downloads", icon: "bi-download" },
+          { path: "/admin/activity-log", label: "Activity Log", icon: "bi-clock-history" },
+          { path: "/", label: "Back To Home", icon: "bi-house" },
+        ];
+      case ROLES.CONTENT_MANAGER:
+        return [
+          { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+          { path: "/admin/content", label: "Content", icon: "bi-folder" },
+          { path: "/admin/announcements", label: "Announcements", icon: "bi-megaphone" },
+          { path: "/admin/downloads", label: "Downloads", icon: "bi-download" },
+          { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
+          { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
+          { path: "/", label: "Back To Home", icon: "bi-house" },
+        ];
+      case ROLES.ADMIN:
+      default:
+        return [
+          { path: "/admin", label: "Dashboard", icon: "bi-grid", exact: true },
+          { path: "/admin/users", label: "User Management", icon: "bi-people-fill" },
+          { path: "/admin/announcements", label: "Announcements", icon: "bi-megaphone" },
+          { path: "/admin/results", label: "Results", icon: "bi-file-earmark-pdf" },
+          { path: "/admin/messages", label: "Messages", icon: "bi-envelope" },
+          { path: "/admin/content", label: "Content", icon: "bi-folder" },
+          { path: "/admin/students", label: "Students", icon: "bi-mortarboard" },
+          { path: "/admin/downloads", label: "Downloads", icon: "bi-download" },
+          { path: "/admin/settings", label: "Settings", icon: "bi-gear" },
+          { path: "/admin/activity-log", label: "Activity Log", icon: "bi-clock-history" },
+          { path: "/", label: "Back To Home", icon: "bi-house" },
+        ];
+    }
+  };
+
+  const navItems = getNavItems();
 
   const isActive = (path, exact = false) => {
     const currentPath = location.pathname;
     if (path === "/") return currentPath === "/";
     if (exact) return currentPath === path;
     return currentPath.startsWith(path);
+  };
+
+  const roleColor = ROLE_BADGE_COLORS[role] || {
+    bg: "rgba(165, 28, 48, 0.15)",
+    color: "#A51C30",
+    border: "#A51C30",
   };
 
   return (
@@ -554,16 +614,16 @@ const AdminDashboard = () => {
           boxShadow: "2px 0 20px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Brand */}
-        <div className="sidebar-brand p-3 text-center border-bottom border-secondary">
-          <div className="d-flex align-items-center justify-content-center gap-2">
+        {/* Brand & User Profile Badge */}
+        <div className="sidebar-brand p-3 border-bottom border-secondary text-center">
+          <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
             {settings?.logoUrl ? (
               <img
                 src={settings.logoUrl}
                 alt="Logo"
                 style={{
-                  height: "40px",
-                  width: "40px",
+                  height: "38px",
+                  width: "38px",
                   objectFit: "contain",
                   borderRadius: "4px",
                 }}
@@ -571,8 +631,8 @@ const AdminDashboard = () => {
             ) : (
               <div
                 style={{
-                  height: "40px",
-                  width: "40px",
+                  height: "38px",
+                  width: "38px",
                   borderRadius: "8px",
                   background: "#A51C30",
                   display: "flex",
@@ -580,7 +640,7 @@ const AdminDashboard = () => {
                   justifyContent: "center",
                   color: "#fff",
                   fontWeight: "700",
-                  fontSize: "1.2rem",
+                  fontSize: "1.1rem",
                   fontFamily: "'Playfair Display', Georgia, serif",
                 }}
               >
@@ -597,12 +657,33 @@ const AdminDashboard = () => {
               <span style={{ color: "#A51C30" }}>GDC</span> Gulabad
             </h4>
           </div>
-          <small className="text-muted" style={{ fontSize: "0.7rem" }}>
-            Admin Panel
-          </small>
+
+          {/* User mini badge in sidebar */}
+          <div
+            className="py-1 px-2 rounded-3 text-truncate"
+            style={{
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+            }}
+          >
+            <div className="fw-semibold text-truncate small" style={{ color: "#fff" }}>
+              {userProfile?.name || user?.email || "Portal User"}
+            </div>
+            <span
+              className="badge mt-1"
+              style={{
+                backgroundColor: roleColor.bg,
+                color: roleColor.color,
+                border: `1px solid ${roleColor.border}`,
+                fontSize: "0.68rem",
+              }}
+            >
+              {ROLE_LABELS[role] || "User"}
+            </span>
+          </div>
         </div>
 
-        {/* Navigation (reduced font-size) */}
+        {/* Navigation */}
         <nav className="nav flex-column p-3 flex-grow-1">
           {navItems.map((item) => {
             const isItemActive = isActive(item.path, item.exact);
@@ -610,7 +691,7 @@ const AdminDashboard = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded ${isItemActive ? "active" : ""}`}
+                className={`nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded mb-1 ${isItemActive ? "active" : ""}`}
                 style={{
                   textDecoration: "none",
                   transition: "all 0.2s ease",
@@ -713,67 +794,208 @@ const AdminDashboard = () => {
 
         {/* Routes */}
         <Routes>
-          <Route path="/" element={<DashboardOverview />} />
+          {/* Overview routed per role */}
+          <Route
+            path="/"
+            element={
+              role === ROLES.PRINCIPAL ? (
+                <PrincipalDashboard />
+              ) : role === ROLES.HOD ? (
+                <HODDashboard />
+              ) : role === ROLES.STUDENT_AFFAIRS_MANAGER ? (
+                <StudentAffairsDashboard />
+              ) : (
+                <DashboardOverview />
+              )
+            }
+          />
 
-          {/* Content (with optional initialTab) */}
-          <Route path="/content" element={<ContentManager />} />
+          {/* User Management (ADMIN Only) */}
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Activity Log (ADMIN & PRINCIPAL) */}
+          <Route
+            path="/activity-log"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.PRINCIPAL]}>
+                <ActivityLog />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Content (ADMIN & CONTENT_MANAGER) */}
+          <Route
+            path="/content"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/content/banners"
-            element={<ContentManager initialTab="banners" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="banners" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/programs"
-            element={<ContentManager initialTab="programs" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="programs" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/departments"
-            element={<ContentManager initialTab="departments" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.HOD]}>
+                <DepartmentsManager />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/activities"
-            element={<ContentManager initialTab="activities" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="activities" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/gallery"
-            element={<ContentManager initialTab="gallery" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="gallery" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/testimonials"
-            element={<ContentManager initialTab="testimonials" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="testimonials" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/content/faqs"
-            element={<ContentManager initialTab="faqs" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <ContentManager initialTab="faqs" />
+              </ProtectedRoute>
+            }
           />
 
-          {/* Standalone modules */}
-          <Route path="/announcements" element={<AnnouncementsManager />} />
-          <Route path="/results" element={<ResultsManager />} />
-          <Route path="/messages" element={<MessagesManager />} />
+          {/* Dedicated Department Route (for HOD / Content Manager / Admin) */}
+          <Route
+            path="/departments"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.HOD]}>
+                <DepartmentsManager />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* NEW: Students (tabbed) */}
-          <Route path="/students/*" element={<StudentManager />} />
+          {/* Announcements (ADMIN, CONTENT_MANAGER, PRINCIPAL, HOD) */}
+          <Route
+            path="/announcements"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.PRINCIPAL, ROLES.HOD]}>
+                <AnnouncementsManager />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* NEW: Downloads */}
-          <Route path="/downloads" element={<DownloadsManager />} />
+          {/* Results (ADMIN, HOD) */}
+          <Route
+            path="/results"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.HOD]}>
+                <ResultsManager />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Settings (with subsections) */}
-          <Route path="/settings" element={<SettingsManager />} />
+          {/* Messages (ADMIN, CONTENT_MANAGER, PRINCIPAL, HOD) */}
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.PRINCIPAL, ROLES.HOD]}>
+                <MessagesManager />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Students (ADMIN, STUDENT_AFFAIRS_MANAGER) */}
+          <Route
+            path="/students/*"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.STUDENT_AFFAIRS_MANAGER]}>
+                <StudentManager />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Downloads (ADMIN, CONTENT_MANAGER, PRINCIPAL) */}
+          <Route
+            path="/downloads"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.PRINCIPAL]}>
+                <DownloadsManager />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Settings (ADMIN, CONTENT_MANAGER) */}
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <SettingsManager />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/settings/principal"
-            element={<SettingsManager section="principal" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <SettingsManager section="principal" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings/contact"
-            element={<SettingsManager section="contact" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <SettingsManager section="contact" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings/social"
-            element={<SettingsManager section="social" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <SettingsManager section="social" />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings/footer"
-            element={<SettingsManager section="footer" />}
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CONTENT_MANAGER]}>
+                <SettingsManager section="footer" />
+              </ProtectedRoute>
+            }
           />
 
           {/* Fallback */}

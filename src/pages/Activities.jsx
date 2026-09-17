@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchCollection } from "../firebase/db";
 import { formatDate } from "../utils/helpers";
 import Loader from "../components/common/Loader";
+import { useNotification } from "../contexts/NotificationContext";
 
 //  Cache for activities
 let cachedActivities = null;
@@ -10,6 +11,7 @@ let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const Activities = () => {
+  const { showSuccess, showError } = useNotification();
   //  Initialize with cached data if available
   const [activities, setActivities] = useState(() => {
     if (
@@ -103,9 +105,10 @@ const Activities = () => {
         const shareText = `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`;
         await navigator.clipboard.writeText(shareText);
         setShareSuccess(true);
+        showSuccess("Link copied to clipboard!");
         setTimeout(() => setShareSuccess(false), 3000);
       } catch (err) {
-        alert("Copy the link manually: " + window.location.href);
+        showError("Copy the link manually: " + window.location.href);
       }
     }
   };

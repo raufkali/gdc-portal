@@ -9,6 +9,10 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import DeleteModal from "./Shared/DeleteModal";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const COLLECTION_NAME = "programs";
 const BRAND_COLOR = "#A51C30";
@@ -77,6 +81,8 @@ const PROGRAM_FIELDS = [
 ];
 
 const ProgramsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -232,8 +238,14 @@ const ProgramsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, COLLECTION_NAME, editing.id), cleanData);
+        invalidateCache("programs", editing.id);
+        await logActivity(userProfile, "UPDATE", "programs", editing.id, { title: cleanData.title });
+        showSuccess("Program updated successfully!");
       } else {
-        await addDoc(collection(db, COLLECTION_NAME), cleanData);
+        const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanData);
+        invalidateCache("programs", docRef.id);
+        await logActivity(userProfile, "CREATE", "programs", docRef.id, { title: cleanData.title });
+        showSuccess("Program added successfully!");
       }
 
       closeModal();
@@ -267,6 +279,9 @@ const ProgramsManager = () => {
 
     try {
       await deleteDoc(doc(db, COLLECTION_NAME, deletingId));
+      invalidateCache("programs", deletingId);
+      await logActivity(userProfile, "DELETE", "programs", deletingId);
+      showSuccess("Program deleted successfully!");
 
       setShowDeleteModal(false);
       setDeletingId(null);
@@ -274,7 +289,7 @@ const ProgramsManager = () => {
       await fetchItems();
     } catch (err) {
       console.error("Error deleting program:", err);
-      alert("Unable to delete the program. Please try again.");
+      showError("Unable to delete the program. Please try again.");
     }
   };
 

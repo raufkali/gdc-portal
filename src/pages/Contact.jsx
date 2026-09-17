@@ -3,9 +3,11 @@ import { useState } from "react";
 import { db } from "../firebase/config";
 import { collection, addDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import { useNotification } from "../contexts/NotificationContext";
 
 const Contact = () => {
   const { settings } = useSettings();
+  const { showSuccess, showError } = useNotification();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -25,9 +27,10 @@ const Contact = () => {
         status: "unread", //  Add status for admin tracking
       });
       setSubmitted(true);
+      showSuccess("Your message has been sent successfully!");
       setForm({ name: "", email: "", subject: "", message: "" });
     } catch (error) {
-      alert("Failed to send message. Please try again.");
+      showError("Failed to send message. Please try again.");
     } finally {
       setLoading(false);
     }

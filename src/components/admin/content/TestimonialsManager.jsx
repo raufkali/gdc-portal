@@ -11,8 +11,14 @@ import {
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 import ImageUpload from "./Shared/ImageUpload";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const TestimonialsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -31,6 +37,7 @@ const TestimonialsManager = () => {
       setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error fetching testimonials:", error);
+      showError("Error fetching testimonials: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -55,7 +62,7 @@ const TestimonialsManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -74,17 +81,21 @@ const TestimonialsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "testimonials", editing.id), formData);
-        alert(" Testimonial updated successfully!");
+        invalidateCache("testimonials", editing.id);
+        await logActivity(userProfile, "UPDATE", "testimonials", editing.id, { studentName: formData.studentName });
+        showSuccess("Testimonial updated successfully!");
       } else {
-        await addDoc(collection(db, "testimonials"), formData);
-        alert(" Testimonial added successfully!");
+        const docRef = await addDoc(collection(db, "testimonials"), formData);
+        invalidateCache("testimonials", docRef.id);
+        await logActivity(userProfile, "CREATE", "testimonials", docRef.id, { studentName: formData.studentName });
+        showSuccess("Testimonial added successfully!");
       }
       setShowModal(false);
       setFormData({});
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -93,12 +104,14 @@ const TestimonialsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "testimonials", deletingId));
-      alert(" Testimonial deleted successfully!");
+      invalidateCache("testimonials", deletingId);
+      await logActivity(userProfile, "DELETE", "testimonials", deletingId);
+      showSuccess("Testimonial deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

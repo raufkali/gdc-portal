@@ -1,5 +1,6 @@
 import { useState } from "react";
 import imageCompression from "browser-image-compression";
+import { useNotification } from "../../../../contexts/NotificationContext";
 
 const ImageUpload = ({
   onUpload,
@@ -7,6 +8,7 @@ const ImageUpload = ({
   label = "Image",
   folder = "",
 }) => {
+  const { showError } = useNotification();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(existingImage || null);
   const [compressionInfo, setCompressionInfo] = useState(null);
@@ -58,7 +60,7 @@ const ImageUpload = ({
         setPreview(url);
       }
     } catch (error) {
-      alert("Upload failed: " + error.message);
+      showError(error, "Upload Failed");
     } finally {
       setUploading(false);
       // reset the input so selecting the same file again re-triggers onChange

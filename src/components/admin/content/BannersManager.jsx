@@ -12,8 +12,14 @@ import {
 import imageCompression from "browser-image-compression";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const BannersManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -70,6 +76,7 @@ const BannersManager = () => {
       setItems(list);
     } catch (error) {
       console.error("Error fetching banners:", error);
+      showError("Error fetching banners: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -137,7 +144,7 @@ const BannersManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -153,7 +160,7 @@ const BannersManager = () => {
     // Maximum 25MB for the original file - compression happens
     // client-side afterwards, so raw phone/camera photos are fine.
     if (file.size > 25 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 25MB.");
+      showError("File is too large. Please upload a file smaller than 25MB.");
       e.target.value = "";
       return;
     }
@@ -162,7 +169,7 @@ const BannersManager = () => {
     const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
+      showError("Please upload a valid image file (PNG, JPG, WEBP, GIF).");
       e.target.value = "";
       return;
     }
@@ -230,12 +237,14 @@ const BannersManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "banners", editing.id), formData);
-
-        alert("Banner updated successfully!");
+        invalidateCache("banners", editing.id);
+        await logActivity(userProfile, "UPDATE", "banners", editing.id, { title: formData.title });
+        showSuccess("Banner updated successfully!");
       } else {
-        await addDoc(collection(db, "banners"), formData);
-
-        alert("Banner added successfully!");
+        const docRef = await addDoc(collection(db, "banners"), formData);
+        invalidateCache("banners", docRef.id);
+        await logActivity(userProfile, "CREATE", "banners", docRef.id, { title: formData.title });
+        showSuccess("Banner added successfully!");
       }
 
       setShowModal(false);
@@ -248,7 +257,7 @@ const BannersManager = () => {
       await fetchItems();
     } catch (error) {
       console.error("Error saving banner:", error);
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       // Re-enable only after everything is finished
       setSubmitting(false);
@@ -261,8 +270,9 @@ const BannersManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "banners", deletingId));
-
-      alert("Banner deleted successfully!");
+      invalidateCache("banners", deletingId);
+      await logActivity(userProfile, "DELETE", "banners", deletingId);
+      showSuccess("Banner deleted successfully!");
 
       setShowDeleteModal(false);
       setDeletingId(null);
@@ -270,7 +280,7 @@ const BannersManager = () => {
       await fetchItems();
     } catch (error) {
       console.error("Error deleting banner:", error);
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

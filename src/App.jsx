@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 // ----- Public Components -----
 import Navbar from "./components/common/Navbar";
@@ -81,8 +82,9 @@ function FooterLayout() {
 function App() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <BrowserRouter>
+      <NotificationProvider>
+        <SettingsProvider>
+          <BrowserRouter>
           <ScrollToTop />
           <div className="d-flex flex-column min-vh-100">
             <NavigationLayout />
@@ -190,6 +192,7 @@ function App() {
           </div>
         </BrowserRouter>
       </SettingsProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

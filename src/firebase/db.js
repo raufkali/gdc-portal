@@ -16,6 +16,7 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
+import { CACHE_EVENTS } from "../constants/cacheKeys";
 
 // ============================================
 // IN-MEMORY CACHE (per-key TTL)
@@ -27,6 +28,45 @@ const memoryCache = {
   data: {}, // key -> cached payload
   expiresAt: {}, // key -> timestamp when this entry becomes stale
 };
+
+// In-app subscribers to cache invalidations
+const cacheSubscribers = new Set();
+
+export const subscribeToCacheInvalidation = (callback) => {
+  cacheSubscribers.add(callback);
+  return () => {
+    cacheSubscribers.delete(callback);
+  };
+};
+
+// Cross-tab synchronization via BroadcastChannel with fallback to localStorage
+let cacheBroadcastChannel = null;
+if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+  try {
+    cacheBroadcastChannel = new BroadcastChannel(CACHE_EVENTS.CHANNEL_NAME);
+    cacheBroadcastChannel.onmessage = (event) => {
+      if (event.data?.type === CACHE_EVENTS.INVALIDATE) {
+        invalidateCache(event.data.collectionName, event.data.id, false);
+      }
+    };
+  } catch (e) {
+    console.warn("BroadcastChannel not supported or failed to initialize", e);
+  }
+}
+
+// LocalStorage fallback listener for cross-tab sync
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === CACHE_EVENTS.LOCAL_STORAGE_KEY && e.newValue) {
+      try {
+        const payload = JSON.parse(e.newValue);
+        if (payload?.collectionName) {
+          invalidateCache(payload.collectionName, payload.id, false);
+        }
+      } catch (err) {}
+    }
+  });
+}
 
 // Check if cached data is still valid for a specific key
 const isCacheValid = (key) => {
@@ -57,6 +97,46 @@ export const clearCache = (key = null) => {
   } else {
     memoryCache.data = {};
     memoryCache.expiresAt = {};
+  }
+};
+
+// Invalidate cache across collection, doc, subscribers, and other tabs
+export const invalidateCache = (collectionName = null, id = null, broadcast = true) => {
+  if (collectionName) {
+    clearCacheForCollection(collectionName);
+    if (id) {
+      clearCacheForDocument(collectionName, id);
+    }
+  } else {
+    clearCache();
+  }
+
+  // Notify active listeners in the current window
+  cacheSubscribers.forEach((cb) => {
+    try {
+      cb({ collectionName, id, timestamp: Date.now() });
+    } catch (err) {}
+  });
+
+  // Broadcast to other open browser tabs/windows
+  if (broadcast && typeof window !== "undefined") {
+    if (cacheBroadcastChannel) {
+      try {
+        cacheBroadcastChannel.postMessage({
+          type: CACHE_EVENTS.INVALIDATE,
+          collectionName,
+          id,
+          timestamp: Date.now(),
+        });
+      } catch (e) {}
+    }
+
+    try {
+      localStorage.setItem(
+        CACHE_EVENTS.LOCAL_STORAGE_KEY,
+        JSON.stringify({ collectionName, id, timestamp: Date.now() })
+      );
+    } catch (e) {}
   }
 };
 
@@ -270,7 +350,7 @@ export const fetchDocument = async (collectionName, id, options = {}) => {
 export const addDocument = async (collectionName, data) => {
   try {
     const result = await addDoc(collection(db, collectionName), data);
-    clearCacheForCollection(collectionName);
+    invalidateCache(collectionName, result.id);
     return result;
   } catch (error) {
     console.error(`Error adding to ${collectionName}:`, error);
@@ -283,8 +363,7 @@ export const updateDocument = async (collectionName, id, data) => {
   try {
     const docRef = doc(db, collectionName, id);
     await updateDoc(docRef, data);
-    clearCacheForCollection(collectionName);
-    clearCacheForDocument(collectionName, id);
+    invalidateCache(collectionName, id);
     return true;
   } catch (error) {
     console.error(`Error updating ${collectionName}/${id}:`, error);
@@ -297,8 +376,7 @@ export const deleteDocument = async (collectionName, id) => {
   try {
     const docRef = doc(db, collectionName, id);
     await deleteDoc(docRef);
-    clearCacheForCollection(collectionName);
-    clearCacheForDocument(collectionName, id);
+    invalidateCache(collectionName, id);
     return true;
   } catch (error) {
     console.error(`Error deleting ${collectionName}/${id}:`, error);
@@ -498,6 +576,8 @@ export default {
   prefetchCollection,
   batchFetchCollections,
   clearCache,
+  invalidateCache,
+  subscribeToCacheInvalidation,
   cacheControl,
   getCacheStats,
   getCachedImageUrl,

@@ -10,8 +10,14 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const AnnouncementsManager = () => {
+  const { isHOD, departmentId, userProfile } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -26,10 +32,14 @@ const AnnouncementsManager = () => {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, "announcements"));
-      setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      if (isHOD && departmentId) {
+        data = data.filter((d) => d.departmentId === departmentId);
+      }
+      setItems(data);
     } catch (error) {
       console.error("Error fetching announcements:", error);
-      alert("Error fetching announcements: " + error.message);
+      showError("Error fetching announcements: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -37,7 +47,7 @@ const AnnouncementsManager = () => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [isHOD, departmentId]);
 
   const handleFileUpload = async (file) => {
     setUploading(true);
@@ -52,7 +62,7 @@ const AnnouncementsManager = () => {
       );
       return result.url;
     } catch (error) {
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -74,41 +84,64 @@ const AnnouncementsManager = () => {
       const data = {
         title: formData.title || "",
         content: formData.content || "",
-        author: formData.author || "",
+        author: formData.author || (isHOD ? userProfile?.displayName || "HOD" : ""),
         category: formData.category || "",
         imageUrl: formData.imageUrl || "",
         fileUrl: formData.fileUrl || "",
         date: dateObj,
-        createdAt: new Date(),
         updatedAt: new Date(),
       };
 
+      if (isHOD && departmentId) {
+        data.departmentId = departmentId;
+      } else if (formData.departmentId) {
+        data.departmentId = formData.departmentId;
+      }
+
       if (editing) {
+        if (isHOD && editing.departmentId && editing.departmentId !== departmentId) {
+          showError("You can only modify announcements from your own department.");
+          return;
+        }
         await updateDoc(doc(db, "announcements", editing.id), data);
-        alert(" Announcement updated successfully!");
+        invalidateCache("announcements", editing.id);
+        await logActivity(userProfile, "UPDATE", "announcements", editing.id, { title: data.title });
+        showSuccess("Announcement updated successfully!");
       } else {
-        await addDoc(collection(db, "announcements"), data);
-        alert(" Announcement added successfully!");
+        data.createdAt = new Date();
+        const docRef = await addDoc(collection(db, "announcements"), data);
+        invalidateCache("announcements", docRef.id);
+        await logActivity(userProfile, "CREATE", "announcements", docRef.id, { title: data.title });
+        showSuccess("Announcement added successfully!");
       }
       setShowModal(false);
       setFormData({});
       fetchItems();
     } catch (error) {
       console.error("Error saving:", error);
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     }
   };
 
   const handleDelete = async () => {
     try {
+      if (isHOD && departmentId) {
+        const itemToDelete = items.find((i) => i.id === deletingId);
+        if (itemToDelete && itemToDelete.departmentId && itemToDelete.departmentId !== departmentId) {
+          showError("You cannot delete announcements from other departments.");
+          return;
+        }
+      }
       await deleteDoc(doc(db, "announcements", deletingId));
-      alert(" Announcement deleted successfully!");
+      invalidateCache("announcements", deletingId);
+      await logActivity(userProfile, "DELETE", "announcements", deletingId);
+      showSuccess("Announcement deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       fetchItems();
     } catch (error) {
       console.error("Error deleting:", error);
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 
@@ -117,7 +150,7 @@ const AnnouncementsManager = () => {
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large. Please upload a file smaller than 10MB.");
+      showError("File is too large. Please upload a file smaller than 20MB.");
       e.target.value = "";
       return;
     }

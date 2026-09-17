@@ -8,8 +8,13 @@ import {
   ContactSettings,
   SocialSettings,
 } from "./settings";
+import { useNotification } from "../../contexts/NotificationContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { logActivity } from "../../firebase/audit";
 
 const SettingsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -28,9 +33,10 @@ const SettingsManager = () => {
     setUploadError(null);
     try {
       await updateSettings(form);
-      alert(" Settings updated successfully!");
+      await logActivity(userProfile, "UPDATE", "settings", "global_settings", { section: activeSection });
+      showSuccess("Settings updated successfully!");
     } catch (error) {
-      alert("❌ Error updating settings: " + error.message);
+      showError("Error updating settings: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -38,7 +44,7 @@ const SettingsManager = () => {
 
   const handleImageUpload = async (file, field) => {
     if (!file) {
-      alert("No file selected");
+      showError("No file selected");
       return;
     }
 
@@ -87,7 +93,7 @@ const SettingsManager = () => {
         errorMessage += err.message || "Unknown error";
       }
 
-      alert(errorMessage);
+      showError(errorMessage);
     } finally {
       setUploading(false);
     }

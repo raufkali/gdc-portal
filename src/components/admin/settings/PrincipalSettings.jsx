@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useNotification } from "../../../contexts/NotificationContext";
 
 const PrincipalSettings = ({
   form,
@@ -7,6 +8,7 @@ const PrincipalSettings = ({
   uploading,
   uploadProgress,
 }) => {
+  const { showError } = useNotification();
   const imageInputRef = useRef(null);
   const [imageError, setImageError] = useState(false);
 
@@ -14,14 +16,14 @@ const PrincipalSettings = ({
     const file = e.target.files[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) {
-        alert("File is too large. Please upload a file smaller than 5MB.");
+        showError("File is too large. Please upload a file smaller than 20MB.");
         e.target.value = "";
         return;
       }
 
       const validTypes = ["image/png", "image/jpeg", "image/webp"];
       if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid image file (PNG, JPG, WEBP).");
+        showError("Please upload a valid image file (PNG, JPG, WEBP).");
         e.target.value = "";
         return;
       }

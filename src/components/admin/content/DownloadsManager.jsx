@@ -10,8 +10,14 @@ import {
 } from "firebase/firestore";
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const DownloadsManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -28,10 +34,10 @@ const DownloadsManager = () => {
     try {
       const snap = await getDocs(collection(db, "downloads"));
       const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log("📥 Downloads fetched:", data.length);
       setItems(data);
     } catch (error) {
       console.error("Error fetching downloads:", error);
+      showError("Error fetching downloads: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -62,7 +68,7 @@ const DownloadsManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("File upload failed: " + error.message);
+      showError("File upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -75,7 +81,7 @@ const DownloadsManager = () => {
 
     const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert("File is too large. Please upload a file smaller than 20MB.");
+      showError("File is too large. Please upload a file smaller than 20MB.");
       e.target.value = "";
       return;
     }
@@ -89,7 +95,7 @@ const DownloadsManager = () => {
         /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
 
     if (!isValid) {
-      alert(
+      showError(
         isPdf
           ? "Please upload a valid PDF file."
           : "Please upload a valid image file (JPG, PNG, GIF, WEBP).",
@@ -114,17 +120,21 @@ const DownloadsManager = () => {
     try {
       if (editing) {
         await updateDoc(doc(db, "downloads", editing.id), formData);
-        alert("📥 Download updated successfully!");
+        invalidateCache("downloads", editing.id);
+        await logActivity(userProfile, "UPDATE", "downloads", editing.id, { title: formData.title });
+        showSuccess("Download updated successfully!");
       } else {
-        await addDoc(collection(db, "downloads"), formData);
-        alert("📥 Download added successfully!");
+        const docRef = await addDoc(collection(db, "downloads"), formData);
+        invalidateCache("downloads", docRef.id);
+        await logActivity(userProfile, "CREATE", "downloads", docRef.id, { title: formData.title });
+        showSuccess("Download added successfully!");
       }
       setShowModal(false);
       setFormData({ fileType: "pdf" });
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -133,12 +143,14 @@ const DownloadsManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "downloads", deletingId));
-      alert("📥 Download deleted successfully!");
+      invalidateCache("downloads", deletingId);
+      await logActivity(userProfile, "DELETE", "downloads", deletingId);
+      showSuccess("Download deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

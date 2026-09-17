@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { fetchCollection, clearCache } from "../firebase/db";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { fetchCollection, clearCache, subscribeToCacheInvalidation } from "../firebase/db";
 
 export const useCachedData = (
   collectionName,
@@ -12,15 +12,13 @@ export const useCachedData = (
   const [refreshing, setRefreshing] = useState(false);
   const isMounted = useRef(true);
 
-  const fetchData = async (refresh = false) => {
+  const fetchData = useCallback(async (refresh = false) => {
     try {
       if (refresh) {
         setRefreshing(true);
-        // Clear cache and force refresh
-        clearCache(`${collectionName}_${JSON.stringify(conditions)}`);
+      } else {
+        setLoading(true);
       }
-
-      setLoading(true);
       setError(null);
 
       const result = await fetchCollection(collectionName, conditions, {
@@ -42,16 +40,29 @@ export const useCachedData = (
         setRefreshing(false);
       }
     }
-  };
+  }, [collectionName, JSON.stringify(conditions)]);
 
   useEffect(() => {
     isMounted.current = true;
     fetchData(false);
 
+    // Automatically re-fetch when collection data is modified anywhere
+    const unsubscribe = subscribeToCacheInvalidation((event) => {
+      if (
+        event.collectionName === collectionName ||
+        !event.collectionName
+      ) {
+        if (isMounted.current) {
+          fetchData(true);
+        }
+      }
+    });
+
     return () => {
       isMounted.current = false;
+      unsubscribe();
     };
-  }, [collectionName, JSON.stringify(conditions)]);
+  }, [fetchData, collectionName]);
 
   return {
     data,

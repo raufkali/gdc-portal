@@ -11,8 +11,14 @@ import {
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 import ImageUpload from "./Shared/ImageUpload";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const GalleryManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -31,6 +37,7 @@ const GalleryManager = () => {
       setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error fetching gallery:", error);
+      showError("Error fetching gallery: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -55,7 +62,7 @@ const GalleryManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -71,24 +78,28 @@ const GalleryManager = () => {
     e.preventDefault();
     if (uploading || submitting) return;
     if (!formData.imageUrl) {
-      alert("Please upload an image.");
+      showError("Please upload an image.");
       return;
     }
     setSubmitting(true);
     try {
       if (editing) {
         await updateDoc(doc(db, "gallery", editing.id), formData);
-        alert(" Image updated successfully!");
+        invalidateCache("gallery", editing.id);
+        await logActivity(userProfile, "UPDATE", "gallery", editing.id, { caption: formData.caption });
+        showSuccess("Image updated successfully!");
       } else {
-        await addDoc(collection(db, "gallery"), formData);
-        alert(" Image added successfully!");
+        const docRef = await addDoc(collection(db, "gallery"), formData);
+        invalidateCache("gallery", docRef.id);
+        await logActivity(userProfile, "CREATE", "gallery", docRef.id, { caption: formData.caption });
+        showSuccess("Image added successfully!");
       }
       setShowModal(false);
       setFormData({});
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -97,12 +108,14 @@ const GalleryManager = () => {
   const handleDelete = async () => {
     try {
       await deleteDoc(doc(db, "gallery", deletingId));
-      alert(" Image deleted successfully!");
+      invalidateCache("gallery", deletingId);
+      await logActivity(userProfile, "DELETE", "gallery", deletingId);
+      showSuccess("Image deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 

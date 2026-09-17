@@ -11,8 +11,14 @@ import {
 import { uploadToR2WithProgress } from "../../../utils/cloudflare";
 import DeleteModal from "./Shared/DeleteModal";
 import ImageUpload from "./Shared/ImageUpload";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { logActivity } from "../../../firebase/audit";
+import { invalidateCache } from "../../../firebase/db";
 
 const DepartmentsManager = () => {
+  const { isHOD, departmentId, userProfile } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -30,9 +36,14 @@ const DepartmentsManager = () => {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, "departments"));
-      setItems(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      let data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      if (isHOD) {
+        data = data.filter((d) => d.id === departmentId);
+      }
+      setItems(data);
     } catch (error) {
       console.error("Error fetching departments:", error);
+      showError("Error fetching departments: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -40,7 +51,7 @@ const DepartmentsManager = () => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [isHOD, departmentId]);
 
   const handleMainUpload = async (file, folder) => {
     setUploading(true);
@@ -57,7 +68,7 @@ const DepartmentsManager = () => {
       return null;
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed: " + error.message);
+      showError("Upload failed: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -79,7 +90,7 @@ const DepartmentsManager = () => {
       return null;
     } catch (error) {
       console.error("HOD upload error:", error);
-      alert("HOD image upload failed: " + error.message);
+      showError("HOD image upload failed: " + error.message);
       return null;
     } finally {
       setHodUploading(false);
@@ -98,32 +109,50 @@ const DepartmentsManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isHOD && editing && editing.id !== departmentId) {
+      showError("You can only modify your own department.");
+      return;
+    }
+    if (isHOD && !editing) {
+      showError("HOD is not authorized to create new departments.");
+      return;
+    }
     try {
       if (editing) {
         await updateDoc(doc(db, "departments", editing.id), formData);
-        alert("Department updated successfully!");
+        invalidateCache("departments", editing.id);
+        await logActivity(userProfile, "UPDATE", "departments", editing.id, { name: formData.name });
+        showSuccess("Department updated successfully!");
       } else {
-        await addDoc(collection(db, "departments"), formData);
-        alert("Department added successfully!");
+        const docRef = await addDoc(collection(db, "departments"), formData);
+        invalidateCache("departments", docRef.id);
+        await logActivity(userProfile, "CREATE", "departments", docRef.id, { name: formData.name });
+        showSuccess("Department added successfully!");
       }
       setShowModal(false);
       setFormData({});
       setEditing(null);
       await fetchItems();
     } catch (error) {
-      alert("Error saving: " + error.message);
+      showError("Error saving: " + error.message);
     }
   };
 
   const handleDelete = async () => {
+    if (isHOD) {
+      showError("HOD is not authorized to delete departments.");
+      return;
+    }
     try {
       await deleteDoc(doc(db, "departments", deletingId));
-      alert("Department deleted successfully!");
+      invalidateCache("departments", deletingId);
+      await logActivity(userProfile, "DELETE", "departments", deletingId);
+      showSuccess("Department deleted successfully!");
       setShowDeleteModal(false);
       setDeletingId(null);
       await fetchItems();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 
@@ -234,27 +263,29 @@ const DepartmentsManager = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-end mb-3">
-        <button
-          className="btn rounded-pill px-4"
-          onClick={() => {
-            setEditing(null);
-            setFormData({});
-            setShowModal(true);
-          }}
-          style={{
-            background: "#A51C30",
-            color: "#fff",
-            fontSize: "0.85rem",
-            border: "none",
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => (e.target.style.background = "#7A1523")}
-          onMouseLeave={(e) => (e.target.style.background = "#A51C30")}
-        >
-          <i className="bi bi-plus-circle me-1"></i> Add Department
-        </button>
-      </div>
+      {!isHOD && (
+        <div className="d-flex justify-content-end mb-3">
+          <button
+            className="btn rounded-pill px-4"
+            onClick={() => {
+              setEditing(null);
+              setFormData({});
+              setShowModal(true);
+            }}
+            style={{
+              background: "#A51C30",
+              color: "#fff",
+              fontSize: "0.85rem",
+              border: "none",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#7A1523")}
+            onMouseLeave={(e) => (e.target.style.background = "#A51C30")}
+          >
+            <i className="bi bi-plus-circle me-1"></i> Add Department
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-5">
@@ -460,32 +491,34 @@ const DepartmentsManager = () => {
                       >
                         <i className="bi bi-pencil me-1"></i> Edit
                       </button>
-                      <button
-                        className="btn btn-sm"
-                        style={{
-                          background: "rgba(220, 53, 69, 0.08)",
-                          color: "#dc3545",
-                          borderRadius: "50px",
-                          fontSize: "0.75rem",
-                          fontWeight: "500",
-                          border: "none",
-                          transition: "all 0.2s ease",
-                        }}
-                        onClick={() => {
-                          setDeletingId(item.id);
-                          setShowDeleteModal(true);
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = "#dc3545";
-                          e.target.style.color = "#fff";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = "rgba(220, 53, 69, 0.08)";
-                          e.target.style.color = "#dc3545";
-                        }}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      {!isHOD && (
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            background: "rgba(220, 53, 69, 0.08)",
+                            color: "#dc3545",
+                            borderRadius: "50px",
+                            fontSize: "0.75rem",
+                            fontWeight: "500",
+                            border: "none",
+                            transition: "all 0.2s ease",
+                          }}
+                          onClick={() => {
+                            setDeletingId(item.id);
+                            setShowDeleteModal(true);
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = "#dc3545";
+                            e.target.style.color = "#fff";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = "rgba(220, 53, 69, 0.08)";
+                            e.target.style.color = "#dc3545";
+                          }}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

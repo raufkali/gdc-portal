@@ -10,8 +10,13 @@ import {
   orderBy,
 } from "firebase/firestore";
 import DeleteModal from "./Shared/DeleteModal";
+import { useNotification } from "../../../contexts/NotificationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { logActivity } from "../../../firebase/audit";
 
 const MessagesManager = () => {
+  const { showSuccess, showError } = useNotification();
+  const { userProfile } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,8 +72,9 @@ const MessagesManager = () => {
           message.id === id ? { ...message, status: "read" } : message,
         ),
       );
+      showSuccess("Message marked as read");
     } catch (error) {
-      alert("Error updating message: " + error.message);
+      showError("Error updating message: " + error.message);
     }
   };
 
@@ -87,8 +93,9 @@ const MessagesManager = () => {
           message.id === id ? { ...message, status: "unread" } : message,
         ),
       );
+      showSuccess("Message marked as unread");
     } catch (error) {
-      alert("Error updating message: " + error.message);
+      showError("Error updating message: " + error.message);
     }
   };
 
@@ -101,6 +108,7 @@ const MessagesManager = () => {
 
     try {
       await deleteDoc(doc(db, "contacts", deletingId));
+      await logActivity(userProfile, "DELETE", "contacts", deletingId);
 
       setMessages((prev) =>
         prev.filter((message) => message.id !== deletingId),
@@ -113,9 +121,9 @@ const MessagesManager = () => {
       setShowDeleteModal(false);
       setDeletingId(null);
 
-      alert("Message deleted successfully!");
+      showSuccess("Message deleted successfully!");
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      showError("Error deleting: " + error.message);
     }
   };
 
