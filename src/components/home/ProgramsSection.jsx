@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { fetchCollection } from "../../firebase/db";
 
@@ -20,14 +20,6 @@ const BRAND_DARK = "#7A1523";
 
 // ============================================================
 // PROGRAM ICON SYSTEM
-// ============================================================
-//
-// Icons are automatically selected from the program title
-// and category.
-//
-// No icon/image field is required in Firebase.
-//
-// Bootstrap Icons are used throughout.
 // ============================================================
 
 const PROGRAM_ICON_RULES = [
@@ -58,6 +50,7 @@ const PROGRAM_ICON_RULES = [
     icon: "bi-cpu",
     color: "#6F42C1",
   },
+
   {
     keywords: [
       "environmental science",
@@ -71,6 +64,7 @@ const PROGRAM_ICON_RULES = [
     icon: "bi-tree",
     color: "#198754",
   },
+
   {
     keywords: [
       "data science",
@@ -265,7 +259,7 @@ const PROGRAM_ICON_RULES = [
   },
 
   {
-    keywords: ["mathematics", "mathematics", "math"],
+    keywords: ["mathematics", "math"],
     icon: "bi-calculator",
     color: "#1864AB",
   },
@@ -483,6 +477,450 @@ const getProgramIcon = (program) => {
 };
 
 // ============================================================
+// DECK STACK GEOMETRY
+//
+// Cards behind the front card are now aligned in a neat,
+// orderly stack instead of being fanned out in alternating
+// directions. Each deeper card simply scales down slightly
+// and shifts down a little, so the peeking edges read as a
+// clean, predictable deck in order.
+// ============================================================
+
+const getStackTransform = (stackPosition) => {
+  const scale = 1 - stackPosition * 0.05;
+  const translateY = stackPosition * 14;
+
+  return `translate3d(0, ${translateY}px, 0) scale(${scale})`;
+};
+
+// ============================================================
+// MOBILE PROGRAM CARD
+// ============================================================
+
+const MobileProgramCard = ({
+  program,
+  index,
+  stackPosition,
+  dragX,
+  isDragging,
+  isExiting,
+  exitDirection,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  suppressClickRef,
+}) => {
+  const iconData = getProgramIcon(program);
+
+  const isFront = stackPosition === 0;
+
+  let transform = "";
+
+  if (isFront) {
+    if (isDragging) {
+      // Gentle, proportional rotation while dragging.
+      const rotation = dragX * 0.04;
+
+      transform = `translate3d(${dragX}px, 0, 0) rotate(${rotation}deg)`;
+    } else if (isExiting) {
+      // Softer exit: less rotation, less vertical drift, so
+      // the card glides away instead of snapping off-screen.
+      const direction = exitDirection === "left" ? -1 : 1;
+
+      transform = `translate3d(${direction * 115}vw, 10px, 0) rotate(${
+        direction * 10
+      }deg)`;
+    } else {
+      transform = "translate3d(0, 0, 0) rotate(0deg)";
+    }
+  } else {
+    transform = getStackTransform(stackPosition);
+  }
+
+  // Keep three cards clearly visible (front + two behind);
+  // anything deeper fades out so it can seamlessly become
+  // the newly revealed card once the stack advances.
+  const opacity = stackPosition > 2 ? 0 : 1;
+
+  // Exiting cards fade slightly as they leave for a smoother
+  // visual handoff to the card being revealed underneath.
+  const cardOpacity = isExiting && isFront ? 0.35 : opacity;
+
+  return (
+    <div
+      className={`mobile-program-deck-card ${
+        isFront ? "mobile-program-deck-card-front" : ""
+      } ${isDragging && isFront ? "mobile-program-deck-card-dragging" : ""}`}
+      style={{
+        transform,
+        opacity: cardOpacity,
+        zIndex: 20 - stackPosition,
+        pointerEvents: isFront ? "auto" : "none",
+        transition:
+          isDragging && isFront
+            ? "none"
+            : isExiting && isFront
+              ? "transform 620ms cubic-bezier(0.22, 0.61, 0.24, 1), opacity 560ms ease"
+              : "transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease",
+      }}
+      onPointerDown={isFront ? onPointerDown : undefined}
+      onPointerMove={isFront ? onPointerMove : undefined}
+      onPointerUp={isFront ? onPointerUp : undefined}
+      onPointerCancel={isFront ? onPointerCancel : undefined}
+    >
+      <Link
+        to={`/programs/${program.slug || program.id}`}
+        className="mobile-program-card-link"
+        onClick={(event) => {
+          if (suppressClickRef.current) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            suppressClickRef.current = false;
+          }
+        }}
+      >
+        {/* Accent */}
+        <div
+          className="mobile-program-card-accent"
+          style={{
+            backgroundColor: iconData.color,
+          }}
+        />
+
+        {/* Icon */}
+        <div
+          className="mobile-program-card-icon"
+          style={{
+            backgroundColor: iconData.color,
+          }}
+          aria-hidden="true"
+        >
+          <i className={`bi ${iconData.icon}`} />
+        </div>
+
+        {/* Content */}
+        <div className="mobile-program-card-body">
+          <div className="mobile-program-card-top">
+            <span className="mobile-program-card-label">Academic Program</span>
+
+            <span className="mobile-program-card-number">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+          </div>
+
+          <h4 className="mobile-program-card-title">{program.title}</h4>
+
+          {program.subtitle && (
+            <p className="mobile-program-card-subtitle">{program.subtitle}</p>
+          )}
+
+          {program.description && (
+            <p className="mobile-program-card-description">
+              {program.description}
+            </p>
+          )}
+
+          <div className="mobile-program-card-meta">
+            {program.duration && (
+              <div className="mobile-program-card-meta-item">
+                <i className="bi bi-clock" aria-hidden="true" />
+
+                <span>
+                  <strong>Duration:</strong> {program.duration}
+                </span>
+              </div>
+            )}
+
+            {program.category && (
+              <div className="mobile-program-card-meta-item">
+                <i className="bi bi-building" aria-hidden="true" />
+
+                <span>
+                  <strong>Faculty:</strong> {program.category}
+                </span>
+              </div>
+            )}
+
+            {program.fee && (
+              <div className="mobile-program-card-meta-item">
+                <i className="bi bi-wallet2" aria-hidden="true" />
+
+                <span>
+                  <strong>Fee:</strong> {program.fee}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="mobile-program-card-details">
+            <span>View Details</span>
+
+            <i className="bi bi-arrow-right" aria-hidden="true" />
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+};
+
+// ============================================================
+// MOBILE PROGRAM DECK
+//
+// Simplified to a single "next" gesture: dragging the front
+// card in *either* direction (past the threshold) sends it
+// flying off that same side and always advances the deck to
+// the next card underneath — there is no "go back" swipe.
+// The cards behind the front one are neatly aligned so the
+// whole thing reads as an orderly physical stack of cards.
+// ============================================================
+
+const MobileProgramDeck = ({ items, category }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const [dragX, setDragX] = useState(0);
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const [isExiting, setIsExiting] = useState(false);
+
+  const [exitDirection, setExitDirection] = useState(null);
+
+  const pointerStartX = useRef(0);
+
+  const pointerStartY = useRef(0);
+
+  const pointerId = useRef(null);
+
+  const suppressClickRef = useRef(false);
+
+  const animationTimerRef = useRef(null);
+
+  const DRAG_THRESHOLD = 80;
+
+  // Must match the exit transition duration in the card so
+  // the index swap happens right as the flying card clears.
+  const EXIT_DURATION = 620;
+
+  const getWrappedIndex = (index) => {
+    if (!items.length) return 0;
+
+    return ((index % items.length) + items.length) % items.length;
+  };
+
+  const getCardAtOffset = (offset) => {
+    return items[getWrappedIndex(currentIndex + offset)];
+  };
+
+  const advanceToNext = (direction) => {
+    if (!items.length) return;
+
+    setExitDirection(direction);
+    setIsExiting(true);
+
+    suppressClickRef.current = true;
+
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+    }
+
+    animationTimerRef.current = setTimeout(() => {
+      setCurrentIndex((previous) => getWrappedIndex(previous + 1));
+
+      setDragX(0);
+      setIsExiting(false);
+      setExitDirection(null);
+      setIsDragging(false);
+    }, EXIT_DURATION);
+  };
+
+  const resetDrag = () => {
+    setDragX(0);
+    setIsDragging(false);
+  };
+
+  const handlePointerDown = (event) => {
+    if (isExiting) return;
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    pointerId.current = event.pointerId;
+
+    pointerStartX.current = event.clientX;
+
+    pointerStartY.current = event.clientY;
+
+    setIsDragging(true);
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is not supported in every environment.
+    }
+  };
+
+  const handlePointerMove = (event) => {
+    if (!isDragging) return;
+
+    if (pointerId.current !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStartX.current;
+
+    const deltaY = event.clientY - pointerStartY.current;
+
+    /*
+      If the user is scrolling vertically, don't fight
+      against the browser's normal page scrolling.
+    */
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+      setIsDragging(false);
+      setDragX(0);
+      return;
+    }
+
+    /*
+      Small resistance when dragging beyond a comfortable
+      range makes the deck feel physical.
+    */
+    const resistance = Math.abs(deltaX) > 180 ? 0.72 : 1;
+
+    setDragX(deltaX * resistance);
+
+    if (Math.abs(deltaX) > 8) {
+      suppressClickRef.current = true;
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    if (!isDragging) return;
+
+    if (pointerId.current !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStartX.current;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Ignore unsupported pointer capture.
+    }
+
+    pointerId.current = null;
+
+    if (Math.abs(deltaX) >= DRAG_THRESHOLD) {
+      // Either direction just moves to the next card — the
+      // fly-off direction simply mirrors the swipe.
+      advanceToNext(deltaX < 0 ? "left" : "right");
+
+      return;
+    }
+
+    /*
+      Not enough movement — spring the card back to its
+      original position.
+    */
+    setDragX(0);
+
+    setTimeout(() => {
+      setIsDragging(false);
+    }, 320);
+  };
+
+  const handlePointerCancel = () => {
+    pointerId.current = null;
+    resetDrag();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    /*
+      Reset a category's deck if its Firebase contents
+      change significantly.
+    */
+    setCurrentIndex(0);
+    setDragX(0);
+    setIsExiting(false);
+    setExitDirection(null);
+    setIsDragging(false);
+  }, [category, items.length]);
+
+  if (!items.length) {
+    return null;
+  }
+
+  /*
+    Render the current card plus several cards behind it.
+
+    Offset:
+      0 → current/front
+      1 → next
+      2 → next + 1
+      3 → hidden buffer (fades in as the stack advances)
+  */
+  const visibleCards = [0, 1, 2, 3]
+    .map((offset) => ({
+      program: getCardAtOffset(offset),
+      offset,
+    }))
+    .filter((entry) => entry.program);
+
+  return (
+    <div className="mobile-program-deck" aria-label={`${category} programs`}>
+      {/* ==================================================
+          DECK
+      =================================================== */}
+
+      <div className="mobile-program-deck-stage">
+        {visibleCards.map(({ program, offset }) => (
+          <MobileProgramCard
+            key={`${program.id}-${offset}`}
+            program={program}
+            index={getWrappedIndex(currentIndex + offset)}
+            stackPosition={offset}
+            dragX={dragX}
+            isDragging={isDragging}
+            isExiting={isExiting}
+            exitDirection={exitDirection}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            suppressClickRef={suppressClickRef}
+          />
+        ))}
+      </div>
+
+      {/* ==================================================
+          DECK CONTROLS / HINT
+      =================================================== */}
+
+      {items.length > 1 && (
+        <div className="mobile-program-deck-hint">
+          <span>
+            <i className="bi bi-arrow-left" />
+            <i className="bi bi-arrow-right" />
+            Swipe for next
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
 // MAIN COMPONENT
 // ============================================================
 
@@ -639,7 +1077,7 @@ const ProgramsSection = () => {
 
   return (
     <>
-      <section className="programs-section" aria-labelledby="programs-heading ">
+      <section className="programs-section" aria-labelledby="programs-heading">
         <div className="container">
           {/* ==================================================
               HEADER
@@ -717,6 +1155,7 @@ const ProgramsSection = () => {
           {Object.entries(displayGroups).map(([category, items]) => (
             <div key={category} className="program-category">
               {/* Category heading */}
+
               <div className="program-category-heading" data-aos="fade-up">
                 <span className="program-category-line" />
 
@@ -726,10 +1165,10 @@ const ProgramsSection = () => {
               </div>
 
               {/* =================================================
-                    CARDS
+                    DESKTOP GRID
                 ================================================== */}
 
-              <div className="row g-4">
+              <div className="program-desktop-grid row g-4">
                 {items.map((program, index) => {
                   const iconData = getProgramIcon(program);
 
@@ -746,9 +1185,7 @@ const ProgramsSection = () => {
                         className="program-card"
                         aria-label={`View details for ${program.title}`}
                       >
-                        {/* =================================================
-                              CARD TOP ACCENT
-                          ================================================== */}
+                        {/* CARD TOP ACCENT */}
 
                         <div
                           className="program-card-accent"
@@ -757,9 +1194,7 @@ const ProgramsSection = () => {
                           }}
                         />
 
-                        {/* =================================================
-                              FLOATING ICON
-                          ================================================== */}
+                        {/* FLOATING ICON */}
 
                         <div
                           className="program-icon"
@@ -772,20 +1207,21 @@ const ProgramsSection = () => {
                           <i className={`bi ${iconData.icon}`} />
                         </div>
 
-                        {/* =================================================
-                              CARD CONTENT
-                          ================================================== */}
+                        {/* CARD CONTENT */}
 
                         <div className="program-card-body">
                           {/* Number */}
+
                           <div className="program-number">
                             {String(index + 1).padStart(2, "0")}
                           </div>
 
                           {/* Title */}
+
                           <h4 className="program-title">{program.title}</h4>
 
                           {/* Subtitle */}
+
                           {program.subtitle && (
                             <p className="program-subtitle">
                               {program.subtitle}
@@ -793,15 +1229,14 @@ const ProgramsSection = () => {
                           )}
 
                           {/* Description */}
+
                           {program.description && (
                             <p className="program-description">
                               {program.description}
                             </p>
                           )}
 
-                          {/* =================================================
-                                META INFORMATION
-                            ================================================== */}
+                          {/* META */}
 
                           <div className="program-meta">
                             {program.duration && (
@@ -841,9 +1276,7 @@ const ProgramsSection = () => {
                             )}
                           </div>
 
-                          {/* =================================================
-                                VIEW DETAILS
-                            ================================================== */}
+                          {/* VIEW DETAILS */}
 
                           <div className="program-details-button">
                             <span>View Details</span>
@@ -858,6 +1291,14 @@ const ProgramsSection = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* =================================================
+                    MOBILE DECK
+                ================================================== */}
+
+              <div className="program-mobile-deck-wrapper">
+                <MobileProgramDeck items={items} category={category} />
               </div>
             </div>
           ))}
@@ -881,6 +1322,7 @@ const ProgramsSection = () => {
       ======================================================= */}
 
       <style>{`
+
         /* ====================================================
            SECTION
         ==================================================== */
@@ -925,7 +1367,11 @@ const ProgramsSection = () => {
 
         .programs-header h2 {
           margin: 0 0 0.65rem;
-          color: var(--color-text, #1d1d1d);
+          color:
+            var(
+              --color-text,
+              #1d1d1d
+            );
           font-family:
             "Playfair Display",
             Georgia,
@@ -971,8 +1417,7 @@ const ProgramsSection = () => {
         .program-category-heading h3 {
           flex-shrink: 0;
           margin: 0;
-          color:
-              #ffff;
+          color: #ffff;
           font-family:
             "Playfair Display",
             Georgia,
@@ -985,8 +1430,15 @@ const ProgramsSection = () => {
         .program-category-line {
           width: 100%;
           height: 1px;
-          background:
-            rgb(255, 255, 255);
+          background: rgb(255, 255, 255);
+        }
+
+        /* ====================================================
+           DESKTOP PROGRAM GRID
+        ==================================================== */
+
+        .program-desktop-grid {
+          display: flex;
         }
 
         /* ====================================================
@@ -1001,11 +1453,15 @@ const ProgramsSection = () => {
           min-height: 350px;
           padding-top: 5px;
           background:
-            var(--card-bg, #f8f7f2);
+            var(
+              --card-bg,
+              #f8f7f2
+            );
           color: inherit;
           text-decoration: none;
           border:
-            1px solid rgba(0, 0, 0, 0.08);
+            1px solid
+            rgba(0, 0, 0, 0.08);
           border-radius: 10px;
           box-shadow:
             0 3px 12px
@@ -1060,7 +1516,8 @@ const ProgramsSection = () => {
               ${BRAND}
             );
           border:
-            1px solid rgba(0, 0, 0, 0.07);
+            1px solid
+            rgba(0, 0, 0, 0.07);
           border-radius: 10px;
           box-shadow:
             0 5px 15px
@@ -1175,7 +1632,8 @@ const ProgramsSection = () => {
           margin-bottom: 1rem;
           padding-top: 0.8rem;
           border-top:
-            1px solid rgba(0, 0, 0, 0.09);
+            1px solid
+            rgba(0, 0, 0, 0.09);
         }
 
         .program-meta-item {
@@ -1280,7 +1738,8 @@ const ProgramsSection = () => {
         .programs-view-all:hover {
           color: #ffffff;
           background: ${BRAND};
-          transform: translateY(-2px);
+          transform:
+            translateY(-2px);
           box-shadow:
             0 6px 18px
             rgba(165, 28, 48, 0.2);
@@ -1308,6 +1767,14 @@ const ProgramsSection = () => {
         }
 
         /* ====================================================
+           MOBILE DECK IS HIDDEN BY DEFAULT
+        ==================================================== */
+
+        .program-mobile-deck-wrapper {
+          display: none;
+        }
+
+        /* ====================================================
            TABLET
         ==================================================== */
 
@@ -1327,10 +1794,11 @@ const ProgramsSection = () => {
         }
 
         /* ====================================================
-           MOBILE
+           MOBILE — DECK OF CARDS EFFECT ONLY LIVES HERE
         ==================================================== */
 
         @media (max-width: 575.98px) {
+
           .programs-section {
             padding:
               3.5rem 0 3.5rem;
@@ -1354,37 +1822,411 @@ const ProgramsSection = () => {
           }
 
           .program-category {
-            margin-bottom: 3.25rem;
+            margin-bottom: 4.2rem;
           }
 
           .program-category-heading {
             gap: 0.7rem;
-            margin-bottom: 2.25rem;
+            margin-bottom: 2.5rem;
           }
 
           .program-category-heading h3 {
             font-size: 1.2rem;
           }
 
-          .program-card {
-            min-height: 315px;
+          /* ==================================================
+             HIDE NORMAL GRID
+          =================================================== */
+
+          .program-desktop-grid {
+            display: none !important;
           }
 
-          .program-card-body {
+          /* ==================================================
+             SHOW DECK
+          =================================================== */
+
+          .program-mobile-deck-wrapper {
+            display: block;
+            width: 100%;
+          }
+
+          .mobile-program-deck {
+            position: relative;
+            width: 100%;
             padding:
-              2rem 1.15rem 1.15rem;
+              0 0 0.75rem;
           }
 
-          .program-title {
-            font-size: 1rem;
+          /*
+            This is the physical area in which the deck lives.
+            Extra top/side padding gives the stacked cards
+            behind the front one room to peek out without
+            being clipped.
+          */
+
+          .mobile-program-deck-stage {
+            position: relative;
+            width: 100%;
+            height: 430px;
+            padding: 14px 10px 0;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
           }
 
-          .program-description {
-            font-size: 0.74rem;
+          /*
+            Every card is absolutely positioned so that
+            cards can sit behind each other.
+          */
+
+          .mobile-program-deck-card {
+            position: absolute;
+            top: 14px;
+            left: 10px;
+            right: 10px;
+            bottom: 0;
+            will-change:
+              transform,
+              opacity;
+            transform-origin:
+              center bottom;
           }
 
-          .program-meta-item {
-            font-size: 0.68rem;
+          .mobile-program-deck-card-front {
+            cursor: grab;
+          }
+
+          .mobile-program-deck-card-front:active {
+            cursor: grabbing;
+          }
+
+          .mobile-program-deck-card-dragging {
+            cursor: grabbing;
+          }
+
+          /*
+            The actual card.
+          */
+
+          .mobile-program-card-link {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            color: inherit;
+            text-decoration: none;
+            background:
+              var(
+                --card-bg,
+                #f8f7f2
+              );
+            border:
+              1px solid
+              rgba(0, 0, 0, 0.08);
+            border-radius: 18px;
+            box-shadow:
+              0 16px 35px
+              rgba(0, 0, 0, 0.22),
+              0 4px 10px
+              rgba(0, 0, 0, 0.10);
+          }
+
+          .mobile-program-card-link:hover {
+            color: inherit;
+            text-decoration: none;
+          }
+
+          /*
+            Slightly stronger shadow on the front card so it
+            visibly lifts off the cards stacked behind it.
+          */
+
+          .mobile-program-deck-card-front
+          .mobile-program-card-link {
+            box-shadow:
+              0 20px 45px
+              rgba(0, 0, 0, 0.28),
+              0 6px 14px
+              rgba(0, 0, 0, 0.14);
+          }
+
+          /*
+            Cards further back get a flatter, softer shadow —
+            reinforces the sense of depth in the stack.
+          */
+
+          .mobile-program-deck-card:not(.mobile-program-deck-card-front)
+          .mobile-program-card-link {
+            box-shadow:
+              0 8px 18px
+              rgba(0, 0, 0, 0.18);
+          }
+
+          /* ==================================================
+             ACCENT
+          =================================================== */
+
+          .mobile-program-card-accent {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            z-index: 2;
+          }
+
+          /* ==================================================
+             ICON
+          =================================================== */
+
+          .mobile-program-card-icon {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            color: #fff;
+            border-radius: 14px;
+            box-shadow:
+              0 7px 18px
+              rgba(0, 0, 0, 0.16);
+            font-size: 1.4rem;
+          }
+
+          /* ==================================================
+             BODY
+          =================================================== */
+
+          .mobile-program-card-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            padding:
+              1.65rem 1.25rem 1.2rem;
+          }
+
+          /* ==================================================
+             TOP
+          =================================================== */
+
+          .mobile-program-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            min-height: 48px;
+            margin-bottom: 0.9rem;
+          }
+
+          .mobile-program-card-label {
+            display: none;
+          }
+
+          .mobile-program-card-number {
+            color:
+              rgba(0, 0, 0, 0.2);
+            font-family:
+              "Playfair Display",
+              Georgia,
+              serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+          }
+
+          /* ==================================================
+             TITLE
+          =================================================== */
+
+          .mobile-program-card-title {
+            margin: 0 0 0.45rem;
+            padding-right: 0.25rem;
+            color:
+              var(
+                --color-text,
+                #1d1d1d
+              );
+            font-family:
+              "Playfair Display",
+              Georgia,
+              serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.25;
+          }
+
+          /* ==================================================
+             SUBTITLE
+          =================================================== */
+
+          .mobile-program-card-subtitle {
+            margin:
+              0 0 0.75rem;
+            color: ${BRAND};
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1.45;
+          }
+
+          /* ==================================================
+             DESCRIPTION
+          =================================================== */
+
+          .mobile-program-card-description {
+            display: -webkit-box;
+            overflow: hidden;
+            margin:
+              0 0 0.9rem;
+            color:
+              var(
+                --color-text-muted,
+                #6c757d
+              );
+            font-size: 0.76rem;
+            line-height: 1.6;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+          }
+
+          /* ==================================================
+             META
+          =================================================== */
+
+          .mobile-program-card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.42rem;
+            margin-top: auto;
+            margin-bottom: 0.9rem;
+            padding-top: 0.8rem;
+            border-top:
+              1px solid
+              rgba(0, 0, 0, 0.09);
+          }
+
+          .mobile-program-card-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: #555;
+            font-size: 0.69rem;
+            line-height: 1.35;
+          }
+
+          .mobile-program-card-meta-item i {
+            flex-shrink: 0;
+            width: 15px;
+            color: ${BRAND};
+            font-size: 0.76rem;
+            text-align: center;
+          }
+
+          .mobile-program-card-meta-item strong {
+            color: #333;
+            font-weight: 700;
+          }
+
+          /* ==================================================
+             DETAILS
+          =================================================== */
+
+          .mobile-program-card-details {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 40px;
+            padding:
+              0.55rem 1rem;
+            color: #fff;
+            background: ${BRAND};
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+          }
+
+          .mobile-program-card-details i {
+            transition:
+              transform 0.2s ease;
+          }
+
+          .mobile-program-card-link:active
+          .mobile-program-card-details i {
+            transform:
+              translateX(3px);
+          }
+
+          /* ==================================================
+             SWIPE HINT
+          =================================================== */
+
+          .mobile-program-deck-hint {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            margin-top: 1.05rem;
+            color:
+              rgba(255, 255, 255, 0.68);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+          }
+
+          .mobile-program-deck-hint span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+          }
+
+          .mobile-program-deck-hint i {
+            font-size: 0.7rem;
+          }
+
+          /* ==================================================
+             SMALL PHONES
+          =================================================== */
+
+          @media (max-width: 380px) {
+
+            .mobile-program-deck-stage {
+              height: 415px;
+            }
+
+            .mobile-program-card-icon {
+              top: 20px;
+              left: 20px;
+              width: 50px;
+              height: 50px;
+              border-radius: 13px;
+              font-size: 1.25rem;
+            }
+
+            .mobile-program-card-body {
+              padding:
+                1.45rem 1rem 1rem;
+            }
+
+            .mobile-program-card-title {
+              font-size: 1.2rem;
+            }
+
+            .mobile-program-card-description {
+              font-size: 0.73rem;
+              -webkit-line-clamp: 3;
+            }
+
+            .mobile-program-card-meta-item {
+              font-size: 0.65rem;
+            }
           }
         }
 
@@ -1393,6 +2235,9 @@ const ProgramsSection = () => {
         ==================================================== */
 
         @media (prefers-reduced-motion: reduce) {
+
+          .mobile-program-deck-card,
+          .mobile-program-card-details i,
           .program-card,
           .program-icon,
           .program-details-button,
@@ -1402,6 +2247,7 @@ const ProgramsSection = () => {
             transition: none !important;
           }
         }
+
       `}</style>
     </>
   );
