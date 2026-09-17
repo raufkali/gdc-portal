@@ -84,7 +84,11 @@ const AnnouncementsManager = () => {
       const data = {
         title: formData.title || "",
         content: formData.content || "",
-        author: formData.author || (isHOD ? userProfile?.displayName || "HOD" : ""),
+        author:
+          formData.author ||
+          (isHOD
+            ? userProfile?.name || userProfile?.displayName || "HOD"
+            : ""),
         category: formData.category || "",
         imageUrl: formData.imageUrl || "",
         fileUrl: formData.fileUrl || "",
@@ -119,7 +123,11 @@ const AnnouncementsManager = () => {
       fetchItems();
     } catch (error) {
       console.error("Error saving:", error);
-      showError("Error saving: " + error.message);
+      if (error?.code === "permission-denied" || error?.message?.includes("Missing or insufficient permissions")) {
+        showError("Permission denied by Firebase Security Rules. Please ensure you have published the updated firestore.rules in the Firebase Console and your account has an authorized role (Admin, Content Manager, Principal, or HOD).");
+      } else {
+        showError("Error saving: " + error.message);
+      }
     }
   };
 
@@ -141,7 +149,11 @@ const AnnouncementsManager = () => {
       fetchItems();
     } catch (error) {
       console.error("Error deleting:", error);
-      showError("Error deleting: " + error.message);
+      if (error?.code === "permission-denied" || error?.message?.includes("Missing or insufficient permissions")) {
+        showError("Permission denied: You do not have permission to delete this announcement.");
+      } else {
+        showError("Error deleting: " + error.message);
+      }
     }
   };
 

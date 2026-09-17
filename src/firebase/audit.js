@@ -4,23 +4,45 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 /**
  * Record an action to the activityLogs Firestore collection
  */
-export const logActivity = async ({
-  action,
-  resourceType,
-  resourceId = null,
-  details = "",
-  user = null,
-}) => {
+export const logActivity = async (
+  firstArg,
+  actionArg,
+  resourceTypeArg,
+  resourceIdArg = null,
+  detailsArg = ""
+) => {
   try {
+    let action, resourceType, resourceId, details, user;
+    if (
+      typeof firstArg === "object" &&
+      firstArg !== null &&
+      ("action" in firstArg || "resourceType" in firstArg)
+    ) {
+      ({ action, resourceType, resourceId = null, details = "", user = null } = firstArg);
+    } else {
+      user = firstArg;
+      action = actionArg;
+      resourceType = resourceTypeArg;
+      resourceId = resourceIdArg;
+      details =
+        typeof detailsArg === "object" && detailsArg !== null
+          ? JSON.stringify(detailsArg)
+          : detailsArg || "";
+    }
+
     const currentUser = user || auth.currentUser;
     const logData = {
-      action,
-      resourceType,
-      resourceId,
-      details,
-      actorUid: currentUser?.uid || "system",
+      action: action || "UNKNOWN_ACTION",
+      resourceType: resourceType || "unknown",
+      resourceId: resourceId || null,
+      details: details || "",
+      actorUid: currentUser?.uid || currentUser?.id || "system",
       actorEmail: currentUser?.email || "anonymous",
-      actorName: currentUser?.displayName || currentUser?.email?.split("@")[0] || "User",
+      actorName:
+        currentUser?.displayName ||
+        currentUser?.name ||
+        currentUser?.email?.split("@")[0] ||
+        "User",
       timestamp: serverTimestamp(),
     };
 

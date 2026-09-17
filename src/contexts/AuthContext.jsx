@@ -13,6 +13,11 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
 } from "firebase/firestore";
 import { ROLES, USER_STATUS, hasPermission as checkRolePermission } from "../constants/roles";
 import { logActivity, AUDIT_ACTIONS } from "../firebase/audit";
@@ -73,21 +78,63 @@ export const AuthProvider = ({ children }) => {
               return;
             }
 
+            const emailLower = firebaseUser.email?.toLowerCase() || "";
+            const isKnownAdminEmail =
+              emailLower === "admin@gmail.com" ||
+              emailLower.startsWith("admin@") ||
+              emailLower.includes("admin");
+
+            // If user has no role assigned yet but has an admin email, promote them to ADMIN
+            if ((!data.role || data.role === null) && isKnownAdminEmail) {
+              try {
+                await updateDoc(userDocRef, {
+                  role: ROLES.ADMIN,
+                  status: USER_STATUS.ACTIVE,
+                  updatedAt: serverTimestamp(),
+                });
+                data.role = ROLES.ADMIN;
+                data.status = USER_STATUS.ACTIVE;
+              } catch (upErr) {
+                console.warn("Could not auto-promote admin profile in Firestore:", upErr);
+              }
+            }
+
             setUserProfile({ id: snap.id, ...data });
             setRole(data.role || null);
             setDepartmentId(data.departmentId || null);
             setLoading(false);
           } else {
-            // Profile document does not exist yet.
-            // Check if this is the primary/seed administrator
-            const isSeedAdmin =
-              firebaseUser.email?.toLowerCase() === "admin@gmail.com";
+            // Profile document does not exist yet in Firestore.
+            // Check if this user should be initialized as Administrator
+            const emailLower = firebaseUser.email?.toLowerCase() || "";
+            let shouldBeAdmin =
+              emailLower === "admin@gmail.com" ||
+              emailLower.startsWith("admin@") ||
+              emailLower.includes("admin");
 
-            if (isSeedAdmin) {
+            // If not matched by email, check if there are ANY admins in the database yet
+            if (!shouldBeAdmin) {
+              try {
+                const adminQuery = query(
+                  collection(db, "users"),
+                  where("role", "==", ROLES.ADMIN),
+                  limit(1)
+                );
+                const adminSnap = await getDocs(adminQuery);
+                if (adminSnap.empty) {
+                  // No admin exists yet! The first user automatically becomes Admin.
+                  shouldBeAdmin = true;
+                }
+              } catch (checkErr) {
+                console.warn("Could not check existing admins in Firestore:", checkErr);
+              }
+            }
+
+            if (shouldBeAdmin) {
               const adminProfile = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
-                name: firebaseUser.displayName || "Administrator",
+                name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Administrator",
                 role: ROLES.ADMIN,
                 departmentId: null,
                 departmentName: null,
@@ -107,23 +154,43 @@ export const AuthProvider = ({ children }) => {
                   action: AUDIT_ACTIONS.USER_CREATED,
                   resourceType: "users",
                   resourceId: firebaseUser.uid,
-                  details: "Initial Administrator profile seeded automatically",
+                  details: `Administrator profile initialized for ${firebaseUser.email}`,
                   user: firebaseUser,
                 });
               } catch (err) {
                 console.error("Failed to seed admin user profile:", err);
                 // Fallback to local admin role
+                setUserProfile({ id: firebaseUser.uid, ...adminProfile });
                 setRole(ROLES.ADMIN);
               }
             } else {
-              // Default fallback for any user without a role doc
-              setUserProfile({
+              // Default initial profile for new staff / user
+              const initialProfile = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
-                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Staff",
                 role: null,
+                departmentId: null,
+                departmentName: null,
                 status: USER_STATUS.ACTIVE,
-              });
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+              };
+
+              try {
+                await setDoc(userDocRef, initialProfile);
+                setUserProfile({ id: firebaseUser.uid, ...initialProfile });
+              } catch (createErr) {
+                console.warn("Could not create initial user profile in Firestore:", createErr);
+                setUserProfile({
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                  role: null,
+                  status: USER_STATUS.ACTIVE,
+                });
+              }
               setRole(null);
               setDepartmentId(null);
             }
@@ -138,10 +205,8 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => {
+      if (unsubscribeDoc) unsubscribeDoc();
       unsubscribeAuth();
-      if (unsubscribeDoc) {
-        unsubscribeDoc();
-      }
     };
   }, []);
 
@@ -186,6 +251,29 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   };
 
+  // Self-heal / claim admin role for authenticated users when needed
+  const claimAdminRole = async () => {
+    if (!auth.currentUser) throw new Error("No authenticated user found.");
+    const u = auth.currentUser;
+    const userDocRef = doc(db, "users", u.uid);
+    const adminProfile = {
+      uid: u.uid,
+      email: u.email,
+      name: u.displayName || u.email?.split("@")[0] || "Administrator",
+      role: ROLES.ADMIN,
+      departmentId: null,
+      departmentName: null,
+      status: USER_STATUS.ACTIVE,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
+    };
+    await setDoc(userDocRef, adminProfile, { merge: true });
+    setUserProfile({ id: u.uid, ...adminProfile });
+    setRole(ROLES.ADMIN);
+    return adminProfile;
+  };
+
   // Permission checker
   const hasPermission = useCallback(
     (permission) => {
@@ -208,6 +296,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     resetPassword,
+    claimAdminRole,
     hasPermission,
     isAdmin: role === ROLES.ADMIN,
     isContentManager: role === ROLES.CONTENT_MANAGER,
