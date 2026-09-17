@@ -16,19 +16,15 @@ const StudentAchievementsSection = () => {
     let isMounted = true;
 
     const fetchAchievements = async () => {
-      // --------------------------------------------------
-      // Fresh cache
-      // --------------------------------------------------
       if (
         cachedAchievements &&
         cacheTimestamp &&
         Date.now() - cacheTimestamp < CACHE_TTL
       ) {
         if (isMounted) {
-          setAchievements(cachedAchievements.slice(0, 4));
+          setAchievements(cachedAchievements.slice(0, 5));
           setLoading(false);
         }
-
         return;
       }
 
@@ -40,11 +36,9 @@ const StudentAchievementsSection = () => {
           ...doc.data(),
         }));
 
-        // Newest first
         data.sort((a, b) => {
           if (!a.date) return 1;
           if (!b.date) return -1;
-
           return new Date(b.date) - new Date(a.date);
         });
 
@@ -52,14 +46,13 @@ const StudentAchievementsSection = () => {
         cacheTimestamp = Date.now();
 
         if (isMounted) {
-          setAchievements(data.slice(0, 4));
+          setAchievements(data.slice(0, 5));
         }
       } catch (error) {
         console.error("Error fetching student achievements:", error);
 
-        // Fallback to stale cache
         if (isMounted && cachedAchievements) {
-          setAchievements(cachedAchievements.slice(0, 4));
+          setAchievements(cachedAchievements.slice(0, 5));
         }
       } finally {
         if (isMounted) {
@@ -75,9 +68,6 @@ const StudentAchievementsSection = () => {
     };
   }, []);
 
-  // --------------------------------------------------
-  // Date formatter
-  // --------------------------------------------------
   const formatDate = (dateString) => {
     if (!dateString) return "";
 
@@ -98,12 +88,11 @@ const StudentAchievementsSection = () => {
     }
   };
 
-  // --------------------------------------------------
-  // Don't render section if there is nothing to show
-  // --------------------------------------------------
   if (!loading && !achievements.length) {
     return null;
   }
+
+  const [featured, ...rest] = achievements;
 
   return (
     <section
@@ -120,10 +109,13 @@ const StudentAchievementsSection = () => {
         ================================================== */}
         <div className="achievements-section-header" data-aos="fade-up">
           <div>
-            <span className="achievements-eyebrow">Student Success</span>
+            <span className="achievements-eyebrow">
+              <i className="bi bi-award-fill" />
+              Student Success
+            </span>
 
             <h2>
-              Latest <span>Achievements</span>
+              Achievements <span>Board</span>
             </h2>
 
             <p>
@@ -139,7 +131,7 @@ const StudentAchievementsSection = () => {
         </div>
 
         {/* ==================================================
-            NEWS LIST
+            LOADING
         ================================================== */}
         {loading ? (
           <div
@@ -148,124 +140,199 @@ const StudentAchievementsSection = () => {
           >
             <div
               className="spinner-border"
-              style={{
-                color: "#A51C30",
-              }}
+              style={{ color: "#A51C30" }}
               role="status"
             >
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
         ) : (
-          <div className="achievements-news-list">
-            {achievements.map((item, index) => {
-              const isFeatured = index === 0;
+          <div className="achievements-board">
+            {/* ==================================================
+                FEATURED PROFILE CARD
+            ================================================== */}
+            {featured && (
+              <article
+                className="achievement-profile achievement-profile-featured"
+                data-aos="fade-up"
+                data-aos-duration="600"
+              >
+                {/* Featured tag on the face */}
+                <span className="achievement-featured-tag">
+                  <i className="bi bi-star-fill" />
+                  Featured
+                </span>
 
-              return (
-                <article
-                  key={item.id}
-                  className={`achievement-news-item ${
-                    isFeatured ? "achievement-news-featured" : ""
-                  }`}
-                  data-aos="fade-up"
-                  data-aos-delay={index * 80}
-                >
-                  {/* ==================================================
-                      IMAGE
-                  ================================================== */}
-                  <div className="achievement-news-image">
-                    {item.imageUrl ? (
+                {/* Circular avatar */}
+                <div className="achievement-avatar-wrap">
+                  <div className="achievement-avatar-ring" />
+                  <div className="achievement-avatar">
+                    {featured.imageUrl ? (
                       <img
-                        src={item.imageUrl}
+                        src={featured.imageUrl}
                         alt={
-                          item.studentName ||
-                          item.title ||
+                          featured.studentName ||
+                          featured.title ||
                           "Student achievement"
                         }
-                        loading={index === 0 ? "eager" : "lazy"}
+                        loading="eager"
                         decoding="async"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
-
-                          const fallback = e.currentTarget.nextElementSibling;
-
-                          if (fallback) {
-                            fallback.style.display = "flex";
-                          }
+                          const fb = e.currentTarget.nextElementSibling;
+                          if (fb) fb.style.display = "flex";
                         }}
                       />
                     ) : null}
 
-                    <div
-                      className="achievement-news-image-fallback"
-                      style={{
-                        display: item.imageUrl ? "none" : "flex",
-                      }}
+                    <span
+                      className="achievement-avatar-fallback"
+                      style={{ display: featured.imageUrl ? "none" : "flex" }}
                     >
-                      <i className="bi bi-trophy" />
-                    </div>
+                      <i className="bi bi-trophy-fill" />
+                    </span>
                   </div>
 
-                  {/* ==================================================
-                      CONTENT
-                  ================================================== */}
-                  <div className="achievement-news-content">
-                    <div className="achievement-news-meta">
-                      <span className="achievement-news-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
+                  {/* Medal / date pill */}
+                  {featured.date && (
+                    <span className="achievement-date-pill">
+                      {formatDate(featured.date)}
+                    </span>
+                  )}
+                </div>
 
-                      <span className="achievement-news-label">
-                        Student Achievement
-                      </span>
+                {/* Identity */}
+                <div className="achievement-identity">
+                  <h3 className="achievement-name">
+                    {featured.studentName || "GDC Gulabad Student"}
+                  </h3>
+
+                  {featured.title && (
+                    <div className="achievement-title">{featured.title}</div>
+                  )}
+                </div>
+
+                <div className="achievement-divider" />
+
+                {/* Achievement */}
+                {featured.achievement && (
+                  <div className="achievement-highlight">
+                    <span className="achievement-highlight-bar" />
+                    <p>{featured.achievement}</p>
+                  </div>
+                )}
+
+                {/* Description */}
+                {featured.description && (
+                  <p className="achievement-bio">{featured.description}</p>
+                )}
+
+                {/* Footer */}
+                <div className="achievement-footer">
+                  <span className="achievement-footer-label">
+                    Achievement of the Month
+                  </span>
+                  <i className="bi bi-arrow-up-right" />
+                </div>
+              </article>
+            )}
+
+            {/* ==================================================
+                OTHER PROFILE CARDS
+            ================================================== */}
+            {rest.length > 0 && (
+              <div className="achievement-profile-grid">
+                {rest.map((item, index) => (
+                  <article
+                    key={item.id}
+                    className="achievement-profile"
+                    data-aos="fade-up"
+                    data-aos-delay={(index + 1) * 80}
+                  >
+                    {/* Number */}
+                    <span className="achievement-index">
+                      {String(index + 2).padStart(2, "0")}
+                    </span>
+
+                    {/* Circular avatar */}
+                    <div className="achievement-avatar-wrap">
+                      <div className="achievement-avatar-ring" />
+                      <div className="achievement-avatar">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={
+                              item.studentName ||
+                              item.title ||
+                              "Student achievement"
+                            }
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fb = e.currentTarget.nextElementSibling;
+                              if (fb) fb.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+
+                        <span
+                          className="achievement-avatar-fallback"
+                          style={{ display: item.imageUrl ? "none" : "flex" }}
+                        >
+                          <i className="bi bi-trophy" />
+                        </span>
+                      </div>
 
                       {item.date && (
-                        <>
-                          <span className="achievement-meta-dot">•</span>
-
-                          <span className="achievement-news-date">
-                            <i className="bi bi-calendar3" />
-                            {formatDate(item.date)}
-                          </span>
-                        </>
+                        <span className="achievement-date-pill">
+                          {formatDate(item.date)}
+                        </span>
                       )}
                     </div>
 
-                    <h3>{item.studentName || "GDC Gulabad Student"}</h3>
+                    {/* Identity */}
+                    <div className="achievement-identity">
+                      <h4 className="achievement-name">
+                        {item.studentName || "GDC Gulabad Student"}
+                      </h4>
 
-                    {item.title && (
-                      <div className="achievement-news-title">{item.title}</div>
-                    )}
+                      {item.title && (
+                        <div className="achievement-title">{item.title}</div>
+                      )}
+                    </div>
 
+                    <div className="achievement-divider" />
+
+                    {/* Achievement */}
                     {item.achievement && (
-                      <div className="achievement-news-highlight">
-                        <span />
-
+                      <div className="achievement-highlight">
+                        <span className="achievement-highlight-bar" />
                         <p>{item.achievement}</p>
                       </div>
                     )}
 
+                    {/* Description */}
                     {item.description && (
-                      <p className="achievement-news-description">
-                        {item.description}
-                      </p>
+                      <p className="achievement-bio">{item.description}</p>
                     )}
-                  </div>
 
-                  {/* ==================================================
-                      ARROW
-                  ================================================== */}
-                  <div className="achievement-news-arrow">
-                    <i className="bi bi-arrow-up-right" />
-                  </div>
-                </article>
-              );
-            })}
+                    {/* Footer */}
+                    <div className="achievement-footer">
+                      <span className="achievement-footer-label">
+                        Student Achievement
+                      </span>
+                      <i className="bi bi-arrow-up-right" />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ==================================================
-            BOTTOM CTA
+            BOTTOM
         ================================================== */}
         {!loading && achievements.length > 0 && (
           <div
@@ -308,6 +375,7 @@ const StudentAchievementsSection = () => {
         .achievements-eyebrow {
           display: inline-flex;
           align-items: center;
+          gap: 0.5rem;
           color: #A51C30;
           background: rgba(165, 28, 48, 0.08);
           padding: 0.4rem 1.25rem;
@@ -317,6 +385,10 @@ const StudentAchievementsSection = () => {
           letter-spacing: 2px;
           text-transform: uppercase;
           margin-bottom: 0.9rem;
+        }
+
+        .achievements-eyebrow i {
+          font-size: 0.72rem;
         }
 
         .achievements-section-header h2 {
@@ -344,7 +416,6 @@ const StudentAchievementsSection = () => {
           font-size: 1rem;
           line-height: 1.7;
         }
-
 
         /* ================================================================
            VIEW ALL BUTTON
@@ -392,319 +463,401 @@ const StudentAchievementsSection = () => {
           transform: translateX(3px);
         }
 
-
         /* ================================================================
-           NEWS LIST
+           BOARD LAYOUT
         ================================================================= */
 
-        .achievements-news-list {
-          max-width: 1100px;
-          margin: 0 auto;
+        .achievements-board {
+          display: flex;
+          flex-direction: column;
+          gap: 1.75rem;
         }
 
-        .achievement-news-item {
+        .achievement-profile-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 1.25rem;
+        }
+
+        /* ================================================================
+           PROFILE CARD (shared)
+        ================================================================= */
+
+        .achievement-profile {
           position: relative;
 
-          display: grid;
-
-          grid-template-columns:
-            170px
-            minmax(0, 1fr)
-            45px;
-
-          gap: 1.75rem;
-
+          display: flex;
+          flex-direction: column;
           align-items: center;
+          text-align: center;
 
-          padding:
-            1.6rem 0;
+          padding: 2.4rem 1.5rem 1.25rem;
 
-          border-top:
-            1px solid
-            var(
-              --color-border,
-              rgba(0, 0, 0, 0.08)
-            );
-
-          transition:
-            transform 0.3s ease;
-        }
-
-        .achievement-news-item:last-child {
-          border-bottom:
-            1px solid
-            var(
-              --color-border,
-              rgba(0, 0, 0, 0.08)
-            );
-        }
-
-        .achievement-news-item:hover {
-          transform: translateX(6px);
-        }
-
-
-        /* ================================================================
-           FEATURED FIRST ITEM
-        ================================================================= */
-
-        .achievement-news-featured {
-          grid-template-columns:
-            250px
-            minmax(0, 1fr)
-            45px;
-
-          padding:
-            2rem 0;
-        }
-
-        .achievement-news-featured
-        .achievement-news-image {
-          height: 190px;
-        }
-
-        .achievement-news-featured
-        .achievement-news-content h3 {
-          font-size:
-            clamp(1.7rem, 3vw, 2.25rem);
-        }
-
-
-        /* ================================================================
-           IMAGE
-        ================================================================= */
-
-        .achievement-news-image {
-          width: 100%;
-          height: 120px;
+          background: var(--card-bg, #ffffff);
+          border: 1px solid var(--color-border, rgba(0, 0, 0, 0.06));
+          border-radius: 20px;
 
           overflow: hidden;
 
-          border-radius: 8px;
-
-          background:
-            linear-gradient(
-              135deg,
-              rgba(165, 28, 48, 0.12),
-              rgba(165, 28, 48, 0.03)
-            );
-        }
-
-        .achievement-news-image img {
-          width: 100%;
-          height: 100%;
-
-          object-fit: cover;
-
-          display: block;
+          box-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.05),
+            0 2px 6px rgba(0, 0, 0, 0.03);
 
           transition:
-            transform 0.5s ease;
+            transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 0.35s ease;
         }
 
-        .achievement-news-item:hover
-        .achievement-news-image img {
-          transform: scale(1.04);
+        .achievement-profile:hover {
+          transform: translateY(-5px);
+          box-shadow:
+            0 22px 45px rgba(0, 0, 0, 0.1),
+            0 4px 10px rgba(0, 0, 0, 0.05);
+          border-color: rgba(165, 28, 48, 0.25);
         }
 
-        .achievement-news-image-fallback {
-          width: 100%;
-          height: 100%;
-
-          align-items: center;
-          justify-content: center;
-
-          color: #A51C30;
-
-          font-size: 2.4rem;
+        /* Subtle top gradient wash */
+        .achievement-profile::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 100px;
+          background: linear-gradient(
+            180deg,
+            rgba(165, 28, 48, 0.06),
+            rgba(165, 28, 48, 0)
+          );
+          pointer-events: none;
         }
-
 
         /* ================================================================
-           META
+           INDEX NUMBER (small cards)
         ================================================================= */
 
-        .achievement-news-meta {
-          display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-
-          gap: 0.55rem;
-
-          margin-bottom: 0.55rem;
-        }
-
-        .achievement-news-number {
-          color: #A51C30;
-
-          font-size: 0.68rem;
-          font-weight: 800;
-
-          letter-spacing: 1.5px;
-        }
-
-        .achievement-news-label {
-          color: #A51C30;
-
-          font-size: 0.67rem;
-          font-weight: 700;
-
-          text-transform: uppercase;
-          letter-spacing: 0.7px;
-        }
-
-        .achievement-meta-dot {
-          color:
-            var(--color-text-muted);
-
-          font-size: 0.7rem;
-        }
-
-        .achievement-news-date {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.3rem;
-
-          color:
-            var(--color-text-muted);
-
-          font-size: 0.68rem;
-        }
-
-
-        /* ================================================================
-           CONTENT
-        ================================================================= */
-
-        .achievement-news-content {
-          min-width: 0;
-        }
-
-        .achievement-news-content h3 {
-          margin: 0;
-
-          color:
-            var(--color-text);
-
+        .achievement-index {
+          position: absolute;
+          top: 12px;
+          right: 16px;
           font-family:
             'Playfair Display',
             Georgia,
             serif;
-
-          font-size: 1.45rem;
+          font-size: 0.85rem;
           font-weight: 700;
-
-          line-height: 1.2;
-
-          overflow-wrap: anywhere;
+          color: rgba(165, 28, 48, 0.22);
+          letter-spacing: 1px;
         }
-
-        .achievement-news-title {
-          margin-top: 0.3rem;
-
-          color:
-            var(--color-text-muted);
-
-          font-size: 0.75rem;
-          font-weight: 600;
-
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-
-          overflow-wrap: anywhere;
-        }
-
-        .achievement-news-highlight {
-          display: flex;
-
-          align-items: flex-start;
-
-          gap: 0.65rem;
-
-          margin-top: 0.75rem;
-        }
-
-        .achievement-news-highlight > span {
-          width: 3px;
-          min-width: 3px;
-
-          height: 21px;
-
-          margin-top: 2px;
-
-          border-radius: 5px;
-
-          background: #A51C30;
-        }
-
-        .achievement-news-highlight p {
-          margin: 0;
-
-          color:
-            var(--color-text);
-
-          font-size: 0.88rem;
-          font-weight: 600;
-
-          line-height: 1.5;
-
-          overflow-wrap: anywhere;
-        }
-
-        .achievement-news-description {
-          max-width: 700px;
-
-          margin:
-            0.55rem 0 0;
-
-          color:
-            var(--color-text-muted);
-
-          font-size: 0.8rem;
-
-          line-height: 1.6;
-
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-
-          overflow: hidden;
-        }
-
 
         /* ================================================================
-           ARROW
+           FEATURED TAG (on face of card)
         ================================================================= */
 
-        .achievement-news-arrow {
-          width: 38px;
-          height: 38px;
+        .achievement-featured-tag {
+          position: absolute;
+          top: 14px;
+          left: 14px;
 
-          border:
-            1px solid
-            rgba(165, 28, 48, 0.16);
+          z-index: 5;
 
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+
+          background: linear-gradient(145deg, #A51C30, #7A1523);
+          color: #fff;
+
+          padding: 0.4rem 0.9rem;
+
+          border-radius: 50px;
+
+          font-size: 0.68rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+
+          box-shadow:
+            0 6px 16px rgba(165, 28, 48, 0.35);
+
+          transform: rotate(-3deg);
+        }
+
+        .achievement-featured-tag i {
+          font-size: 0.65rem;
+        }
+
+        /* ================================================================
+           AVATAR
+        ================================================================= */
+
+        .achievement-avatar-wrap {
+          position: relative;
+          width: 108px;
+          height: 108px;
+          margin-bottom: 1rem;
+        }
+
+        .achievement-avatar-ring {
+          position: absolute;
+          inset: -8px;
           border-radius: 50%;
+          border: 1px dashed rgba(165, 28, 48, 0.3);
+          pointer-events: none;
+        }
 
+        .achievement-avatar {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+          background: linear-gradient(145deg, #f5e6e9, #ecd2d8);
+          box-shadow:
+            0 10px 24px rgba(165, 28, 48, 0.18),
+            0 0 0 4px var(--card-bg, #ffffff),
+            0 0 0 5px rgba(165, 28, 48, 0.15);
           display: flex;
           align-items: center;
           justify-content: center;
-
-          color: #A51C30;
-
-          transition:
-            all 0.3s ease;
         }
 
-        .achievement-news-item:hover
-        .achievement-news-arrow {
+        .achievement-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          transition: transform 0.5s ease;
+        }
+
+        .achievement-profile:hover .achievement-avatar img {
+          transform: scale(1.06);
+        }
+
+        .achievement-avatar-fallback {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          color: #A51C30;
+          font-size: 2.6rem;
+        }
+
+        /* Date pill overlapping the avatar bottom */
+        .achievement-date-pill {
+          position: absolute;
+          bottom: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+
+          display: inline-flex;
+          align-items: center;
+
           background: #A51C30;
           color: #fff;
 
-          transform:
-            translate(2px, -2px);
+          padding: 0.24rem 0.7rem;
+          border-radius: 50px;
+
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          white-space: nowrap;
+
+          box-shadow: 0 6px 14px rgba(165, 28, 48, 0.3);
+
+          z-index: 2;
         }
 
+        /* ================================================================
+           IDENTITY
+        ================================================================= */
+
+        .achievement-identity {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+          margin-top: 0.35rem;
+        }
+
+        .achievement-name {
+          margin: 0 0 0.35rem;
+          font-family:
+            'Playfair Display',
+            Georgia,
+            serif;
+          font-size: 1.12rem;
+          font-weight: 700;
+          line-height: 1.25;
+          color: var(--color-text);
+          max-width: 100%;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          overflow-wrap: anywhere;
+        }
+
+        .achievement-title {
+          color: #A51C30;
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1.1px;
+          max-width: 100%;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* ================================================================
+           DIVIDER
+        ================================================================= */
+
+        .achievement-divider {
+          width: 42px;
+          height: 2px;
+          background: rgba(165, 28, 48, 0.25);
+          border-radius: 2px;
+          margin: 1rem 0 0.85rem;
+        }
+
+        /* ================================================================
+           HIGHLIGHT (achievement line)
+        ================================================================= */
+
+        .achievement-highlight {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.55rem;
+          width: 100%;
+          text-align: left;
+          margin-bottom: 0.65rem;
+        }
+
+        .achievement-highlight-bar {
+          width: 3px;
+          min-width: 3px;
+          height: 20px;
+          margin-top: 2px;
+          border-radius: 3px;
+          background: #A51C30;
+        }
+
+        .achievement-highlight p {
+          margin: 0;
+          color: var(--color-text);
+          font-size: 0.82rem;
+          font-weight: 600;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          overflow-wrap: anywhere;
+        }
+
+        /* ================================================================
+           BIO
+        ================================================================= */
+
+        .achievement-bio {
+          margin: 0 0 1rem;
+          color: var(--color-text-muted);
+          font-size: 0.78rem;
+          line-height: 1.6;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* ================================================================
+           FOOTER
+        ================================================================= */
+
+        .achievement-footer {
+          margin-top: auto;
+          padding-top: 0.85rem;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.06));
+        }
+
+        .achievement-footer-label {
+          color: #A51C30;
+          font-size: 0.64rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1.3px;
+        }
+
+        .achievement-footer > i {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #A51C30;
+          border: 1px solid rgba(165, 28, 48, 0.2);
+          font-size: 0.85rem;
+          transition: all 0.3s ease;
+        }
+
+        .achievement-profile:hover .achievement-footer > i {
+          background: #A51C30;
+          color: #fff;
+          transform: translate(2px, -2px);
+        }
+
+        /* ================================================================
+           FEATURED PROFILE CARD — bigger avatar, wider card
+        ================================================================= */
+
+        .achievement-profile-featured {
+          padding: 3rem 2rem 1.5rem;
+        }
+
+        .achievement-profile-featured .achievement-avatar-wrap {
+          width: 140px;
+          height: 140px;
+          margin-bottom: 1.25rem;
+        }
+
+        .achievement-profile-featured .achievement-avatar-fallback {
+          font-size: 3.4rem;
+        }
+
+        .achievement-profile-featured .achievement-name {
+          font-size: clamp(1.5rem, 2.6vw, 2rem);
+          -webkit-line-clamp: 2;
+        }
+
+        .achievement-profile-featured .achievement-title {
+          font-size: 0.78rem;
+          letter-spacing: 1.4px;
+        }
+
+        .achievement-profile-featured .achievement-highlight p {
+          font-size: 0.95rem;
+          -webkit-line-clamp: 3;
+        }
+
+        .achievement-profile-featured .achievement-bio {
+          font-size: 0.88rem;
+          -webkit-line-clamp: 3;
+        }
+
+        .achievement-profile-featured .achievement-footer-label {
+          font-size: 0.7rem;
+        }
 
         /* ================================================================
            BOTTOM
@@ -712,55 +865,36 @@ const StudentAchievementsSection = () => {
 
         .achievements-bottom {
           display: flex;
-
           align-items: center;
-
           gap: 1.25rem;
-
           max-width: 800px;
-
-          margin:
-            2.5rem auto 0;
+          margin: 2.5rem auto 0;
         }
 
         .achievements-bottom-line {
           flex: 1;
-
           height: 1px;
-
-          background:
-            var(
-              --color-border,
-              rgba(0, 0, 0, 0.08)
-            );
+          background: var(--color-border, rgba(0, 0, 0, 0.08));
         }
 
         .achievements-bottom-link {
           flex-shrink: 0;
-
           display: inline-flex;
           align-items: center;
-
           gap: 0.45rem;
-
           color: #A51C30;
-
           font-size: 0.78rem;
           font-weight: 700;
-
           text-decoration: none;
         }
 
         .achievements-bottom-link i {
-          transition:
-            transform 0.25s ease;
+          transition: transform 0.25s ease;
         }
 
         .achievements-bottom-link:hover i {
-          transform:
-            translateX(4px);
+          transform: translateX(4px);
         }
-
 
         /* ================================================================
            LOADING
@@ -768,65 +902,30 @@ const StudentAchievementsSection = () => {
 
         .achievements-loading {
           min-height: 250px;
-
           display: flex;
           align-items: center;
           justify-content: center;
         }
-
 
         /* ================================================================
            TABLET
         ================================================================= */
 
         @media (max-width: 991.98px) {
-
           .achievements-section-header {
             align-items: flex-start;
           }
 
-          .achievement-news-item {
-            grid-template-columns:
-              140px
-              minmax(0, 1fr)
-              40px;
-
-            gap: 1.25rem;
-          }
-
-          .achievement-news-featured {
-            grid-template-columns:
-              200px
-              minmax(0, 1fr)
-              40px;
-          }
-
-          .achievement-news-image {
-            height: 110px;
-          }
-
-          .achievement-news-featured
-          .achievement-news-image {
-            height: 155px;
-          }
-
-          .achievement-news-content h3 {
-            font-size: 1.25rem;
-          }
-
-          .achievement-news-featured
-          .achievement-news-content h3 {
-            font-size: 1.7rem;
+          .achievement-profile-grid {
+            grid-template-columns: 1fr;
           }
         }
-
 
         /* ================================================================
            MOBILE
         ================================================================= */
 
         @media (max-width: 767.98px) {
-
           .student-achievements-section {
             padding-top: 3rem !important;
             padding-bottom: 3rem !important;
@@ -838,7 +937,7 @@ const StudentAchievementsSection = () => {
           }
 
           .achievements-section-header h2 {
-            font-size: 2.35rem;
+            font-size: 2.2rem;
           }
 
           .achievements-section-header p {
@@ -849,61 +948,76 @@ const StudentAchievementsSection = () => {
             margin-top: 1rem;
           }
 
-          .achievement-news-item,
-          .achievement-news-featured {
-            grid-template-columns:
-              82px
-              minmax(0, 1fr);
-
-            gap: 1rem;
-
-            padding: 1.25rem 0;
+          /* Featured card scales down */
+          .achievement-profile-featured {
+            padding: 2.4rem 1.25rem 1.25rem;
           }
 
-          .achievement-news-image,
-          .achievement-news-featured
-          .achievement-news-image {
-            width: 82px;
-            height: 105px;
+          .achievement-profile-featured .achievement-avatar-wrap {
+            width: 110px;
+            height: 110px;
           }
 
-          .achievement-news-arrow {
-            display: none;
+          .achievement-profile-featured .achievement-avatar-fallback {
+            font-size: 2.6rem;
           }
 
-          .achievement-news-content h3,
-          .achievement-news-featured
-          .achievement-news-content h3 {
-            font-size: 1.12rem;
+          .achievement-profile-featured .achievement-name {
+            font-size: 1.35rem;
           }
 
-          .achievement-news-label {
-            font-size: 0.6rem;
+          .achievement-profile-featured .achievement-highlight p {
+            font-size: 0.85rem;
           }
 
-          .achievement-news-number {
-            font-size: 0.6rem;
+          .achievement-profile-featured .achievement-bio {
+            font-size: 0.78rem;
           }
 
-          .achievement-news-date {
+          /* Smaller profile cards */
+          .achievement-profile {
+            padding: 2rem 1.15rem 1.1rem;
+          }
+
+          .achievement-avatar-wrap {
+            width: 88px;
+            height: 88px;
+          }
+
+          .achievement-avatar-fallback {
+            font-size: 2.1rem;
+          }
+
+          .achievement-name {
+            font-size: 1rem;
+          }
+
+          .achievement-title {
             font-size: 0.62rem;
           }
 
-          .achievement-news-title {
-            font-size: 0.63rem;
-          }
-
-          .achievement-news-highlight {
-            margin-top: 0.55rem;
-          }
-
-          .achievement-news-highlight p {
+          .achievement-highlight p {
             font-size: 0.76rem;
           }
 
-          .achievement-news-description {
+          .achievement-bio {
             font-size: 0.72rem;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 3;
+          }
+
+          .achievement-footer-label {
+            font-size: 0.6rem;
+          }
+
+          .achievement-footer > i {
+            width: 28px;
+            height: 28px;
+            font-size: 0.8rem;
+          }
+
+          .achievement-featured-tag {
+            font-size: 0.6rem;
+            padding: 0.32rem 0.75rem;
           }
 
           .achievements-bottom {
@@ -917,45 +1031,43 @@ const StudentAchievementsSection = () => {
           }
         }
 
-
         /* ================================================================
            SMALL MOBILE
         ================================================================= */
 
         @media (max-width: 400px) {
-
-          .achievement-news-item,
-          .achievement-news-featured {
-            grid-template-columns:
-              68px
-              minmax(0, 1fr);
-
-            gap: 0.75rem;
+          .achievement-avatar-wrap {
+            width: 78px;
+            height: 78px;
           }
 
-          .achievement-news-image,
-          .achievement-news-featured
-          .achievement-news-image {
-            width: 68px;
-            height: 90px;
+          .achievement-profile-featured .achievement-avatar-wrap {
+            width: 96px;
+            height: 96px;
           }
 
-          .achievement-news-content h3,
-          .achievement-news-featured
-          .achievement-news-content h3 {
-            font-size: 1rem;
+          .achievement-name {
+            font-size: 0.92rem;
           }
 
-          .achievement-news-highlight p {
-            font-size: 0.72rem;
-          }
-
-          .achievement-news-description {
-            font-size: 0.68rem;
+          .achievement-profile-featured .achievement-name {
+            font-size: 1.2rem;
           }
 
           .achievements-section-header h2 {
-            font-size: 2.1rem;
+            font-size: 2rem;
+          }
+        }
+
+        /* ================================================================
+           REDUCED MOTION
+        ================================================================= */
+
+        @media (prefers-reduced-motion: reduce) {
+          .achievement-profile,
+          .achievement-avatar img,
+          .achievement-footer > i {
+            transition: none !important;
           }
         }
 

@@ -43,47 +43,45 @@ const FALLBACK_IMAGES = [
 ];
 
 const GalleryPreview = () => {
-  const [images, setImages] = useState(() => {
-    if (
-      cachedGallery &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    ) {
-      return cachedGallery;
-    }
-
-    return [];
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return !(
-      cachedGallery &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
-
-  const [fromCache, setFromCache] = useState(() => {
-    return !!(
-      cachedGallery &&
-      cacheTimestamp &&
-      Date.now() - cacheTimestamp < CACHE_TTL
-    );
-  });
+  // ==========================================================
+  // ALWAYS start in loading state so the entrance animation
+  // and spinner run every time the section mounts, including
+  // when returning from /gallery. The cache only avoids the
+  // network round-trip, not the visual warm-up.
+  // ==========================================================
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchGallery = async () => {
+      // ------------------------------------------------------
+      // Cache hit — show the cached data, but still go through
+      // a short loading beat so the entrance animation plays.
+      // ------------------------------------------------------
       if (
         cachedGallery &&
         cacheTimestamp &&
         Date.now() - cacheTimestamp < CACHE_TTL
       ) {
-        setImages(cachedGallery);
-        setFromCache(true);
-        setLoading(false);
-        return;
+        // Small delay (one frame + tiny timeout) so React paints
+        // the loading state first, then transitions to loaded.
+        // This is what makes the animation reliably re-trigger.
+        const timer = setTimeout(() => {
+          if (!isMounted) return;
+          setImages(cachedGallery);
+          setFromCache(true);
+          setLoading(false);
+        }, 220);
+
+        return () => clearTimeout(timer);
       }
 
+      // ------------------------------------------------------
+      // Cache miss — fetch from Firestore.
+      // ------------------------------------------------------
       try {
         const snap = await getDocs(collection(db, "gallery"));
 
@@ -95,15 +93,14 @@ const GalleryPreview = () => {
         if (data.length > 0) {
           cachedGallery = data;
           cacheTimestamp = Date.now();
-
+          if (!isMounted) return;
           setImages(data);
           setFromCache(false);
         } else {
           const fallback = FALLBACK_IMAGES;
-
           cachedGallery = fallback;
           cacheTimestamp = Date.now();
-
+          if (!isMounted) return;
           setImages(fallback);
           setFromCache(false);
         }
@@ -111,18 +108,22 @@ const GalleryPreview = () => {
         console.error("Error fetching gallery preview:", error);
 
         const fallback = FALLBACK_IMAGES;
-
         cachedGallery = fallback;
         cacheTimestamp = Date.now();
 
+        if (!isMounted) return;
         setImages(fallback);
         setFromCache(false);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchGallery();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {
@@ -152,7 +153,7 @@ const GalleryPreview = () => {
 
   return (
     <section
-      className="py-5"
+      className="py-5 gallery-preview-section"
       style={{
         color: "#ffff",
         backgroundColor: "#A51C30",
@@ -160,7 +161,7 @@ const GalleryPreview = () => {
     >
       <div className="container-fluid m-0 py-5 px-2">
         {/* TITLE SECTION */}
-        <div className="text-center mb-5">
+        <div className="text-center mb-5 gallery-animate-in">
           <span
             style={{
               fontSize: "0.8rem",
@@ -207,8 +208,12 @@ const GalleryPreview = () => {
             DESKTOP GALLERY
             ========================================================= */}
         <div className="gallery-desktop-grid row g-3">
-          {displayImages.map((img) => (
-            <div key={img.id} className="col-md-4 col-sm-6">
+          {displayImages.map((img, index) => (
+            <div
+              key={img.id}
+              className="col-md-4 col-sm-6 gallery-animate-in"
+              style={{ animationDelay: `${index * 90}ms` }}
+            >
               <Link
                 to="/gallery"
                 style={{
@@ -373,9 +378,10 @@ const GalleryPreview = () => {
             return (
               <div
                 key={img.id}
-                className="gallery-mobile-sticky-card"
+                className="gallery-mobile-sticky-card gallery-animate-in"
                 style={{
                   top: `${stickyTop}px`,
+                  animationDelay: `${index * 90}ms`,
                 }}
               >
                 <Link to="/gallery" className="gallery-mobile-card-link">
@@ -426,7 +432,7 @@ const GalleryPreview = () => {
         </div>
 
         {/* VIEW ALL BUTTON */}
-        <div className="text-center mt-4">
+        <div className="text-center gallery-animate-in  mt-0">
           <Link
             to="/gallery"
             className="btn"
@@ -466,6 +472,35 @@ const GalleryPreview = () => {
           RESPONSIVE STYLES
           ========================================================= */}
       <style>{`
+        /* ---------------------------------------------------------
+           ENTRANCE ANIMATION
+           Runs every time the section mounts (including when
+           navigating back from /gallery), because the component
+           always starts in the loading state.
+           --------------------------------------------------------- */
+
+        @keyframes galleryFadeUp {
+          0% {
+            opacity: 0;
+            transform: translateY(24px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .gallery-animate-in {
+          animation: galleryFadeUp 0.7s
+            cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .gallery-animate-in {
+            animation: none !important;
+          }
+        }
+
         /* ---------------------------------------------------------
            DESKTOP
            --------------------------------------------------------- */
@@ -666,7 +701,7 @@ const GalleryPreview = () => {
           }
 
           .gallery-mobile-caption {
-            padding: 1.25rem 1rem 1.15rem;
+            padding: 1.25rem 1.15rem;
           }
         }
       `}</style>

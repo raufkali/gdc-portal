@@ -479,11 +479,10 @@ const getProgramIcon = (program) => {
 // ============================================================
 // DECK STACK GEOMETRY
 //
-// Cards behind the front card are now aligned in a neat,
-// orderly stack instead of being fanned out in alternating
-// directions. Each deeper card simply scales down slightly
-// and shifts down a little, so the peeking edges read as a
-// clean, predictable deck in order.
+// Cards behind the front card are aligned in a neat,
+// orderly stack. Each deeper card simply scales down
+// slightly and shifts down a little, so the peeking edges
+// read as a clean, predictable deck in order.
 // ============================================================
 
 const getStackTransform = (stackPosition) => {
@@ -491,6 +490,47 @@ const getStackTransform = (stackPosition) => {
   const translateY = stackPosition * 14;
 
   return `translate3d(0, ${translateY}px, 0) scale(${scale})`;
+};
+
+// ============================================================
+// REVEAL ON SCROLL HOOK
+//
+// Observes an element and flips `revealed` to true the first
+// time it enters the viewport. Used to stage the deck so the
+// cards "come forward" with a small stagger instead of all
+// snapping into place on mount.
+// ============================================================
+
+const useInView = (options) => {
+  const ref = useRef(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+
+    if (!node) return undefined;
+
+    // If IntersectionObserver isn't available, just reveal.
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealed(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          observer.disconnect();
+        }
+      });
+    }, options);
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [options]);
+
+  return [ref, revealed];
 };
 
 // ============================================================
@@ -505,6 +545,7 @@ const MobileProgramCard = ({
   isDragging,
   isExiting,
   exitDirection,
+  revealed,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -547,22 +588,56 @@ const MobileProgramCard = ({
   // visual handoff to the card being revealed underneath.
   const cardOpacity = isExiting && isFront ? 0.35 : opacity;
 
+  /*
+    Scroll reveal staging:
+
+    When the deck is still hidden (revealed === false), the
+    cards sit pushed slightly forward / down and faded out.
+    Once the observer flips `revealed` to true, each card
+    transitions into its real position — with a per-card
+    delay (stackPosition * 90ms) so the front card arrives
+    first and the ones behind ease in after it. This is what
+    makes the rest of the deck "come forward" smoothly.
+
+    The reveal transform is only applied while not dragging
+    and not exiting, so the swipe / exit animation is never
+    fought by the entrance animation.
+  */
+  const isAnimatingDeck = isDragging || isExiting;
+
+  const revealStyle =
+    !revealed && !isAnimatingDeck
+      ? {
+          transform: `translate3d(0, ${28 + stackPosition * 10}px, 0) scale(${
+            0.9 - stackPosition * 0.03
+          })`,
+          opacity: 0,
+          transition:
+            "transform 720ms cubic-bezier(0.22, 1, 0.36, 1), opacity 620ms ease",
+          transitionDelay: `${stackPosition * 90}ms`,
+        }
+      : null;
+
   return (
     <div
       className={`mobile-program-deck-card ${
         isFront ? "mobile-program-deck-card-front" : ""
       } ${isDragging && isFront ? "mobile-program-deck-card-dragging" : ""}`}
       style={{
-        transform,
-        opacity: cardOpacity,
+        ...(revealStyle
+          ? revealStyle
+          : {
+              transform,
+              opacity: cardOpacity,
+              transition:
+                isDragging && isFront
+                  ? "none"
+                  : isExiting && isFront
+                    ? "transform 620ms cubic-bezier(0.22, 0.61, 0.24, 1), opacity 560ms ease"
+                    : "transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease",
+            }),
         zIndex: 20 - stackPosition,
         pointerEvents: isFront ? "auto" : "none",
-        transition:
-          isDragging && isFront
-            ? "none"
-            : isExiting && isFront
-              ? "transform 620ms cubic-bezier(0.22, 0.61, 0.24, 1), opacity 560ms ease"
-              : "transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease",
       }}
       onPointerDown={isFront ? onPointerDown : undefined}
       onPointerMove={isFront ? onPointerMove : undefined}
@@ -667,13 +742,6 @@ const MobileProgramCard = ({
 
 // ============================================================
 // MOBILE PROGRAM DECK
-//
-// Simplified to a single "next" gesture: dragging the front
-// card in *either* direction (past the threshold) sends it
-// flying off that same side and always advances the deck to
-// the next card underneath — there is no "go back" swipe.
-// The cards behind the front one are neatly aligned so the
-// whole thing reads as an orderly physical stack of cards.
 // ============================================================
 
 const MobileProgramDeck = ({ items, category }) => {
@@ -701,7 +769,16 @@ const MobileProgramDeck = ({ items, category }) => {
 
   // Must match the exit transition duration in the card so
   // the index swap happens right as the flying card clears.
-  const EXIT_DURATION = 620;
+  const EXIT_DURATION = 30;
+
+  // Scroll reveal for the whole deck stage. `rootMargin`
+  // makes the deck start animating slightly *before* it
+  // fully scrolls into view, so the motion feels natural
+  // rather than triggered right at the edge.
+  const [deckRef, deckRevealed] = useInView({
+    threshold: 0.18,
+    rootMargin: "0px 0px -60px 0px",
+  });
 
   const getWrappedIndex = (index) => {
     if (!items.length) return 0;
@@ -878,7 +955,11 @@ const MobileProgramDeck = ({ items, category }) => {
     .filter((entry) => entry.program);
 
   return (
-    <div className="mobile-program-deck" aria-label={`${category} programs`}>
+    <div
+      ref={deckRef}
+      className="mobile-program-deck"
+      aria-label={`${category} programs`}
+    >
       {/* ==================================================
           DECK
       =================================================== */}
@@ -894,6 +975,7 @@ const MobileProgramDeck = ({ items, category }) => {
             isDragging={isDragging}
             isExiting={isExiting}
             exitDirection={exitDirection}
+            revealed={deckRevealed}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -908,7 +990,7 @@ const MobileProgramDeck = ({ items, category }) => {
       =================================================== */}
 
       {items.length > 1 && (
-        <div className="mobile-program-deck-hint">
+        <div className="mobile-program-deck-hint mt-5 pt-3">
           <span>
             <i className="bi bi-arrow-left" />
             <i className="bi bi-arrow-right" />

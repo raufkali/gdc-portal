@@ -16,9 +16,6 @@ const CollegeStarsSection = () => {
     let isMounted = true;
 
     const fetchStars = async () => {
-      // --------------------------------------------------
-      // Use fresh cache
-      // --------------------------------------------------
       if (
         cachedStars &&
         cacheTimestamp &&
@@ -28,7 +25,6 @@ const CollegeStarsSection = () => {
           setStars(cachedStars.slice(0, 4));
           setLoading(false);
         }
-
         return;
       }
 
@@ -62,9 +58,6 @@ const CollegeStarsSection = () => {
     };
   }, []);
 
-  // --------------------------------------------------
-  // Loading
-  // --------------------------------------------------
   if (loading) {
     return (
       <section
@@ -96,7 +89,7 @@ const CollegeStarsSection = () => {
 
   return (
     <section
-      className="py-5"
+      className="py-5 stars-section"
       style={{
         backgroundColor: "var(--color-bg)",
         position: "relative",
@@ -164,276 +157,91 @@ const CollegeStarsSection = () => {
         </div>
 
         {/* ==================================================
-            STARS
+            PROFILE CARDS
         ================================================== */}
-        <div className="row g-3 g-lg-4">
+        <div className="stars-grid">
           {stars.map((star, index) => (
-            <div
+            <article
               key={star.id}
-              className="col-12 col-sm-6 col-lg-3"
+              className="star-profile-card"
               data-aos="fade-up"
               data-aos-delay={index * 100}
             >
-              <article
-                className="h-100"
-                style={{
-                  position: "relative",
-                  background: "var(--card-bg)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "18px",
-                  overflow: "hidden",
-                  transition:
-                    "transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-6px)";
-
-                  e.currentTarget.style.boxShadow =
-                    "0 18px 40px rgba(0,0,0,0.09)";
-
-                  e.currentTarget.style.borderColor = "rgba(165, 28, 48, 0.25)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-
-                  e.currentTarget.style.boxShadow = "none";
-
-                  e.currentTarget.style.borderColor = "var(--color-border)";
-                }}
-              >
-                {/* Accent line */}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "4px",
-                    background: "linear-gradient(180deg, #A51C30, #7A1523)",
-                    zIndex: 2,
-                  }}
-                />
-
-                {/* ==================================================
-                    PROFILE IMAGE
-                ================================================== */}
-                <div
-                  style={{
-                    position: "relative",
-                    height: "230px",
-                    overflow: "hidden",
-                    background: "rgba(165, 28, 48, 0.05)",
-                  }}
-                >
+              {/* ==================================================
+                  AVATAR
+              ================================================== */}
+              <div className="star-avatar-wrap">
+                <div className="star-avatar-ring" />
+                <div className="star-avatar">
                   {star.imageUrl ? (
                     <img
                       src={star.imageUrl}
                       alt={`${star.name} - College Star`}
                       loading="lazy"
                       decoding="async"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                        transition: "transform 0.5s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "scale(1.04)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                      }}
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
                       }}
                     />
                   ) : (
-                    <div
-                      className="d-flex align-items-center justify-content-center h-100"
-                      style={{
-                        color: "#A51C30",
-                        fontSize: "3.5rem",
-                      }}
-                    >
-                      <i className="bi bi-person-circle" />
-                    </div>
-                  )}
-
-                  {/* Number */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "14px",
-                      left: "14px",
-                      width: "38px",
-                      height: "38px",
-                      borderRadius: "10px",
-                      background: "rgba(255,255,255,0.94)",
-                      color: "#A51C30",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "0.85rem",
-                      fontWeight: "700",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.12)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    {String(index + 1).padStart(2, "0")}
-                  </div>
-
-                  {/* Batch */}
-                  {star.batch && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        right: "14px",
-                        bottom: "14px",
-                        background: "rgba(255,255,255,0.94)",
-                        color: "#A51C30",
-                        padding: "0.35rem 0.75rem",
-                        borderRadius: "50px",
-                        fontSize: "0.68rem",
-                        fontWeight: "700",
-                        backdropFilter: "blur(8px)",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.10)",
-                      }}
-                    >
-                      {star.batch}
+                    <span className="star-avatar-fallback">
+                      <i className="bi bi-person-fill" />
                     </span>
                   )}
                 </div>
 
-                {/* ==================================================
-                    CONTENT
-                ================================================== */}
-                <div
-                  className="p-3 p-lg-4"
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minHeight: "190px",
-                  }}
+                {/* Batch pill on the avatar corner */}
+                {star.batch && (
+                  <span className="star-batch-pill">{star.batch}</span>
+                )}
+              </div>
+
+              {/* ==================================================
+                  IDENTITY
+              ================================================== */}
+              <div className="star-identity">
+                <h3 className="star-name" title={star.name}>
+                  {star.name}
+                </h3>
+
+                {star.achievement && (
+                  <div className="star-role" title={star.achievement}>
+                    <i className="bi bi-trophy-fill" />
+                    <span>{star.achievement}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="star-divider" />
+
+              {/* ==================================================
+                  DESCRIPTION
+              ================================================== */}
+              {star.description && (
+                <p className="star-bio">{star.description}</p>
+              )}
+
+              {/* ==================================================
+                  ACTION
+              ================================================== */}
+              {star.link && (
+                <a
+                  href={star.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="star-action"
                 >
-                  {/* Name */}
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: "1.2rem",
-                      fontWeight: "700",
-                      color: "var(--color-text)",
-                      lineHeight: "1.3",
-                      marginBottom: "0.7rem",
-                    }}
-                    title={star.name}
-                  >
-                    {star.name}
-                  </h3>
+                  <span>Learn More</span>
+                  <i className="bi bi-arrow-up-right" />
+                </a>
+              )}
 
-                  {/* Achievement */}
-                  {star.achievement && (
-                    <div
-                      className="d-flex align-items-start gap-2"
-                      style={{
-                        color: "#A51C30",
-                        marginBottom: "0.8rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "8px",
-                          background: "rgba(165, 28, 48, 0.07)",
-                        }}
-                      >
-                        <i
-                          className="bi bi-trophy-fill"
-                          style={{
-                            fontSize: "0.72rem",
-                          }}
-                        />
-                      </div>
-
-                      <span
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: "600",
-                          lineHeight: "1.5",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                        title={star.achievement}
-                      >
-                        {star.achievement}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Description */}
-                  {star.description && (
-                    <p
-                      style={{
-                        color: "var(--color-text-muted)",
-                        fontSize: "0.78rem",
-                        lineHeight: "1.55",
-                        marginBottom: "1rem",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {star.description}
-                    </p>
-                  )}
-
-                  {/* Bottom action */}
-                  {star.link && (
-                    <div
-                      style={{
-                        marginTop: "auto",
-                        paddingTop: "0.9rem",
-                        borderTop: "1px solid var(--color-border)",
-                      }}
-                    >
-                      <a
-                        href={star.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          color: "#A51C30",
-                          fontSize: "0.78rem",
-                          fontWeight: "700",
-                          textDecoration: "none",
-                          transition: "all 0.25s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.gap = "0.7rem";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.gap = "0.4rem";
-                        }}
-                      >
-                        Learn More
-                        <i className="bi bi-arrow-up-right" />
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </article>
-            </div>
+              {/* Decorative index number */}
+              <span className="star-index">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            </article>
           ))}
         </div>
 
@@ -481,6 +289,345 @@ const CollegeStarsSection = () => {
           </Link>
         </div>
       </div>
+
+      {/* ==================================================
+          PROFILE CARD STYLES
+      ================================================== */}
+      <style>{`
+        .stars-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 1.5rem;
+        }
+
+        /* ==================================================
+           PROFILE CARD
+        ================================================== */
+        .star-profile-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 2.5rem 1.25rem 1.25rem;
+          background: var(--card-bg, #ffffff);
+          border: 1px solid var(--color-border, rgba(0, 0, 0, 0.06));
+          border-radius: 20px;
+          overflow: hidden;
+          transition:
+            transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 0.35s ease;
+        }
+
+        .star-profile-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 22px 45px rgba(0, 0, 0, 0.1);
+          border-color: rgba(165, 28, 48, 0.25);
+        }
+
+        /* Subtle top gradient bar */
+        .star-profile-card::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 90px;
+          background: linear-gradient(
+            180deg,
+            rgba(165, 28, 48, 0.06),
+            rgba(165, 28, 48, 0)
+          );
+          pointer-events: none;
+        }
+
+        /* Faint index number in the corner */
+        .star-index {
+          position: absolute;
+          top: 12px;
+          right: 16px;
+          font-family: "Playfair Display", Georgia, serif;
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: rgba(165, 28, 48, 0.18);
+          letter-spacing: 1px;
+        }
+
+        /* ==================================================
+           AVATAR
+        ================================================== */
+        .star-avatar-wrap {
+          position: relative;
+          width: 118px;
+          height: 118px;
+          margin-bottom: 1rem;
+        }
+
+        .star-avatar-ring {
+          position: absolute;
+          inset: -8px;
+          border-radius: 50%;
+          border: 1px dashed rgba(165, 28, 48, 0.3);
+          pointer-events: none;
+        }
+
+        .star-avatar {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+          background: linear-gradient(145deg, #f5e6e9, #ecd2d8);
+          box-shadow:
+            0 10px 24px rgba(165, 28, 48, 0.18),
+            0 0 0 4px var(--card-bg, #ffffff),
+            0 0 0 5px rgba(165, 28, 48, 0.15);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .star-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          transition: transform 0.5s ease;
+        }
+
+        .star-profile-card:hover .star-avatar img {
+          transform: scale(1.06);
+        }
+
+        .star-avatar-fallback {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          color: #A51C30;
+          font-size: 3rem;
+        }
+
+        .star-batch-pill {
+          position: absolute;
+          bottom: -4px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #A51C30;
+          color: #fff;
+          padding: 0.22rem 0.65rem;
+          border-radius: 50px;
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          box-shadow: 0 6px 14px rgba(165, 28, 48, 0.3);
+          white-space: nowrap;
+          z-index: 2;
+        }
+
+        /* ==================================================
+           IDENTITY
+        ================================================== */
+        .star-identity {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-top: 0.85rem;
+          width: 100%;
+        }
+
+        .star-name {
+          font-family: "Playfair Display", Georgia, serif;
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--color-text, #1d1d1d);
+          line-height: 1.25;
+          margin: 0 0 0.4rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          max-width: 100%;
+        }
+
+        .star-role {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          max-width: 100%;
+          color: #A51C30;
+          font-size: 0.76rem;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+
+        .star-role i {
+          font-size: 0.7rem;
+          flex-shrink: 0;
+        }
+
+        .star-role span {
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-align: center;
+        }
+
+        /* ==================================================
+           DIVIDER
+        ================================================== */
+        .star-divider {
+          width: 42px;
+          height: 2px;
+          background: rgba(165, 28, 48, 0.25);
+          border-radius: 2px;
+          margin: 1rem 0 0.85rem;
+        }
+
+        /* ==================================================
+           BIO
+        ================================================== */
+        .star-bio {
+          color: var(--color-text-muted, #6c757d);
+          font-size: 0.8rem;
+          line-height: 1.6;
+          margin: 0 0 1rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* ==================================================
+           ACTION
+        ================================================== */
+        .star-action {
+          margin-top: auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          padding-top: 0.9rem;
+          width: 100%;
+          border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.06));
+          color: #A51C30;
+          font-size: 0.76rem;
+          font-weight: 700;
+          text-decoration: none;
+          transition: gap 0.25s ease, color 0.25s ease;
+        }
+
+        .star-action:hover {
+          color: #7A1523;
+          gap: 0.65rem;
+        }
+
+        .star-action i {
+          transition: transform 0.25s ease;
+        }
+
+        .star-action:hover i {
+          transform: translate(2px, -2px);
+        }
+
+        /* ==================================================
+           RESPONSIVE
+        ================================================== */
+        @media (max-width: 991.98px) {
+          .stars-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.25rem;
+          }
+        }
+
+        @media (max-width: 575.98px) {
+          .stars-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+          }
+
+          .star-profile-card {
+            padding: 1.75rem 0.75rem 0.9rem;
+            border-radius: 16px;
+          }
+
+          .star-avatar-wrap {
+            width: 78px;
+            height: 78px;
+            margin-bottom: 0.65rem;
+          }
+
+          .star-avatar-ring {
+            inset: -5px;
+          }
+
+          .star-avatar {
+            box-shadow:
+              0 6px 16px rgba(165, 28, 48, 0.15),
+              0 0 0 3px var(--card-bg, #ffffff),
+              0 0 0 4px rgba(165, 28, 48, 0.13);
+          }
+
+          .star-avatar-fallback {
+            font-size: 2rem;
+          }
+
+          .star-batch-pill {
+            font-size: 0.55rem;
+            padding: 0.18rem 0.5rem;
+            bottom: -3px;
+          }
+
+          .star-index {
+            font-size: 0.7rem;
+            top: 10px;
+            right: 12px;
+          }
+
+          .star-name {
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+          }
+
+          .star-role {
+            font-size: 0.65rem;
+          }
+
+          .star-role i {
+            font-size: 0.6rem;
+          }
+
+          .star-divider {
+            width: 30px;
+            margin: 0.7rem 0 0.6rem;
+          }
+
+          .star-bio {
+            font-size: 0.7rem;
+            -webkit-line-clamp: 3;
+            margin-bottom: 0.75rem;
+          }
+
+          .star-action {
+            padding-top: 0.7rem;
+            font-size: 0.68rem;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .star-profile-card,
+          .star-avatar img,
+          .star-action,
+          .star-action i {
+            transition: none !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

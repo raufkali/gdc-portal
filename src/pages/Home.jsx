@@ -13,6 +13,7 @@ import StudentActivitiesSection from "../components/home/StudentActivitiesSectio
 import StudentAchievements from "./StudentAchievements";
 import { prefetchHomeData } from "../firebase/db";
 import { preloadImages, prefetchImages } from "../utils/cloudflare";
+import StudentAchievementsSection from "../components/home/StudentAchievementsSection";
 
 const Home = () => {
   useEffect(() => {
@@ -57,7 +58,7 @@ const Home = () => {
         <VisionMissionAims />
       </div>
       <div>
-        <StudentAchievements />
+        <StudentAchievementsSection />
       </div>
       <div>
         <TestimonialsSection />
